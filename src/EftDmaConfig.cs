@@ -699,6 +699,12 @@ namespace LoneEftDmaRadar
         public int EspMaxFPS { get; set; } = 0;
 
         /// <summary>
+        /// Radar Max FPS (0 = unlimited). Lowering this can free headroom for ESP.
+        /// </summary>
+        [JsonPropertyName("radarMaxFPS")]
+        public int RadarMaxFPS { get; set; } = 0;
+
+        /// <summary>
         /// Maximum distance to render players on ESP (in meters). 0 = unlimited.
         /// </summary>
         [JsonPropertyName("espPlayerMaxDistance")]

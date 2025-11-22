@@ -30,6 +30,7 @@ namespace LoneEftDmaRadar.UI.ESP
         private readonly System.Diagnostics.Stopwatch _fpsSw = new();
         private int _fpsCounter;
         private int _fps;
+        private long _lastFrameTicks;
         private Timer _highFrequencyTimer;
         private int _renderPending;
 
@@ -149,6 +150,7 @@ namespace LoneEftDmaRadar.UI.ESP
             };
 
             _fpsSw.Start();
+            _lastFrameTicks = System.Diagnostics.Stopwatch.GetTimestamp();
 
             _highFrequencyTimer = new System.Threading.Timer(
                 callback: HighFrequencyRenderCallback,
@@ -187,6 +189,19 @@ namespace LoneEftDmaRadar.UI.ESP
             {
                 if (_isClosing)
                     return;
+
+                int maxFPS = App.Config.UI.EspMaxFPS;
+                long currentTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+
+                if (maxFPS > 0)
+                {
+                    double elapsedMs = (currentTicks - _lastFrameTicks) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+                    double targetMs = 1000.0 / maxFPS;
+                    if (elapsedMs < targetMs)
+                        return;
+                }
+
+                _lastFrameTicks = currentTicks;
 
                 // Must dispatch to UI thread for rendering; avoid piling up work
                 if (System.Threading.Interlocked.CompareExchange(ref _renderPending, 1, 0) == 0)

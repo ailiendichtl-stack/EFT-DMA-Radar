@@ -46,6 +46,7 @@ namespace LoneEftDmaRadar.UI.ESP
             SetStyle(WinForms.ControlStyles.AllPaintingInWmPaint |
                      WinForms.ControlStyles.Opaque |
                      WinForms.ControlStyles.UserPaint, true);
+            BackColor = Color.Black;
             TabStop = false;
         }
 
@@ -115,11 +116,15 @@ namespace LoneEftDmaRadar.UI.ESP
             // Try hardware first, then fall back to software VP and unknown format.
             if (!TryCreateDevice(commonFlags | CreateFlags.HardwareVertexProcessing))
             {
-                _presentParameters.BackBufferFormat = Format.Unknown;
-                if (!TryCreateDevice(commonFlags | CreateFlags.SoftwareVertexProcessing))
+                if (_presentParameters.BackBufferFormat != Format.Unknown)
                 {
-                    throw new SharpDXException(ResultCode.InvalidCall);
+                    _presentParameters.BackBufferFormat = Format.Unknown;
+                    if (TryCreateDevice(commonFlags | CreateFlags.HardwareVertexProcessing))
+                        return;
                 }
+
+                if (!TryCreateDevice(commonFlags | CreateFlags.SoftwareVertexProcessing))
+                    throw new SharpDXException(ResultCode.InvalidCall);
             }
         }
 
@@ -129,7 +134,7 @@ namespace LoneEftDmaRadar.UI.ESP
             {
                 BackBufferWidth = Math.Max(Width, 1),
                 BackBufferHeight = Math.Max(Height, 1),
-                BackBufferFormat = Format.Unknown,
+                BackBufferFormat = Format.A8R8G8B8,
                 BackBufferCount = 1,
                 MultiSampleType = MultisampleType.None,
                 MultiSampleQuality = 0,

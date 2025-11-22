@@ -198,24 +198,51 @@
             <GroupBox Header="Performance"
                       Margin="0,0,0,12">
                 <StackPanel>
-                    <WrapPanel Margin="0,0,0,8">
-                        <TextBlock Text="Max FPS (0 = 144fps default):"
-                                   VerticalAlignment="Center"
-                                   Width="200" />
-                        <TextBox Text="{Binding EspMaxFPS, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Width="80"
-                                 Margin="8,0" />
-                        <TextBlock Text="Recommended: 60, 144, 240, or 0"
-                                   VerticalAlignment="Center"
+                    <StackPanel Margin="0,0,0,8">
+                        <TextBlock Text="ESP Max FPS (0 = unlimited / 144 default):"
+                                   VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <Slider x:Name="EspFpsSlider"
+                                    Width="220"
+                                    Minimum="0"
+                                    Maximum="360"
+                                    SmallChange="10"
+                                    LargeChange="30"
+                                    TickFrequency="30"
+                                    IsSnapToTickEnabled="True"
+                                    Value="{Binding EspMaxFPS, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="{Binding Value, ElementName=EspFpsSlider, StringFormat='{}{0:F0}'}"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0" />
+                        </StackPanel>
+                        <TextBlock Text="0 = unlimited (defaults to 144). Lower values save CPU/GPU."
                                    Foreground="Gray"
                                    FontSize="10"
-                                   Margin="8,0" />
-                    </WrapPanel>
-                    <TextBlock Text="Note: 0 = 144 FPS. High FPS (144+) works even on 60Hz monitors. Lower values save CPU/GPU."
-                               TextWrapping="Wrap"
-                               Foreground="Gray"
-                               FontSize="10"
-                               Margin="0,0,0,4" />
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,8">
+                        <TextBlock Text="Radar Max FPS (0 = unlimited):"
+                                   VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <Slider x:Name="RadarFpsSlider"
+                                    Width="220"
+                                    Minimum="0"
+                                    Maximum="240"
+                                    SmallChange="5"
+                                    LargeChange="15"
+                                    TickFrequency="15"
+                                    IsSnapToTickEnabled="True"
+                                    Value="{Binding RadarMaxFPS, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="{Binding Value, ElementName=RadarFpsSlider, StringFormat='{}{0:F0}'}"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0" />
+                        </StackPanel>
+                        <TextBlock Text="Cap the radar render to free headroom for the ESP."
+                                   Foreground="Gray"
+                                   FontSize="10"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
                 </StackPanel>
             </GroupBox>
 

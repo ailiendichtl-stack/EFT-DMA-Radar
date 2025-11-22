@@ -156,6 +156,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         private IMouseoverEntity _mouseOverItem;
         private Vector2 _lastMousePosition;
         private Vector2 _mapPanPosition;
+        private long _lastRadarFrameTicks;
 
         /// <summary>
         /// Skia Radar Viewport.
@@ -177,6 +178,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             parent.Radar.MouseDown += Radar_MouseDown;
             parent.Radar.MouseUp += Radar_MouseUp;
             parent.Radar.MouseLeave += Radar_MouseLeave;
+            _lastRadarFrameTicks = Stopwatch.GetTimestamp();
             _ = OnStartupAsync();
             _ = RunPeriodicTimerAsync();
         }
@@ -225,6 +227,18 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         /// <param name="e"></param>
         private void Radar_PaintSurface(object sender, SKPaintGLSurfaceEventArgs e)
         {
+            // FPS cap for radar rendering to free headroom for ESP
+            int maxFps = App.Config.UI.RadarMaxFPS;
+            if (maxFps > 0)
+            {
+                long now = Stopwatch.GetTimestamp();
+                double elapsedMs = (now - _lastRadarFrameTicks) * 1000.0 / Stopwatch.Frequency;
+                double targetMs = 1000.0 / maxFps;
+                if (elapsedMs < targetMs)
+                    return;
+                _lastRadarFrameTicks = now;
+            }
+
             // Working vars
             var isStarting = Starting;
             var isReady = Ready;
