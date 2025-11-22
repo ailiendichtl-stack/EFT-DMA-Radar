@@ -38,6 +38,9 @@
             <TabItem Header="Loot Filters">
                 <tabs:LootFiltersTab x:Name="LootFilters"/>
             </TabItem>
+            <TabItem Header="Debug">
+                <tabs:DebugTab x:Name="DebugTab" />
+            </TabItem>
         </TabControl>
     </Grid>
 </Window>
