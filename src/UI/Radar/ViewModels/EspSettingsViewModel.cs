@@ -310,6 +310,19 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        public bool EspUseOpenGl
+        {
+            get => App.Config.UI.EspUseOpenGl;
+            set
+            {
+                if (App.Config.UI.EspUseOpenGl != value)
+                {
+                    App.Config.UI.EspUseOpenGl = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public int EspScreenWidth
         {
             get => App.Config.UI.EspScreenWidth;
@@ -428,4 +441,3 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         public string DisplayName { get; set; }
     }
 }
-

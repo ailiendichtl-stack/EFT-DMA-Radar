@@ -657,6 +657,12 @@ namespace LoneEftDmaRadar
         public float EspCrosshairLength { get; set; } = 25f;
 
         /// <summary>
+        /// Use OpenGL-backed renderer for the ESP window (requires GPU support).
+        /// </summary>
+        [JsonPropertyName("espUseOpenGl")]
+        public bool EspUseOpenGl { get; set; }
+
+        /// <summary>
         /// Custom ESP Screen Width (0 = Auto).
         /// </summary>
         [JsonPropertyName("espScreenWidth")]

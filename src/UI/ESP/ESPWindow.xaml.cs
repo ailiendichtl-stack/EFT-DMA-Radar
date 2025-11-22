@@ -9,6 +9,10 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using LoneEftDmaRadar.UI.Skia;
 using LoneEftDmaRadar.UI.Misc;
+using SkiaSharp.Views.Desktop;
+using SkiaSharp.Views.WPF;
+using System.Windows.Forms.Integration;
+using WinForms = System.Windows.Forms;
 
 namespace LoneEftDmaRadar.UI.ESP
 {
@@ -23,6 +27,14 @@ namespace LoneEftDmaRadar.UI.ESP
         private int _fps;
         private long _lastFrameTicks;
         private Timer _highFrequencyTimer;
+
+        // Render surfaces
+        private SKElement _skElement;
+        private WindowsFormsHost _glHost;
+        private SKGLControl _skGlControl;
+        private bool _usingGlSurface;
+        private bool _glInitFailed;
+        private bool _isClosing;
 
         // Cached Fonts/Paints
         private readonly SKFont _textFont;
@@ -93,6 +105,7 @@ namespace LoneEftDmaRadar.UI.ESP
         {
             InitializeComponent();
             CameraManager.TryInitialize();
+            InitializeRenderSurface();
             
             // Initial sizes
             this.Width = 400;
@@ -173,10 +186,113 @@ namespace LoneEftDmaRadar.UI.ESP
                 period: 1); // 1ms = up to 1000 checks per second
         }
 
+        private void InitializeRenderSurface()
+        {
+            RenderRoot.Children.Clear();
+
+            if (App.Config.UI.EspUseOpenGl && !_glInitFailed && TryCreateGlSurface())
+            {
+                _usingGlSurface = true;
+                return;
+            }
+
+            CreateCpuSurface();
+            _usingGlSurface = false;
+        }
+
+        private bool TryCreateGlSurface()
+        {
+            try
+            {
+                _skGlControl = new SKGLControl
+                {
+                    Dock = WinForms.DockStyle.Fill,
+                    VSync = false,
+                    BackColor = System.Drawing.Color.Black,
+                    TabStop = false
+                };
+
+                _skGlControl.PaintSurface += OnPaintSurfaceGl;
+                _skGlControl.MouseDown += GlControl_MouseDown;
+                _skGlControl.DoubleClick += GlControl_DoubleClick;
+                _skGlControl.KeyDown += GlControl_KeyDown;
+
+                _glHost = new WindowsFormsHost
+                {
+                    Child = _skGlControl
+                };
+
+                RenderRoot.Children.Add(_glHost);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogInfo($"ESP: Falling back to CPU renderer: {ex.Message}");
+                FallbackToCpu("GL init failed", ex);
+                return false;
+            }
+        }
+
+        private void CreateCpuSurface()
+        {
+            _skElement = new SKElement();
+            _skElement.PaintSurface += OnPaintSurface;
+            RenderRoot.Children.Add(_skElement);
+        }
+
+        private void DisposeGlSurface()
+        {
+            if (_skGlControl is not null)
+            {
+                _skGlControl.PaintSurface -= OnPaintSurfaceGl;
+                _skGlControl.MouseDown -= GlControl_MouseDown;
+                _skGlControl.DoubleClick -= GlControl_DoubleClick;
+                _skGlControl.KeyDown -= GlControl_KeyDown;
+                _skGlControl.Dispose();
+                _skGlControl = null;
+            }
+
+            if (_glHost is not null)
+            {
+                RenderRoot.Children.Remove(_glHost);
+                _glHost.Dispose();
+                _glHost = null;
+            }
+
+            _usingGlSurface = false;
+        }
+
+        private void DisposeCpuSurface()
+        {
+            if (_skElement is not null)
+            {
+                _skElement.PaintSurface -= OnPaintSurface;
+                RenderRoot.Children.Remove(_skElement);
+                _skElement = null;
+            }
+        }
+
+        private void FallbackToCpu(string reason, Exception ex = null)
+        {
+            if (!_usingGlSurface && _skElement is not null)
+                return;
+
+            if (_isClosing)
+                return;
+
+            _glInitFailed = true;
+            DisposeGlSurface();
+            CreateCpuSurface();
+            DebugLogger.LogInfo($"ESP: Switched to CPU renderer ({reason}). {ex?.Message}");
+        }
+
         private void HighFrequencyRenderCallback(object state)
         {
             try
             {
+                if (_isClosing)
+                    return;
+
                 int maxFPS = App.Config.UI.EspMaxFPS;
 
                 // Calculate elapsed time since last frame
@@ -200,7 +316,10 @@ namespace LoneEftDmaRadar.UI.ESP
                         {
                             RefreshESP();
                         }
-                        catch { /* Ignore errors during shutdown */ }
+                        catch (Exception ex)
+                        {
+                            FallbackToCpu("GL refresh failed", ex);
+                        }
                     }), System.Windows.Threading.DispatcherPriority.Render);
                 }
             }
@@ -233,7 +352,38 @@ namespace LoneEftDmaRadar.UI.ESP
         /// </summary>
         private void OnPaintSurface(object sender, SKPaintSurfaceEventArgs e)
         {
-            var canvas = e.Surface.Canvas;
+            RenderSurface(e.Surface.Canvas, e.Info.Width, e.Info.Height);
+        }
+
+        private void OnPaintSurfaceGl(object sender, SKPaintGLSurfaceEventArgs e)
+        {
+            try
+            {
+                var target = e.BackendRenderTarget;
+                if (target == null)
+                    return;
+
+                RenderSurface(e.Surface.Canvas, target.Width, target.Height);
+            }
+            catch (Exception ex)
+            {
+                // If GL render pipeline throws, fall back to CPU to avoid crashing the app.
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    FallbackToCpu("GL render failed", ex);
+                    RefreshESP();
+                }));
+            }
+        }
+
+        private void RenderSurface(SKCanvas canvas, int pixelWidth, int pixelHeight)
+        {
+            if (canvas is null || pixelWidth <= 0 || pixelHeight <= 0)
+                return;
+
+            float screenWidth = pixelWidth;
+            float screenHeight = pixelHeight;
+
             SetFPS();
 
             // Clear with black background (transparent for fuser)
@@ -261,7 +411,7 @@ namespace LoneEftDmaRadar.UI.ESP
                 {
                     if (!ShowESP)
                     {
-                        DrawNotShown(canvas, e.Info.Width, e.Info.Height);
+                        DrawNotShown(canvas, screenWidth, screenHeight);
                     }
                     else
                     {
@@ -273,7 +423,7 @@ namespace LoneEftDmaRadar.UI.ESP
                         // Render Loot (background layer)
                         if (App.Config.Loot.Enabled && App.Config.UI.EspLoot)
                         {
-                            DrawLoot(canvas, e.Info.Width, e.Info.Height);
+                            DrawLoot(canvas, screenWidth, screenHeight);
                         }
 
                         // Render Exfils
@@ -283,7 +433,7 @@ namespace LoneEftDmaRadar.UI.ESP
                             {
                                 if (exit is Exfil exfil && exfil.Status != Exfil.EStatus.Closed)
                                 {
-                                     if (WorldToScreen2(exfil.Position, out var screen, e.Info.Width, e.Info.Height))
+                                     if (WorldToScreen2(exfil.Position, out var screen, screenWidth, screenHeight))
                                      {
                                          var paint = exfil.Status switch
                                          {
@@ -302,15 +452,15 @@ namespace LoneEftDmaRadar.UI.ESP
                         // Render players
                         foreach (var player in allPlayers)
                         {
-                            DrawPlayerESP(canvas, player, localPlayer, e.Info.Width, e.Info.Height);
+                            DrawPlayerESP(canvas, player, localPlayer, screenWidth, screenHeight);
                         }
 
                         if (App.Config.UI.EspCrosshair)
                         {
-                            DrawCrosshair(canvas, e.Info.Width, e.Info.Height);
+                            DrawCrosshair(canvas, screenWidth, screenHeight);
                         }
 
-                        DrawFPS(canvas, e.Info.Width, e.Info.Height);
+                        DrawFPS(canvas, screenWidth, screenHeight);
                     }
                 }
             }
@@ -725,6 +875,27 @@ namespace LoneEftDmaRadar.UI.ESP
 
         #region Window Management
 
+        private void GlControl_MouseDown(object sender, WinForms.MouseEventArgs e)
+        {
+            if (e.Button == WinForms.MouseButtons.Left)
+            {
+                try { this.DragMove(); } catch { /* ignore dragging errors */ }
+            }
+        }
+
+        private void GlControl_DoubleClick(object sender, EventArgs e)
+        {
+            ToggleFullscreen();
+        }
+
+        private void GlControl_KeyDown(object sender, WinForms.KeyEventArgs e)
+        {
+            if (e.KeyCode == WinForms.Keys.Escape && this.WindowState == WindowState.Maximized)
+            {
+                ToggleFullscreen();
+            }
+        }
+
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
             // Allow dragging the window
@@ -734,18 +905,48 @@ namespace LoneEftDmaRadar.UI.ESP
 
         protected override void OnClosed(System.EventArgs e)
         {
-            _highFrequencyTimer?.Dispose();
-            skElement.PaintSurface -= OnPaintSurface;
-            _textPaint.Dispose();
-            _textBackgroundPaint.Dispose();
-            _crosshairPaint.Dispose();
-            base.OnClosed(e);
+            _isClosing = true;
+            try
+            {
+                _highFrequencyTimer?.Dispose();
+                DisposeGlSurface();
+                DisposeCpuSurface();
+                _textPaint.Dispose();
+                _textBackgroundPaint.Dispose();
+                _crosshairPaint.Dispose();
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogDebug($"ESP: OnClosed cleanup error: {ex}");
+            }
+            finally
+            {
+                base.OnClosed(e);
+            }
         }
 
         // Method to force refresh
         public void RefreshESP()
         {
-            skElement.InvalidateVisual();
+            if (_isClosing)
+                return;
+
+            if (_usingGlSurface && _skGlControl is not null)
+            {
+                try
+                {
+                    _skGlControl.Invalidate();
+                }
+                catch (Exception ex)
+                {
+                    FallbackToCpu("GL invalidate failed", ex);
+                    _skElement?.InvalidateVisual();
+                }
+            }
+            else
+            {
+                _skElement?.InvalidateVisual();
+            }
         }
 
         private void Window_MouseDoubleClick(object sender, MouseButtonEventArgs e)

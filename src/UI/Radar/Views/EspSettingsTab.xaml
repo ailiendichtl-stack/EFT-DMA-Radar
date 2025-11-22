@@ -174,6 +174,16 @@
                       Margin="0,0,0,12">
                 <StackPanel>
                     <WrapPanel Margin="0,0,0,8">
+                        <CheckBox Content="Use GPU renderer (OpenGL)"
+                                  IsChecked="{Binding EspUseOpenGl, Mode=TwoWay}"
+                                  ToolTip="Uses SKGL/OpenGL. Restart the ESP window after changing." />
+                        <TextBlock Text="Restart ESP window after changing."
+                                   VerticalAlignment="Center"
+                                   Foreground="Gray"
+                                   FontSize="10"
+                                   Margin="8,0,0,0" />
+                    </WrapPanel>
+                    <WrapPanel Margin="0,0,0,8">
                         <TextBlock Text="Max FPS (0 = 144fps default):"
                                    VerticalAlignment="Center"
                                    Width="200" />
@@ -197,4 +207,3 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
-
