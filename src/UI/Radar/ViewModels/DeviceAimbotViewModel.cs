@@ -540,13 +540,26 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
 
         private static void SendTestMove(int dx, int dy)
         {
-            if (App.Config.Device.UseKmBoxNet && DeviceNetController.Connected)
+            try
             {
-                DeviceNetController.Move(dx, dy);
-                return;
-            }
+                if (App.Config.Device.UseKmBoxNet && DeviceNetController.Connected)
+                {
+                    DeviceNetController.Move(dx, dy);
+                    return;
+                }
 
-            Device.move(dx, dy);
+                Device.move(dx, dy);
+            }
+            catch (TimeoutException tex)
+            {
+                DebugLogger.LogDebug($"[DeviceAimbotTest] Move timeout: {tex.Message}");
+                // swallow here so the test UI doesn't show a scary popup if the device already moved
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogDebug($"[DeviceAimbotTest] Move error: {ex}");
+                throw;
+            }
         }
     }
 }
