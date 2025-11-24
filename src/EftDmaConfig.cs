@@ -976,6 +976,12 @@ namespace LoneEftDmaRadar
         public bool TargetBoss { get; set; } = true;
         public bool TargetRaider { get; set; } = true;
 
+        // KMBox NET (LAN) device support
+        public bool UseKmBoxNet { get; set; } = false;
+        public string KmBoxNetIp { get; set; } = "192.168.2.4";
+        public int KmBoxNetPort { get; set; } = 8888;
+        public string KmBoxNetMac { get; set; } = "";
+
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public enum TargetingMode
         {

@@ -55,6 +55,17 @@ namespace LoneEftDmaRadar.UI.Misc
         private float _lastRecoilAmount = 1.0f;
         private float _lastSwayAmount = 1.0f;
         #endregion
+
+        private void SendDeviceMove(int dx, int dy)
+        {
+            if (Config.UseKmBoxNet && DeviceNetController.Connected)
+            {
+                DeviceNetController.Move(dx, dy);
+                return;
+            }
+
+            Device.move(dx, dy);
+        }
 		[Flags]
 		public enum EProceduralAnimationMask
 		{
@@ -84,6 +95,14 @@ namespace LoneEftDmaRadar.UI.Misc
             if (Config.AutoConnect && !Device.connected)
             {
                 try { Device.TryAutoConnect(Config.LastComPort); } catch { /* best-effort */ }
+            }
+            if (Config.UseKmBoxNet && !DeviceNetController.Connected)
+            {
+                try
+                {
+                    DeviceNetController.Connect(Config.KmBoxNetIp, Config.KmBoxNetPort, Config.KmBoxNetMac);
+                }
+                catch { /* best-effort */ }
             }
 
             _worker = new Thread(WorkerLoop)
@@ -141,19 +160,22 @@ namespace LoneEftDmaRadar.UI.Misc
                         continue;
                     }
 
-                    // 3) Check if aimbot is enabled
-                    if (!Config.Enabled)
+                    // 3) Check if anything wants to run (hardware aimbot or memory silent aim)
+                    bool memoryAimActive = App.Config.MemWrites.Enabled && App.Config.MemWrites.MemoryAimEnabled;
+                    bool anyAimbotEnabled = Config.Enabled || memoryAimActive;
+
+                    if (!anyAimbotEnabled)
                     {
-                        _debugStatus = "Aimbot disabled (NoRecoil still active if enabled)";
+                        _debugStatus = "Aimbot & MemoryAim disabled (NoRecoil still active if enabled)";
                         ResetTarget();
                         Thread.Sleep(100);
                         continue;
                     }
 
 
-                    if (!App.Config.MemWrites.MemoryAimEnabled && !Device.connected)
+                    if (!memoryAimActive && !Device.connected && !DeviceNetController.Connected)
                     {
-                        _debugStatus = "DeviceAimbot device NOT connected (enable MemoryAim to use without device)";
+                        _debugStatus = "Device/KMBoxNet NOT connected (enable MemoryAim to use without device)";
                         ResetTarget();
                         Thread.Sleep(250);
                         continue;
@@ -558,7 +580,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             // Apply movement
             if (moveX != 0 || moveY != 0)
             {
-                Device.move(moveX, moveY);
+                SendDeviceMove(moveX, moveY);
                 DebugLogger.LogDebug($"[DeviceAimbot] Aiming at target {target.Name}: Move({moveX}, {moveY})");
             }
         }
@@ -867,7 +889,8 @@ private static float RadToDeg(float radians)
                 lines.Add("=== DeviceAimbot AIMBOT DEBUG ===");
                 lines.Add($"Status:       {_debugStatus}");
                 lines.Add($"Key State:    {(IsEngaged ? "ENGAGED" : "Idle")}");
-                lines.Add($"Device:       {(Device.connected ? "Connected" : "Disconnected")}");
+                bool devConnected = Device.connected || DeviceNetController.Connected;
+                lines.Add($"Device:       {(devConnected ? "Connected" : "Disconnected")}");
                 lines.Add($"Enabled:      {(Config.Enabled ? "TRUE" : "FALSE")}");
                 lines.Add($"InRaid:       {_memory.InRaid}");
                 lines.Add("");
@@ -1052,7 +1075,7 @@ private static float RadToDeg(float radians)
                     Status = _debugStatus,
                     KeyEngaged = IsEngaged,
                     Enabled = Config.Enabled,
-                    DeviceConnected = Device.connected,
+                    DeviceConnected = Device.connected || DeviceNetController.Connected,
                     InRaid = _memory.InRaid,
                     CandidateTotal = _dbgTotalPlayers,
                     CandidateTypeOk = _dbgEligibleType,

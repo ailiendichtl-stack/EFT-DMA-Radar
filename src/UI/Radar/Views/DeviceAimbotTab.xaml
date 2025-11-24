@@ -21,6 +21,19 @@
                     <TextBlock Text="Device Version:" FontWeight="Bold" Margin="8,8,8,4" />
                     <TextBlock Text="{Binding DeviceVersion}" Margin="8,0,8,8" />
                     
+                    <CheckBox Content="Use KMBox NET"
+                              IsChecked="{Binding UseKmBoxNet, Mode=TwoWay}"
+                              Margin="8,4,8,8" />
+
+                    <StackPanel Margin="8,0,8,8" IsEnabled="{Binding UseKmBoxNet}">
+                        <TextBlock Text="KMBox NET IP / Port / MAC" FontWeight="Bold" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+                            <TextBox Text="{Binding KmBoxNetIp, Mode=TwoWay}" Width="140" Margin="0,0,8,0"/>
+                            <TextBox Text="{Binding KmBoxNetPort, Mode=TwoWay}" Width="80" Margin="0,0,8,0"/>
+                            <TextBox Text="{Binding KmBoxNetMac, Mode=TwoWay}" Width="120"/>
+                        </StackPanel>
+                    </StackPanel>
+
                     <CheckBox Content="Auto-connect on startup"
                               IsChecked="{Binding AutoConnect, Mode=TwoWay}"
                               Margin="8,4,8,8" />

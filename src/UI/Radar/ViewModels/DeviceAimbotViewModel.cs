@@ -76,6 +76,31 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        // KMBox NET
+        public bool UseKmBoxNet
+        {
+            get => App.Config.Device.UseKmBoxNet;
+            set { App.Config.Device.UseKmBoxNet = value; OnPropertyChanged(); }
+        }
+
+        public string KmBoxNetIp
+        {
+            get => App.Config.Device.KmBoxNetIp;
+            set { App.Config.Device.KmBoxNetIp = value; OnPropertyChanged(); }
+        }
+
+        public int KmBoxNetPort
+        {
+            get => App.Config.Device.KmBoxNetPort;
+            set { App.Config.Device.KmBoxNetPort = value; OnPropertyChanged(); }
+        }
+
+        public string KmBoxNetMac
+        {
+            get => App.Config.Device.KmBoxNetMac;
+            set { App.Config.Device.KmBoxNetMac = value; OnPropertyChanged(); }
+        }
+
         // Settings
         public bool AutoConnect
         {
@@ -273,7 +298,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 System.Threading.Tasks.Task.Run(() =>
                 {
                     System.Threading.Thread.Sleep(1000);
-                    if (Device.TryAutoConnect(App.Config.Device.LastComPort))
+                    if (!App.Config.Device.UseKmBoxNet && Device.TryAutoConnect(App.Config.Device.LastComPort))
                     {
                         UpdateConnectionStatus();
                         if (!string.IsNullOrWhiteSpace(App.Config.Device.LastComPort))
@@ -285,6 +310,13 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                             App.Config.Device.LastComPort = Device.CurrentPortName;
                         }
                         catch { /* ignore */ }
+                    }
+                    else if (App.Config.Device.UseKmBoxNet)
+                    {
+                        if (DeviceNetController.Connect(App.Config.Device.KmBoxNetIp, App.Config.Device.KmBoxNetPort, App.Config.Device.KmBoxNetMac))
+                        {
+                            UpdateConnectionStatus();
+                        }
                     }
                 });
             }
@@ -317,6 +349,21 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         {
             try
             {
+                if (App.Config.Device.UseKmBoxNet)
+                {
+                    bool okNet = DeviceNetController.Connect(App.Config.Device.KmBoxNetIp, App.Config.Device.KmBoxNetPort, App.Config.Device.KmBoxNetMac);
+                    UpdateConnectionStatus();
+                    if (!okNet)
+                    {
+                        System.Windows.MessageBox.Show(
+                            "Failed to connect to KMBox NET.",
+                            "KMBox NET",
+                            System.Windows.MessageBoxButton.OK,
+                            System.Windows.MessageBoxImage.Error);
+                    }
+                    return;
+                }
+
                 if (SelectedDevice == null)
                 {
                     System.Windows.MessageBox.Show(
@@ -362,6 +409,11 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         {
             try
             {
+                if (App.Config.Device.UseKmBoxNet)
+                {
+                    DeviceNetController.Disconnect();
+                }
+
                 Device.disconnect();
                 UpdateConnectionStatus();
             }
@@ -373,9 +425,13 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
 
         private void UpdateConnectionStatus()
         {
-            IsConnected = Device.connected;
+            IsConnected = Device.connected || DeviceNetController.Connected;
 
-            if (Device.connected)
+            if (DeviceNetController.Connected)
+            {
+                DeviceVersion = "KMBox NET";
+            }
+            else if (Device.connected)
             {
                 var kind = Device.DeviceKind.ToString();
                 if (string.IsNullOrWhiteSpace(Device.version))
@@ -395,7 +451,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
 
         private async void TestMove()
         {
-            if (!Device.connected)
+            if (!Device.connected && !DeviceNetController.Connected)
             {
                 System.Windows.MessageBox.Show(
                     "Please connect to a device first.",
@@ -429,19 +485,19 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                     DebugLogger.LogDebug("[DeviceAimbotTest] Starting movement test");
 
                     // Right
-                    Device.move(step, 0);
+                    SendTestMove(step, 0);
                     System.Threading.Thread.Sleep(delay);
 
                     // Down
-                    Device.move(0, step);
+                    SendTestMove(0, step);
                     System.Threading.Thread.Sleep(delay);
 
                     // Left
-                    Device.move(-step, 0);
+                    SendTestMove(-step, 0);
                     System.Threading.Thread.Sleep(delay);
 
                     // Up
-                    Device.move(0, -step);
+                    SendTestMove(0, -step);
                     System.Threading.Thread.Sleep(delay);
 
                     // Small circle pattern (8 points)
@@ -480,6 +536,17 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             {
                 IsTesting = false;
             }
+        }
+
+        private static void SendTestMove(int dx, int dy)
+        {
+            if (App.Config.Device.UseKmBoxNet && DeviceNetController.Connected)
+            {
+                DeviceNetController.Move(dx, dy);
+                return;
+            }
+
+            Device.move(dx, dy);
         }
     }
 }
