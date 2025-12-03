@@ -309,15 +309,6 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                         .Where(x => !x.HasExfild); // Skip exfil'd players
                     if (App.Config.Loot.Enabled) // Draw loot (if enabled)
                     {
-                        if (Loot is IEnumerable<LootItem> loot)
-                        {
-                            foreach (var item in loot)
-                            {
-                                if (App.Config.Loot.HideCorpses && item is LootCorpse)
-                                    continue;
-                                item.Draw(canvas, mapParams, localPlayer);
-                            }
-                        }
                         if (App.Config.Containers.Enabled) // Draw Containers
                         {
                             var containerConfig = App.Config.Containers;
@@ -331,6 +322,15 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                                         container.Draw(canvas, mapParams, localPlayer);
                                     }
                                 }
+                            }
+                        }
+                        if (Loot is IEnumerable<LootItem> loot)
+                        {
+                            foreach (var item in loot)
+                            {
+                                if (App.Config.Loot.HideCorpses && item is LootCorpse)
+                                    continue;
+                                item.Draw(canvas, mapParams, localPlayer);
                             }
                         }
                     }
