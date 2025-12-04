@@ -24,6 +24,10 @@
                                   ToolTip="Selects all container types for display."
                                   IsChecked="{Binding StaticContainersSelectAll, Mode=TwoWay}"
                                   Margin="0,0,16,8" />
+                        <CheckBox Content="Hide Searched"
+                                  ToolTip="Hides containers that have been searched by local player."
+                                  IsChecked="{Binding HideSearchedContainers, Mode=TwoWay}"
+                                  Margin="0,0,16,8" />
                     </WrapPanel>
 
                     <TextBlock Text="Tracked Containers"

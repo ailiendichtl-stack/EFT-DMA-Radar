@@ -147,9 +147,17 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                         }
 
                         string map = Memory.ReadUnicodeString(mapPtr, 128);
-                        DebugLogger.LogDebug("Detected Map " + map);
-                        if (!StaticGameData.MapNames.ContainsKey(map)) // Also makes sure we're not in the hideout
+
+                        if (!StaticGameData.MapNames.ContainsKey(map))
+                        {
+                            if (map.Equals("hideout", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return null;
+                            }
                             throw new ArgumentException("Invalid Map ID!");
+                        }
+
+                        DebugLogger.LogDebug("Detected Map " + map);
                         return new GameWorldResult()
                         {
                             GameWorld = localGameWorld,
@@ -158,6 +166,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                     }
                     catch (Exception ex)
                     {
+                        if (ex.Message.Contains("Invalid Map ID!") && ex.Message.Contains("hideout"))
+                        {
+                            return null;
+                        }
                         DebugLogger.LogDebug($"Invalid GameWorld Instance: {ex}");
                     }
                 }

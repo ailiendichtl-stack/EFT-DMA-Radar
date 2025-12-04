@@ -32,6 +32,19 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        public bool HideSearchedContainers
+        {
+            get => App.Config.Containers.HideSearched;
+            set
+            {
+                if (App.Config.Containers.HideSearched != value)
+                {
+                    App.Config.Containers.HideSearched = value;
+                    OnPropertyChanged(nameof(HideSearchedContainers));
+                }
+            }
+        }
+
         private void InitializeContainers()
         {
             // If SelectAll is true but Selected dictionary is empty, populate it BEFORE creating entries

@@ -59,7 +59,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
         public ulong OpticCamera { get; }
         private ulong _fpsMatrixAddress;
         private ulong _opticMatrixAddress;
-        private bool OpticCameraActive => OpticCamera != 0;
+        private bool OpticCameraActive => OpticCameraPtr != 0;
 
         public static void UpdateViewportRes()
         {
@@ -212,12 +212,15 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
 
                 var (fps, optic) = FindCamerasByName(listItemsPtr, count);
 
-                if (fps == 0 || optic == 0)
+                if (fps == 0)
                 {
-                    DebugLogger.LogDebug("\n CRITICAL: Could not find required cameras!");
-                    throw new InvalidOperationException(
-                        $"Could not find cameras. FPS: {(fps != 0 ? "Found" : "Missing")}, " +
-                        $"Optic: {(optic != 0 ? "Found" : "Missing")}");
+                    DebugLogger.LogDebug("\n CRITICAL: Could not find required FPS Camera!");
+                    throw new InvalidOperationException("Could not find required FPS Camera!");
+                }
+
+                if (optic == 0)
+                {
+                    DebugLogger.LogDebug("\n WARNING: Could not find Optic Camera during initialization. Search again when player ADS.");
                 }
 
                 FPSCamera = fps;
@@ -225,7 +228,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
 
                 DebugLogger.LogDebug("\n=== Getting Matrix Addresses ===");
                 _fpsMatrixAddress = GetMatrixAddress(FPSCamera, "FPS");
-                _opticMatrixAddress = GetMatrixAddress(OpticCamera, "Optic");
 
                 FPSCameraPtr = fps;
                 OpticCameraPtr = optic;
@@ -235,12 +237,22 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                 DebugLogger.LogDebug($"  GameObject: 0x{Memory.ReadPtr(FPSCamera + UnitySDK.UnityOffsets.Component_GameObjectOffset, false):X}");
                 DebugLogger.LogDebug($"  Matrix Address: 0x{_fpsMatrixAddress:X}");
 
-                DebugLogger.LogDebug($"  Optic Camera: 0x{OpticCamera:X}");
-                DebugLogger.LogDebug($"  GameObject: 0x{Memory.ReadPtr(OpticCamera + UnitySDK.UnityOffsets.Component_GameObjectOffset, false):X}");
-                DebugLogger.LogDebug($"  Matrix Address: 0x{_opticMatrixAddress:X}");
+                // Only set up Optic Camera if found
+                if (optic != 0)
+                {
+                    _opticMatrixAddress = GetMatrixAddress(OpticCamera, "Optic");
+                    DebugLogger.LogDebug($"  Optic Camera: 0x{OpticCamera:X}");
+                    DebugLogger.LogDebug($"  GameObject: 0x{Memory.ReadPtr(OpticCamera + UnitySDK.UnityOffsets.Component_GameObjectOffset, false):X}");
+                    DebugLogger.LogDebug($"  Matrix Address: 0x{_opticMatrixAddress:X}");
+                    VerifyViewMatrix(_opticMatrixAddress, "Optic");
+                }
+                else
+                {
+                    _opticMatrixAddress = 0;
+                    DebugLogger.LogDebug($"  Optic Camera: Not available");
+                }
 
                 VerifyViewMatrix(_fpsMatrixAddress, "FPS");
-                VerifyViewMatrix(_opticMatrixAddress, "Optic");
 
                 IsInitialized = true;
                 DebugLogger.LogDebug("=== CameraManager Initialization Complete ===\n");
@@ -351,12 +363,23 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
 
                     if (isOptic)
                     {
-                        opticCamera = cameraPtr;
-                        DebugLogger.LogDebug($"       Found Optic Camera");
+                        DebugLogger.LogDebug($"       Found Potential Optic Camera, validating matrix...");
+
+                        if (ValidateOpticCameraMatrix(cameraPtr))
+                        {
+                            opticCamera = cameraPtr;
+                            DebugLogger.LogDebug($"       Found Valid Optic Camera");
+                        }
+                        else
+                        {
+                            DebugLogger.LogDebug($"       Optic Camera matrix invalid, skipping...");
+                        }
                     }
 
+                    // Only stop searching if we found both cameras OR we've searched all cameras
                     if (fpsCamera != 0 && opticCamera != 0)
                     {
+                        DebugLogger.LogDebug($"       Search complete: Both cameras found (FPS: 0x{fpsCamera:X}, Optic: 0x{opticCamera:X})");
                         break;
                     }
                 }
@@ -367,10 +390,72 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
             }
 
             DebugLogger.LogDebug($"\n=== Search Results ===");
-            DebugLogger.LogDebug($"  FPS Camera:   {(fpsCamera != 0 ? $" Found @ 0x{fpsCamera:X}" : "✗ NOT FOUND")}");
-            DebugLogger.LogDebug($"  Optic Camera: {(opticCamera != 0 ? $" Found @ 0x{opticCamera:X}" : "✗ NOT FOUND")}");
+            DebugLogger.LogDebug($"  FPS Camera:   {(fpsCamera != 0 ? $" Found @ 0x{fpsCamera:X}" : " NOT FOUND")}");
+            DebugLogger.LogDebug($"  Optic Camera: {(opticCamera != 0 ? $" Found @ 0x{opticCamera:X}" : " NOT FOUND")}");
 
             return (fpsCamera, opticCamera);
+        }
+
+        /// <summary>
+        /// Validates an Optic Camera by checking if its view matrix contains valid data
+        /// </summary>
+        /// <param name="cameraPtr">Pointer to the camera to validate</param>
+        /// <returns>True if the camera has a valid view matrix, false otherwise</returns>
+        private static bool ValidateOpticCameraMatrix(ulong cameraPtr)
+        {
+            try
+            {
+                var matrixAddress = GetMatrixAddress(cameraPtr, "Optic");
+
+                var vm = Memory.ReadValue<Matrix4x4>(matrixAddress + UnitySDK.UnityOffsets.Camera_ViewMatrixOffset, false);
+
+                if (Math.Abs(vm.M44) < 0.001f)
+                {
+                    DebugLogger.LogDebug($"       Optic Camera validation failed: M44 is zero ({vm.M44})");
+                    return false;
+                }
+
+                if (Math.Abs(vm.M41) < 0.001f && Math.Abs(vm.M42) < 0.001f && Math.Abs(vm.M43) < 0.001f)
+                {
+                    DebugLogger.LogDebug($"       Optic Camera validation failed: Translation is all zeros");
+                    return false;
+                }
+
+                float rightMag = MathF.Sqrt(vm.M11 * vm.M11 + vm.M12 * vm.M12 + vm.M13 * vm.M13);
+                float upMag = MathF.Sqrt(vm.M21 * vm.M21 + vm.M22 * vm.M22 + vm.M23 * vm.M23);
+                float fwdMag = MathF.Sqrt(vm.M31 * vm.M31 + vm.M32 * vm.M32 + vm.M33 * vm.M33);
+
+                if (rightMag < 0.1f && upMag < 0.1f && fwdMag < 0.1f)
+                {
+                    DebugLogger.LogDebug($"       Optic Camera validation failed: All rotation magnitudes too small (R:{rightMag:F3} U:{upMag:F3} F:{fwdMag:F3})");
+                    return false;
+                }
+
+                const float minMagnitude = 0.1f;
+                const float maxMagnitude = 100.0f;
+
+                bool hasValidVectors = false;
+                if (rightMag >= minMagnitude && rightMag <= maxMagnitude)
+                    hasValidVectors = true;
+                if (upMag >= minMagnitude && upMag <= maxMagnitude)
+                    hasValidVectors = true;
+                if (fwdMag >= minMagnitude && fwdMag <= maxMagnitude)
+                    hasValidVectors = true;
+
+                if (!hasValidVectors)
+                {
+                    DebugLogger.LogDebug($"       Optic Camera validation failed: All vector magnitudes out of reasonable range (R:{rightMag:F3} U:{upMag:F3} F:{fwdMag:F3})");
+                    return false;
+                }
+
+                DebugLogger.LogDebug($"       Optic Camera validation passed: M44:{vm.M44:F3} Trans:({vm.M41:F2},{vm.M42:F2},{vm.M43:F2}) Mags:(R:{rightMag:F3} U:{upMag:F3} F:{fwdMag:F3})");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogDebug($"       Optic Camera validation exception: {ex.Message}");
+                return false;
+            }
         }
 
         private bool CheckIfScoped(LocalPlayer localPlayer)
@@ -421,8 +506,25 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
             try
             {
                 IsADS = localPlayer?.CheckIfADS() ?? false;
+
+                if (OpticCameraPtr == 0 && IsADS)
+                {
+                    TryFindOpticCamera();
+                }
+
                 IsScoped = IsADS && CheckIfScoped(localPlayer);
-                ulong vmAddr = IsADS && IsScoped ? _opticMatrixAddress + UnitySDK.UnityOffsets.Camera_ViewMatrixOffset : _fpsMatrixAddress + UnitySDK.UnityOffsets.Camera_ViewMatrixOffset;
+
+                ulong vmAddr;
+                if (IsADS && IsScoped && OpticCameraPtr != 0 && _opticMatrixAddress != 0)
+                {
+                    vmAddr = _opticMatrixAddress + UnitySDK.UnityOffsets.Camera_ViewMatrixOffset;
+                }
+                else
+                {
+                    vmAddr = _fpsMatrixAddress + UnitySDK.UnityOffsets.Camera_ViewMatrixOffset;
+                    if (OpticCameraPtr == 0 || _opticMatrixAddress == 0)
+                        IsScoped = false;
+                }
                 scatter.PrepareReadValue<Matrix4x4>(vmAddr);
                 scatter.Completed += (sender, s) =>
                 {
@@ -454,6 +556,80 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
             catch (Exception ex)
             {
                 DebugLogger.LogDebug($"ERROR in CameraManager OnRealtimeLoop: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// Attempts to find and set up Optic Camera if not already available
+        /// </summary>
+        private void TryFindOpticCamera()
+        {
+            try
+            {
+                if (OpticCameraPtr != 0) return;
+
+                var allCamerasAddr = Memory.UnityBase + UnitySDK.UnityOffsets.AllCameras;
+                var allCamerasPtr = Memory.ReadPtr(allCamerasAddr, false);
+                if (allCamerasPtr == 0) return;
+
+                var listItemsPtr = Memory.ReadPtr(allCamerasPtr + 0x0, false);
+                var count = Memory.ReadValue<int>(allCamerasPtr + 0x8, false);
+
+                DebugLogger.LogDebug($"Attempting to find Optic Camera... ({count} cameras available)");
+
+                for (int i = 0; i < count; i++)
+                {
+                    try
+                    {
+                        ulong cameraEntryAddr = listItemsPtr + (uint)(i * 0x8);
+                        var cameraPtr = Memory.ReadPtr(cameraEntryAddr, false);
+
+                        if (cameraPtr == 0 || cameraPtr > 0x7FFFFFFFFFFF) continue;
+
+                        var gameObjectPtr = Memory.ReadPtr(cameraPtr + UnitySDK.UnityOffsets.GameObject_ComponentsOffset, false);
+                        if (gameObjectPtr == 0 || gameObjectPtr > 0x7FFFFFFFFFFF) continue;
+
+                        var namePtr = Memory.ReadPtr(gameObjectPtr + UnitySDK.UnityOffsets.GameObject_NameOffset, false);
+                        if (namePtr == 0 || namePtr > 0x7FFFFFFFFFFF) continue;
+
+                        var name = Memory.ReadUtf8String(namePtr, 64, false);
+                        if (string.IsNullOrEmpty(name) || name.Length < 3) continue;
+
+                        // Check for Optic Camera
+                        bool isOptic = name.Contains("Optic", StringComparison.OrdinalIgnoreCase) &&
+                                    name.Contains("Camera", StringComparison.OrdinalIgnoreCase);
+
+                        if (isOptic)
+                        {
+                            DebugLogger.LogDebug($"Found potential Optic Camera: {name}, validating...");
+
+                            if (ValidateOpticCameraMatrix(cameraPtr))
+                            {
+                                // Found valid optic camera, set it up
+                                OpticCameraPtr = cameraPtr;
+                                _opticMatrixAddress = GetMatrixAddress(cameraPtr, "Optic");
+
+                                DebugLogger.LogDebug($"Successfully set up Optic Camera: 0x{cameraPtr:X}");
+                                VerifyViewMatrix(_opticMatrixAddress, "Optic");
+                                return;
+                            }
+                            else
+                            {
+                                DebugLogger.LogDebug($"Optic Camera {name} validation failed, continuing search...");
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // continue searching
+                    }
+                }
+
+                DebugLogger.LogDebug("No valid Optic Camera found in this attempt");
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogDebug($"TryFindOpticCamera error: {ex.Message}");
             }
         }
 

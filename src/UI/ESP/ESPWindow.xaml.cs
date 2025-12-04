@@ -506,6 +506,7 @@ namespace LoneEftDmaRadar.UI.ESP
 
             bool selectAll = App.Config.Containers.SelectAll;
             var selected = App.Config.Containers.Selected;
+            bool hideSearched = App.Config.Containers.HideSearched;
             float maxDistance = App.Config.Containers.EspDrawDistance;
             var color = GetContainerColorForRender();
 
@@ -513,6 +514,9 @@ namespace LoneEftDmaRadar.UI.ESP
             {
                 var id = container.ID ?? "UNKNOWN";
                 if (!(selectAll || selected.ContainsKey(id)))
+                    continue;
+
+                if (hideSearched && container.Searched)
                     continue;
 
                 float distance = Vector3.Distance(localPlayer.Position, container.Position);

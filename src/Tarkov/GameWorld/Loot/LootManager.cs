@@ -129,6 +129,13 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                     _ = _loot.TryRemove(existing, out _);
                 }
             }
+            foreach (var item in _loot.Values)
+            {
+                if (item is StaticLootContainer container)
+                {
+                    container.UpdateSearchedStatus();
+                }
+            }
             // Proceed to get new loot
             using var map = Memory.CreateScatterMap();
             var round1 = map.AddRound();
@@ -138,9 +145,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             foreach (var lootBase in lootList)
             {
                 ct.ThrowIfCancellationRequested();
-                if (_loot.ContainsKey(lootBase))
+                var hasExisting = _loot.TryGetValue(lootBase, out var existing);
+                if (hasExisting && existing is not LootItem && existing is not LootCorpse)
                 {
-                    continue; // Already processed this loot item once before
+                    continue; // Already processed this non-updatable loot item once before
                 }
                 round1.PrepareReadPtr(lootBase + ObjectClass.MonoBehaviourOffset); // UnityComponent
                 round1.PrepareReadPtr(lootBase + ObjectClass.To_NamePtr[0]); // C1
@@ -188,7 +196,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                                                             TransformInternal = transformInternal,
                                                             ClassName = className
                                                         };
-                                                        ProcessLootIndex(ref @params);
+                                                        var existingLootItem = existing as LootItem;
+                                                        var existingCorpse = existing as LootCorpse;
+                                                        ProcessLootIndex(ref @params, existingLootItem, existingCorpse);
                                                     }
                                                     catch
                                                     {
@@ -216,7 +226,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// <summary>
         /// Process a single loot index.
         /// </summary>
-        private void ProcessLootIndex(ref LootIndexParams p)
+        private void ProcessLootIndex(ref LootIndexParams p, LootItem existingLoot = null, LootCorpse existingCorpse = null)
         {
             var isCorpse = p.ClassName.Contains("Corpse", StringComparison.OrdinalIgnoreCase);
             var isLooseLoot = p.ClassName.Equals("ObservedLootItem", StringComparison.OrdinalIgnoreCase);
@@ -231,6 +241,21 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             {
                 // Get Item Position
                 var pos = new UnityTransform(p.TransformInternal, true).UpdatePosition();
+
+                // update loose loot position
+                if (existingLoot != null && isLooseLoot)
+                {
+                    existingLoot.UpdatePosition(pos);
+                    return;
+                }
+
+                // update corpse position
+                if (existingCorpse != null && isCorpse)
+                {
+                    existingCorpse.UpdatePosition(pos);
+                    return;
+                }
+
                 if (isCorpse)
                 {
                     var corpse = new LootCorpse(interactiveClass, pos);
@@ -251,7 +276,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                             var ownerItemTemplate = Memory.ReadPtr(ownerItemBase + Offsets.LootItem.Template);
                             var ownerItemMongoId = Memory.ReadValue<MongoID>(ownerItemTemplate + Offsets.ItemTemplate._id);
                             var ownerItemId = ownerItemMongoId.ReadString();
-                            _ = _loot.TryAdd(p.ItemBase, new StaticLootContainer(ownerItemId, pos));
+                            _ = _loot.TryAdd(p.ItemBase, new StaticLootContainer(ownerItemId, pos, interactiveClass));
                         }
                     }
                     catch

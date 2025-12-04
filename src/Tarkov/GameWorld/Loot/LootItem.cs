@@ -192,8 +192,17 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             return predicate(this);
         }
 
-        private readonly Vector3 _position; // Loot doesn't move, readonly ok
+        private Vector3 _position; // Allow position updates for items in case they start rolling around
         public ref readonly Vector3 Position => ref _position;
+
+        /// <summary>
+        /// Updates the position of this loot item.
+        /// </summary>
+        /// <param name="newPosition">The new position</param>
+        public void UpdatePosition(Vector3 newPosition)
+        {
+            _position = newPosition;
+        }
         public Vector2 MouseoverPosition { get; set; }
 
         public virtual void Draw(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)

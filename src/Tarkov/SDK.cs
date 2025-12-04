@@ -156,6 +156,7 @@ namespace SDK
         public readonly partial struct LootableContainer // EFT.Interactive, class: LootableContainer
         {
             public const uint ItemOwner = 0x168; // -.\uEFB4
+            public const uint InteractingPlayer = 0x150; // System.Object <InteractingPlayer>k__BackingField
         }
 
         public readonly partial struct LootableContainerItemOwner // EFT.InventoryLogic, class: ItemController

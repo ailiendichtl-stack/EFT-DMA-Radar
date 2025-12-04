@@ -961,6 +961,12 @@ namespace LoneEftDmaRadar
         public bool SelectAll { get; set; } = true;
 
         /// <summary>
+        /// Hide containers that have been searched by local player.
+        /// </summary>
+        [JsonPropertyName("hideSearched")]
+        public bool HideSearched { get; set; } = false;
+
+        /// <summary>
         /// Selected containers to display.
         /// </summary>
         [JsonPropertyName("selected_v4")]

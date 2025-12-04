@@ -37,6 +37,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
     public sealed class StaticLootContainer : LootItem
     {
         private static readonly TarkovMarketItem _default = new();
+        private readonly ulong _interactiveClass;
 
         public override string Name { get; }
 
@@ -65,11 +66,43 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             }
         }
 
+        // Internal constructor for LootManager with InteractiveClass
+        internal StaticLootContainer(string containerId, Vector3 position, ulong interactiveClass)
+            : this(containerId, position)
+        {
+            _interactiveClass = interactiveClass;
+        }
+
+        /// <summary>
+        /// Updates the searched status of this container by reading memory.
+        /// Called periodically by LootManager.
+        /// </summary>
+        internal void UpdateSearchedStatus()
+        {
+            if (_interactiveClass == 0)
+                return;
+
+            try
+            {
+                var interactingPlayer = Memory.ReadValue<ulong>(_interactiveClass + Offsets.LootableContainer.InteractingPlayer);
+                if (interactingPlayer != 0)
+                {
+                    Searched = true;
+                }
+            }
+            catch
+            {
+            }
+        }
+
         public override void Draw(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
         {
             if (!App.Config.Containers.Enabled)
                 return;
-                
+
+            if (App.Config.Containers.HideSearched && Searched)
+                return;
+
             if (Position.WithinDistance(localPlayer.Position, App.Config.Containers.DrawDistance))
             {
                 var heightDiff = Position.Y - localPlayer.Position.Y;
