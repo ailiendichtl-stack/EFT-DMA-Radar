@@ -197,8 +197,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                                                             ClassName = className
                                                         };
                                                         var existingLootItem = existing as LootItem;
-                                                        var existingCorpse = existing as LootCorpse;
-                                                        ProcessLootIndex(ref @params, existingLootItem, existingCorpse);
+                                                        ProcessLootIndex(ref @params, existingLootItem);
                                                     }
                                                     catch
                                                     {
@@ -226,7 +225,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// <summary>
         /// Process a single loot index.
         /// </summary>
-        private void ProcessLootIndex(ref LootIndexParams p, LootItem existingLoot = null, LootCorpse existingCorpse = null)
+        private void ProcessLootIndex(ref LootIndexParams p, LootItem existingLoot = null)
         {
             var isCorpse = p.ClassName.Contains("Corpse", StringComparison.OrdinalIgnoreCase);
             var isLooseLoot = p.ClassName.Equals("ObservedLootItem", StringComparison.OrdinalIgnoreCase);
@@ -246,13 +245,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 if (existingLoot != null && isLooseLoot)
                 {
                     existingLoot.UpdatePosition(pos);
-                    return;
-                }
-
-                // update corpse position
-                if (existingCorpse != null && isCorpse)
-                {
-                    existingCorpse.UpdatePosition(pos);
                     return;
                 }
 
