@@ -89,6 +89,9 @@ namespace LoneEftDmaRadar
             var zoomOut = new HotkeyActionController("Zoom Out");
             zoomOut.Delay = HK_ZOOMTICKDELAY;
             zoomOut.HotkeyDelayElapsed += ZoomOut_HotkeyDelayElapsed;
+            var switchFollowTarget = new HotkeyActionController("Switch Follow Target");
+            switchFollowTarget.HotkeyStateChanged += SwitchFollowTarget_HotkeyStateChanged;
+            HotkeyAction.RegisterController(switchFollowTarget);
             var toggleLoot = new HotkeyActionController("Toggle Loot");
             toggleLoot.HotkeyStateChanged += ToggleLoot_HotkeyStateChanged;
             var toggleAimviewWidget = new HotkeyActionController("Toggle Aimview Widget");
@@ -222,6 +225,14 @@ namespace LoneEftDmaRadar
         private void ZoomIn_HotkeyDelayElapsed(object sender, EventArgs e)
         {
             _parent.Radar?.ViewModel?.ZoomIn(HK_ZOOMTICKAMT);
+        }
+
+        private void SwitchFollowTarget_HotkeyStateChanged(object sender, HotkeyEventArgs e)
+        {
+            if (e.State)
+            {
+                _parent.Radar?.ViewModel?.SwitchFollowTarget();
+            }
         }
 
         private void ToggleESP_HotkeyStateChanged(object sender, HotkeyEventArgs e)
