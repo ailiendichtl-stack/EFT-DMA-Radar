@@ -29,6 +29,7 @@ SOFTWARE.
 using LoneEftDmaRadar.UI.Hotkeys;
 using LoneEftDmaRadar.UI.Radar.ViewModels;
 using LoneEftDmaRadar.UI.ESP;
+using LoneEftDmaRadar.DMA;
 
 namespace LoneEftDmaRadar
 {
@@ -174,6 +175,19 @@ namespace LoneEftDmaRadar
 
         private void EngageAimbotDeviceAimbot_HotkeyStateChanged(object sender, HotkeyEventArgs e)
         {
+            // Set the engaged state directly on the DeviceAimbot instance.
+            // Fallback to ViewModel-based approach if direct access fails.
+            try
+            {
+                if (MemDMA.DeviceAimbot != null)
+                {
+                    MemDMA.DeviceAimbot.IsEngaged = e.State;
+                    return;
+                }
+            }
+            catch { /* fallthrough to ViewModel approach */ }
+
+            // Legacy fallback via ViewModel
             if (_parent.DeviceAimbot?.ViewModel is DeviceAimbotViewModel DeviceAimbotAim)
             {
                 DeviceAimbotAim.IsEngaged = e.State;

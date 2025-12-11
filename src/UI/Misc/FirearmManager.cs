@@ -25,6 +25,11 @@ namespace LoneEftDmaRadar.UI.Misc
         public Tuple<ulong, bool> HandsController => new(_hands, _hands?.IsWeapon ?? false);
 
         /// <summary>
+        /// Cached Hands Information.
+        /// </summary>
+        public CachedHandsInfo CurrentHands => _hands;
+
+        /// <summary>
         /// Magazine (if any) contained in this firearm.
         /// </summary>
         public MagazineManager Magazine { get; private set; }

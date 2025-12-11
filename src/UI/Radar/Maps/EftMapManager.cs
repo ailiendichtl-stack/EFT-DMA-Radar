@@ -28,6 +28,7 @@ SOFTWARE.
 
 using System.Collections.Frozen;
 using System.IO.Compression;
+using LoneEftDmaRadar.UI.Misc;
 
 namespace LoneEftDmaRadar.UI.Radar.Maps
 {
@@ -89,8 +90,23 @@ namespace LoneEftDmaRadar.UI.Radar.Maps
             {
                 try
                 {
+                    // If mapId is null or empty, don't try to load
+                    if (string.IsNullOrEmpty(mapId))
+                    {
+                        DebugLogger.LogDebug($"[EftMapManager] LoadMap called with null/empty mapId, skipping.");
+                        return;
+                    }
+
                     if (!_maps.TryGetValue(mapId, out var newMap))
-                        newMap = _maps["default"];
+                    {
+                        // Try "default" fallback, but don't crash if it doesn't exist
+                        if (!_maps.TryGetValue("default", out newMap))
+                        {
+                            DebugLogger.LogDebug($"[EftMapManager] Unknown map '{mapId}' and no 'default' fallback exists.");
+                            return;
+                        }
+                    }
+
                     Map?.Dispose();
                     Map = null;
                     Map = new EftSvgMap(_zip, mapId, newMap);

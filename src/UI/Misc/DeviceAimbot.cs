@@ -504,8 +504,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             // ? Check if MemoryAim is enabled
             if (App.Config.MemWrites.Enabled && App.Config.MemWrites.MemoryAimEnabled)
             {
-                ApplyMemoryAim(localPlayer, targetPos);
-                DebugLogger.LogDebug($"[DeviceAimbot] Using MemoryAim for target {target.Name}");
+                LoneEftDmaRadar.Tarkov.Features.MemWrites.MemoryAim.Instance.SetTargetPosition(targetPos);
+                DebugLogger.LogDebug($"[DeviceAimbot] Delegating to MemoryAim for target {target.Name}");
                 return;
             }
 
@@ -689,28 +689,46 @@ private static float RadToDeg(float radians)
             {
                 var firearmManager = localPlayer.FirearmManager;
                 if (firearmManager == null)
-                {
-                    DebugLogger.LogDebug("[DeviceAimbot] FirearmManager is null");
                     return null;
-                }
 
-                var hands = firearmManager.HandsController;
-                if (hands.Item2 == false) // Not a weapon
-                {
-                    DebugLogger.LogDebug("[DeviceAimbot] HandsController is not a weapon");
+                // Use cached hands info for safer access
+                var handsInfo = firearmManager.CurrentHands;
+                if (handsInfo == null || !handsInfo.IsWeapon || handsInfo.ItemAddr == 0)
                     return null;
-                }
 
-                ulong itemBase = _memory.ReadPtr(hands.Item1 + Offsets.ItemHandsController.Item, false);
-                ulong itemTemplate = _memory.ReadPtr(itemBase + Offsets.LootItem.Template, false);
+                ulong itemBase = handsInfo.ItemAddr;
+                
+                // Validate itemBase before proceeding
+                if (!MemDMA.IsValidVirtualAddress(itemBase))
+                    return CreateFallbackBallistics();
 
-                // Get ammo template
-                var ammoTemplate = FirearmManager.MagazineManager.GetAmmoTemplateFromWeapon(itemBase);
-                if (ammoTemplate == 0)
+                ulong itemTemplate;
+                try
                 {
-                    DebugLogger.LogDebug("[DeviceAimbot] No ammo template found, using fallback ballistics");
+                    itemTemplate = _memory.ReadPtr(itemBase + Offsets.LootItem.Template, false);
+                }
+                catch
+                {
                     return CreateFallbackBallistics();
                 }
+
+                if (!MemDMA.IsValidVirtualAddress(itemTemplate))
+                    return CreateFallbackBallistics();
+
+                // Get ammo template - wrap in try/catch since weapon may be empty
+                ulong ammoTemplate;
+                try
+                {
+                    ammoTemplate = FirearmManager.MagazineManager.GetAmmoTemplateFromWeapon(itemBase);
+                }
+                catch
+                {
+                    // Weapon has no ammo loaded
+                    return CreateFallbackBallistics();
+                }
+
+                if (ammoTemplate == 0 || !MemDMA.IsValidVirtualAddress(ammoTemplate))
+                    return CreateFallbackBallistics();
 
                 // Read ballistics data
                 var ballistics = new BallisticsInfo
@@ -730,16 +748,13 @@ private static float RadToDeg(float radians)
                 ballistics.BulletSpeed = baseSpeed * (1f + (velMod / 100f));
 
                 if (!ballistics.IsAmmoValid)
-                {
-                    DebugLogger.LogDebug("[DeviceAimbot] Ammo ballistics invalid, using fallback ballistics");
                     return CreateFallbackBallistics();
-                }
 
                 return ballistics;
             }
             catch (Exception ex)
             {
-                DebugLogger.LogDebug($"[DeviceAimbot] Failed to get ballistics: {ex}. Using fallback ballistics.");
+                DebugLogger.LogDebug($"[DeviceAimbot] Failed to get ballistics: {ex.Message}");
                 return CreateFallbackBallistics();
             }
         }

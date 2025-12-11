@@ -64,15 +64,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         /// <summary>
         /// Map Identifier of Current Map.
         /// </summary>
-        private static string MapID
-        {
-            get
-            {
-                string id = Memory.MapID;
-                id ??= "null";
-                return id;
-            }
-        }
+        private static string MapID => Memory?.MapID;
 
         /// <summary>
         /// LocalPlayer (who is running Radar) 'Player' object.

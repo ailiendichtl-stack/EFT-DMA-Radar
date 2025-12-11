@@ -167,6 +167,7 @@ namespace SDK
         public readonly partial struct LootItem
         {
             public const uint Template = 0x60; // EFT.InventoryLogic.ItemTemplate
+            public const uint Version = 0x7C; // Int32
         }
 
         public readonly partial struct ItemTemplate // EFT.InventoryLogic, class: ItemTemplate
