@@ -139,7 +139,11 @@ namespace LoneEftDmaRadar.UI.Radar.Maps
 
                 var paint = dim ?
                     SKPaints.PaintBitmapAlpha : SKPaints.PaintBitmap;
-                canvas.DrawPicture(layer.Picture, paint);
+
+                if (layer.Picture != null)
+                {
+                    canvas.DrawPicture(layer.Picture, paint);
+                }
             }
 
             canvas.Restore();
@@ -252,7 +256,10 @@ namespace LoneEftDmaRadar.UI.Radar.Maps
             // Draw all layers (bottom to top) to show full context
             foreach (var layer in _layers)
             {
-                canvas.DrawPicture(layer.Picture, paint);
+                if (layer.Picture != null)
+                {
+                    canvas.DrawPicture(layer.Picture, paint);
+                }
             }
 
             canvas.Restore();
@@ -389,7 +396,7 @@ namespace LoneEftDmaRadar.UI.Radar.Maps
             /// <summary>
             /// The SKPicture representing this layer's vector content.
             /// </summary>
-            public SKPicture Picture => _svg.Picture!;
+            public SKPicture? Picture => _svg.Picture;
 
             /// <summary>
             /// Create a vector layer from a loaded SKSvg and its configuration.
