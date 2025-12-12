@@ -272,7 +272,11 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 if (inRaid && LocalPlayer is LocalPlayer localPlayer) // LocalPlayer is in a raid -> Begin Drawing...
                 {
                     var map = EftMapManager.Map; // Cache ref
-                    ArgumentNullException.ThrowIfNull(map, nameof(map));
+                    if (map == null)
+                    {
+                        DebugLogger.LogDebug("[RadarViewModel] Map is null after loading, skipping render frame");
+                        return; // dont crash pls
+                    }
                     var closestToMouse = _mouseOverItem; // cache ref
                     // Get target location (either local player or teammate)
                     Vector3 targetPos;
@@ -316,7 +320,15 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                         Bottom = info.Rect.Bottom
                     };
                     // Draw Map
-                    map.Draw(canvas, localPlayer.Position.Y, mapParams.Bounds, mapCanvasBounds);
+                    try
+                    {
+                        map.Draw(canvas, localPlayer.Position.Y, mapParams.Bounds, mapCanvasBounds);
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugLogger.LogError($"[RadarViewModel] Failed to draw map: {ex.Message}");
+                        return; // dont crash pls
+                    }
                     // Draw other players
                     var allPlayers = AllPlayers?
                         .Where(x => !x.HasExfild); // Skip exfil'd players

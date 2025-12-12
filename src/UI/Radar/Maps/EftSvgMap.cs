@@ -27,6 +27,7 @@ SOFTWARE.
 */
 
 using Collections.Pooled;
+using LoneEftDmaRadar.UI.Misc;
 using LoneEftDmaRadar.UI.Skia;
 using SkiaSharp.Views.WPF;
 using Svg.Skia;
@@ -140,9 +141,17 @@ namespace LoneEftDmaRadar.UI.Radar.Maps
                 var paint = dim ?
                     SKPaints.PaintBitmapAlpha : SKPaints.PaintBitmap;
 
-                if (layer.Picture != null)
+                var picture = layer.Picture;
+                if (picture != null && !picture.Handle.Equals(IntPtr.Zero))
                 {
-                    canvas.DrawPicture(layer.Picture, paint);
+                    try
+                    {
+                        canvas.DrawPicture(picture, paint);
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugLogger.LogError($"[EftSvgMap] Failed to draw layer: {ex.Message}");
+                    }
                 }
             }
 
@@ -256,9 +265,17 @@ namespace LoneEftDmaRadar.UI.Radar.Maps
             // Draw all layers (bottom to top) to show full context
             foreach (var layer in _layers)
             {
-                if (layer.Picture != null)
+                var picture = layer.Picture;
+                if (picture != null && !picture.Handle.Equals(IntPtr.Zero))
                 {
-                    canvas.DrawPicture(layer.Picture, paint);
+                    try
+                    {
+                        canvas.DrawPicture(picture, paint);
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugLogger.LogError($"[EftSvgMap] Failed to draw thumbnail layer: {ex.Message}");
+                    }
                 }
             }
 
