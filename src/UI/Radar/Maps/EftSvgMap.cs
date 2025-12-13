@@ -27,6 +27,7 @@ SOFTWARE.
 */
 
 using Collections.Pooled;
+using LoneEftDmaRadar.UI.Misc;
 using LoneEftDmaRadar.UI.Skia;
 using SkiaSharp.Views.WPF;
 using Svg.Skia;
@@ -139,7 +140,19 @@ namespace LoneEftDmaRadar.UI.Radar.Maps
 
                 var paint = dim ?
                     SKPaints.PaintBitmapAlpha : SKPaints.PaintBitmap;
-                canvas.DrawPicture(layer.Picture, paint);
+
+                var picture = layer.Picture;
+                if (picture != null && !picture.Handle.Equals(IntPtr.Zero))
+                {
+                    try
+                    {
+                        canvas.DrawPicture(picture, paint);
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugLogger.LogError($"[EftSvgMap] Failed to draw layer: {ex.Message}");
+                    }
+                }
             }
 
             canvas.Restore();
@@ -252,7 +265,18 @@ namespace LoneEftDmaRadar.UI.Radar.Maps
             // Draw all layers (bottom to top) to show full context
             foreach (var layer in _layers)
             {
-                canvas.DrawPicture(layer.Picture, paint);
+                var picture = layer.Picture;
+                if (picture != null && !picture.Handle.Equals(IntPtr.Zero))
+                {
+                    try
+                    {
+                        canvas.DrawPicture(picture, paint);
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugLogger.LogError($"[EftSvgMap] Failed to draw thumbnail layer: {ex.Message}");
+                    }
+                }
             }
 
             canvas.Restore();
@@ -389,7 +413,7 @@ namespace LoneEftDmaRadar.UI.Radar.Maps
             /// <summary>
             /// The SKPicture representing this layer's vector content.
             /// </summary>
-            public SKPicture Picture => _svg.Picture!;
+            public SKPicture? Picture => _svg.Picture;
 
             /// <summary>
             /// Create a vector layer from a loaded SKSvg and its configuration.

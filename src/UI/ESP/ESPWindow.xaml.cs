@@ -363,9 +363,12 @@ namespace LoneEftDmaRadar.UI.ESP
                         }
 
                         DrawDeviceAimbotDebugOverlay(ctx, screenWidth, screenHeight);
-                        
-                        DrawMiniRadar(ctx, localPlayer, allPlayers, screenWidth, screenHeight);
-                        
+
+                        if (App.Config.UI.MiniRadar.Enabled)
+                        {
+                            DrawMiniRadar(ctx, localPlayer, allPlayers, screenWidth, screenHeight);
+                        }
+
                         DrawFPS(ctx, screenWidth, screenHeight);
                     }
                 }
@@ -711,9 +714,13 @@ namespace LoneEftDmaRadar.UI.ESP
         {
              try
              {
+                 var cfg = App.Config.UI.MiniRadar;
+
+                 if (!cfg.Enabled) return;
+
                  // Ensure Map Manager is synced with Game Memory
                  var gameMapId = Memory.Game?.MapID;
-                 if (!string.IsNullOrEmpty(gameMapId) && 
+                 if (!string.IsNullOrEmpty(gameMapId) &&
                      !string.Equals(gameMapId, EftMapManager.Map?.ID, StringComparison.OrdinalIgnoreCase))
                  {
                      DebugLogger.LogInfo($"[MiniRadar] Map Mismatch detected! Game: '{gameMapId}' vs Manager: '{EftMapManager.Map?.ID}'. Loading correct map...");
@@ -721,10 +728,8 @@ namespace LoneEftDmaRadar.UI.ESP
                  }
 
                  var map = EftMapManager.Map;
-                 var cfg = App.Config.UI.MiniRadar;
 
                  if (map is null) return;
-                 if (!cfg.Enabled) return;
 
                  // Check if map changed or size changed
                  if (_lastMapId != map.ID || _lastMiniRadarSize != cfg.Size)
@@ -975,10 +980,18 @@ namespace LoneEftDmaRadar.UI.ESP
                  using var canvas = new SKCanvas(bitmap);
                  
                  // Use Transparent background so the underlying FilledRect color shows through
-                 canvas.Clear(SKColors.Transparent); 
-                 
+                 canvas.Clear(SKColors.Transparent);
+
                  // Render map into the 512x512 canvas
-                 map.RenderThumbnail(canvas, TEXTURE_SIZE, TEXTURE_SIZE);
+                 try
+                 {
+                     map.RenderThumbnail(canvas, TEXTURE_SIZE, TEXTURE_SIZE);
+                 }
+                 catch (Exception ex)
+                 {
+                     DebugLogger.LogError($"[ESPWindow] Failed to render mini-radar thumbnail: {ex.Message}");
+                     return;
+                 }
                  
                  // Note: Debug Red X removed to clean up view.
 

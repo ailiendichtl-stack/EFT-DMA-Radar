@@ -40,7 +40,6 @@ namespace SDK
         public readonly partial struct BTRView
         {
             public const uint turret = 0x60; // EFT.Vehicle.BTRTurretView
-            public const uint _targetPosition = 0xAC; // UnityEngine.Vector3
         }
 
         public readonly partial struct BTRTurretView

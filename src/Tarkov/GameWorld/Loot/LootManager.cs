@@ -241,8 +241,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 // Get Item Position
                 var pos = new UnityTransform(p.TransformInternal, true).UpdatePosition();
 
-                // update loose loot position
-                if (existingLoot != null && isLooseLoot)
+                // update position for existing loot items
+                if (existingLoot != null)
                 {
                     existingLoot.UpdatePosition(pos);
                     return;
