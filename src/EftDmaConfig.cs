@@ -1026,6 +1026,8 @@ namespace LoneEftDmaRadar
         public bool TargetAIScav { get; set; } = true;
         public bool TargetBoss { get; set; } = true;
         public bool TargetRaider { get; set; } = true;
+        public bool TargetSpecialPlayer { get; set; } = true;
+        public bool TargetStreamer { get; set; } = true;
 
         // KMBox NET
         public bool UseKmBoxNet { get; set; } = false;

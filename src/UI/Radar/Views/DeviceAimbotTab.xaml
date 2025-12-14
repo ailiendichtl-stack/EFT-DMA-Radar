@@ -229,6 +229,14 @@
                     <CheckBox Content="Target Raiders"
                               IsChecked="{Binding TargetRaider, Mode=TwoWay}"
                               Margin="8,4,8,4" />
+
+                    <CheckBox Content="Target Watchlist Players"
+                              IsChecked="{Binding TargetSpecialPlayer, Mode=TwoWay}"
+                              Margin="8,4,8,4" />
+
+                    <CheckBox Content="Target Streamers"
+                              IsChecked="{Binding TargetStreamer, Mode=TwoWay}"
+                              Margin="8,4,8,4" />
                 </StackPanel>
             </GroupBox>
 

@@ -65,8 +65,8 @@ namespace LoneEftDmaRadar
 
         #region Hotkey Manager
 
-        private const int HK_ZOOMTICKAMT = 5; // amt to zoom
-        private const int HK_ZOOMTICKDELAY = 120; // ms
+        private const int HK_ZOOMTICKAMT = 1; // amt to zoom
+        private const int HK_ZOOMTICKDELAY = 25; // ms
 
         /// <summary>
         /// Loads Hotkey Manager resources.

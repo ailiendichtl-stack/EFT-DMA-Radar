@@ -273,6 +273,18 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             set { App.Config.Device.TargetRaider = value; OnPropertyChanged(); }
         }
 
+        public bool TargetSpecialPlayer
+        {
+            get => App.Config.Device.TargetSpecialPlayer;
+            set { App.Config.Device.TargetSpecialPlayer = value; OnPropertyChanged(); }
+        }
+
+        public bool TargetStreamer
+        {
+            get => App.Config.Device.TargetStreamer;
+            set { App.Config.Device.TargetStreamer = value; OnPropertyChanged(); }
+        }
+
         // FOV Circle Display
         public bool ShowFovCircle
         {

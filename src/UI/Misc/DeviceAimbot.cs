@@ -377,6 +377,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
         PlayerType.AIScav => Config.TargetAIScav,
         PlayerType.AIBoss => Config.TargetBoss,
         PlayerType.AIRaider => Config.TargetRaider,
+        PlayerType.SpecialPlayer => Config.TargetSpecialPlayer,
+        PlayerType.Streamer => Config.TargetStreamer,
         PlayerType.Default => Config.TargetAIScav,
         _ => false
     };
