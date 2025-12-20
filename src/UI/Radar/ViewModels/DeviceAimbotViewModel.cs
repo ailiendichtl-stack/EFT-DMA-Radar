@@ -115,6 +115,12 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             set { App.Config.Device.Smoothing = value; OnPropertyChanged(); }
         }
 
+        public float HipfireSpeedFactor
+        {
+            get => App.Config.Device.HipfireSpeedFactor;
+            set { App.Config.Device.HipfireSpeedFactor = Math.Clamp(value, 0.1f, 1.0f); OnPropertyChanged(); }
+        }
+
         public int PollingRateHz
         {
             get => App.Config.Device.PollingRateHz;

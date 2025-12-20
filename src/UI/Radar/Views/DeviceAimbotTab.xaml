@@ -145,6 +145,16 @@
                             IsSnapToTickEnabled="True"
                             Margin="8,4,8,8" />
 
+                    <TextBlock Text="{Binding HipfireSpeedFactor, StringFormat='Hipfire Speed: {0:P0}'}"
+                               FontWeight="Bold"
+                               Margin="8,8,8,4" />
+                    <Slider Value="{Binding HipfireSpeedFactor, Mode=TwoWay}"
+                            Minimum="0.1"
+                            Maximum="1.0"
+                            TickFrequency="0.1"
+                            IsSnapToTickEnabled="True"
+                            Margin="8,4,8,8" />
+
                     <TextBlock Text="{Binding PollingRateHz, StringFormat='Polling Rate: {0} Hz'}"
                                FontWeight="Bold"
                                Margin="8,8,8,4" />

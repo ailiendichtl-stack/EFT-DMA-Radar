@@ -631,8 +631,11 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             float deltaX = screenPos.X - center.X;
             float deltaY = screenPos.Y - center.Y;
 
+            // Check if player is aiming down sights
+            bool isAiming = localPlayer.CheckIfADS();
+
             // Calculate smooth movement with fractional accumulation
-            var (moveX, moveY) = CalculateSmoothMovement(deltaX, deltaY);
+            var (moveX, moveY) = CalculateSmoothMovement(deltaX, deltaY, isAiming);
 
             // Apply movement
             if (moveX != 0 || moveY != 0)
@@ -646,7 +649,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
         /// Calculates smooth mouse movement with fractional accumulation.
         /// Prevents rounding loss and adapts to polling rate for consistent feel.
         /// </summary>
-        private (int dx, int dy) CalculateSmoothMovement(float deltaX, float deltaY)
+        /// <param name="isAiming">True if player is aiming down sights (full speed), false for hipfire (reduced speed)</param>
+        private (int dx, int dy) CalculateSmoothMovement(float deltaX, float deltaY, bool isAiming)
         {
             float distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
 
@@ -678,9 +682,13 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 ? 1f
                 : Config.Smoothing * rateScale;
 
-            // Simple proportional control: move = delta / smoothing
-            float moveX = deltaX / effectiveSmoothing;
-            float moveY = deltaY / effectiveSmoothing;
+            // Apply hipfire speed reduction when not aiming down sights
+            // This prevents massive overshoots in hipfire where screen delta is much larger
+            float speedFactor = isAiming ? 1.0f : Config.HipfireSpeedFactor;
+
+            // Simple proportional control: move = delta / smoothing * speedFactor
+            float moveX = (deltaX / effectiveSmoothing) * speedFactor;
+            float moveY = (deltaY / effectiveSmoothing) * speedFactor;
 
             // Clamp to device limits (-127 to 127)
             moveX = Math.Clamp(moveX, -MAX_MOVE_PER_TICK, MAX_MOVE_PER_TICK);

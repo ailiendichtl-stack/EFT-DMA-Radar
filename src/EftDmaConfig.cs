@@ -1014,6 +1014,12 @@ namespace LoneEftDmaRadar
         public float Smoothing { get; set; } = 1.0f;
 
         /// <summary>
+        /// Speed multiplier when hip-firing (not ADS). 0.1 = 10% speed, 1.0 = full speed.
+        /// Lower values prevent overshooting when not aiming down sights.
+        /// </summary>
+        public float HipfireSpeedFactor { get; set; } = 0.3f;
+
+        /// <summary>
         /// Polling rate in Hz for the aimbot loop. Higher = more responsive but more CPU usage.
         /// Default: 125 Hz (~8ms per tick). Range: 30-1000 Hz.
         /// </summary>
