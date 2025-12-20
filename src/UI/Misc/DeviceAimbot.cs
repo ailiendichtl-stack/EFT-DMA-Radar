@@ -77,6 +77,7 @@ namespace LoneEftDmaRadar.UI.Misc
         // Smoothing constants
         private const float SMOOTHING_REFERENCE_RATE = 60f; // Reference polling rate for smoothing calculations
         private const float MAX_MOVE_PER_TICK = 127f; // Device limit
+
         #endregion
 
         private void SendDeviceMove(int dx, int dy)
@@ -648,6 +649,15 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
         private (int dx, int dy) CalculateSmoothMovement(float deltaX, float deltaY)
         {
             float distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            // === SANITY CHECK (Step 4) ===
+            // Skip frame if data is corrupted (NaN, Infinity, or impossibly large delta)
+            if (float.IsNaN(distance) || float.IsInfinity(distance) || distance > 2000f)
+            {
+                _accumX = 0;
+                _accumY = 0;
+                return (0, 0);
+            }
 
             // Fixed deadzone - 0.5px at all zoom levels
             if (distance < 0.5f)
