@@ -584,11 +584,11 @@ namespace LoneEftDmaRadar
         public bool EspPlayerSkeletons { get; set; } = true;
 
         /// <summary>
-        /// Show Player Boxes in ESP.
+        /// Player Box Style in ESP.
         /// </summary>
-        [JsonPropertyName("espPlayerBoxes")]
-        public bool EspPlayerBoxes { get; set; } = true;
-        
+        [JsonPropertyName("espPlayerBoxStyle")]
+        public EspBoxStyle EspPlayerBoxStyle { get; set; } = EspBoxStyle.Box2D;
+
         /// <summary>
         /// Show AI Skeletons in ESP.
         /// </summary>
@@ -596,10 +596,10 @@ namespace LoneEftDmaRadar
         public bool EspAISkeletons { get; set; } = true;
 
         /// <summary>
-        /// Show AI Boxes in ESP.
+        /// AI Box Style in ESP.
         /// </summary>
-        [JsonPropertyName("espAIBoxes")]
-        public bool EspAIBoxes { get; set; } = true;
+        [JsonPropertyName("espAIBoxStyle")]
+        public EspBoxStyle EspAIBoxStyle { get; set; } = EspBoxStyle.Box2D;
 
         /// <summary>
         /// Mini Radar Configuration.
@@ -914,6 +914,15 @@ namespace LoneEftDmaRadar
     {
         Top,
         Bottom
+    }
+
+    public enum EspBoxStyle
+    {
+        None,
+        Box2D,
+        Corner2D,
+        Corner3D,
+        Box3D
     }
 
     public sealed class LootConfig

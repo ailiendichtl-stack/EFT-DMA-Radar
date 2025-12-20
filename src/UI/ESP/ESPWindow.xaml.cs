@@ -675,7 +675,8 @@ namespace LoneEftDmaRadar.UI.ESP
             }
 
             bool drawSkeleton = isAI ? App.Config.UI.EspAISkeletons : App.Config.UI.EspPlayerSkeletons;
-            bool drawBox = isAI ? App.Config.UI.EspAIBoxes : App.Config.UI.EspPlayerBoxes;
+            var boxStyle = isAI ? App.Config.UI.EspAIBoxStyle : App.Config.UI.EspPlayerBoxStyle;
+            bool drawBox = boxStyle != EspBoxStyle.None;
             bool drawName = isAI ? App.Config.UI.EspAINames : App.Config.UI.EspPlayerNames;
             bool drawHealth = isAI ? App.Config.UI.EspAIHealth : App.Config.UI.EspPlayerHealth;
             bool drawDistance = isAI ? App.Config.UI.EspAIDistance : App.Config.UI.EspPlayerDistance;
@@ -687,7 +688,7 @@ namespace LoneEftDmaRadar.UI.ESP
             {
                 DrawSkeleton(ctx, player, screenWidth, screenHeight, color, _skeletonPaint.StrokeWidth);
             }
-            
+
             RectangleF bbox = default;
             bool hasBox = false;
             if (drawBox || drawLabel)
@@ -695,10 +696,26 @@ namespace LoneEftDmaRadar.UI.ESP
                 hasBox = TryGetBoundingBox(player, screenWidth, screenHeight, out bbox);
             }
 
-            // Draw Box
+            // Draw Box based on selected style
             if (drawBox && hasBox)
             {
-                DrawBoundingBox(ctx, bbox, color, _boxPaint.StrokeWidth);
+                switch (boxStyle)
+                {
+                    case EspBoxStyle.Box2D:
+                        DrawBoundingBox(ctx, bbox, color, _boxPaint.StrokeWidth);
+                        break;
+                    case EspBoxStyle.Corner2D:
+                        Draw2DCorners(ctx, bbox, color, _boxPaint.StrokeWidth);
+                        break;
+                    case EspBoxStyle.Corner3D:
+                        if (TryGet3DCorners(player, screenWidth, screenHeight, out var corners3dc))
+                            Draw3DCorners(ctx, corners3dc, color, _boxPaint.StrokeWidth);
+                        break;
+                    case EspBoxStyle.Box3D:
+                        if (TryGet3DCorners(player, screenWidth, screenHeight, out var corners3db))
+                            Draw3DBox(ctx, corners3db, color, _boxPaint.StrokeWidth);
+                        break;
+                }
             }
 
             // Draw head marker
@@ -1135,6 +1152,123 @@ namespace LoneEftDmaRadar.UI.ESP
         private void DrawBoundingBox(Dx9RenderContext ctx, RectangleF rect, DxColor color, float thickness)
         {
             ctx.DrawRect(rect, color, thickness);
+        }
+
+        private bool TryGet3DCorners(AbstractPlayer player, float w, float h, out SKPoint[] corners)
+        {
+            corners = new SKPoint[8];
+            var playerPos = player.Position;
+            if (playerPos == Vector3.Zero ||
+                float.IsNaN(playerPos.X) || float.IsInfinity(playerPos.X))
+                return false;
+
+            var mins = new Vector3(-0.4f, 0, -0.4f);
+            var maxs = new Vector3(0.4f, 1.75f, 0.4f);
+            mins = playerPos + mins;
+            maxs = playerPos + maxs;
+
+            // 8 corners: bottom 4 (0-3), top 4 (4-7)
+            var points3D = new Vector3[] {
+                new(mins.X, mins.Y, mins.Z), // 0: bottom-front-left
+                new(maxs.X, mins.Y, mins.Z), // 1: bottom-front-right
+                new(maxs.X, mins.Y, maxs.Z), // 2: bottom-back-right
+                new(mins.X, mins.Y, maxs.Z), // 3: bottom-back-left
+                new(mins.X, maxs.Y, mins.Z), // 4: top-front-left
+                new(maxs.X, maxs.Y, mins.Z), // 5: top-front-right
+                new(maxs.X, maxs.Y, maxs.Z), // 6: top-back-right
+                new(mins.X, maxs.Y, maxs.Z), // 7: top-back-left
+            };
+
+            int projected = 0;
+            for (int i = 0; i < 8; i++)
+            {
+                if (TryProject(points3D[i], w, h, out var s))
+                {
+                    corners[i] = s;
+                    projected++;
+                }
+            }
+            return projected >= 4;
+        }
+
+        private void Draw2DCorners(Dx9RenderContext ctx, RectangleF rect, DxColor color, float thickness)
+        {
+            float cornerLen = Math.Min(rect.Width, rect.Height) * 0.25f;
+            cornerLen = Math.Clamp(cornerLen, 4f, 20f);
+
+            // Top-left
+            ctx.DrawLine(new RawVector2(rect.Left, rect.Top), new RawVector2(rect.Left + cornerLen, rect.Top), color, thickness);
+            ctx.DrawLine(new RawVector2(rect.Left, rect.Top), new RawVector2(rect.Left, rect.Top + cornerLen), color, thickness);
+
+            // Top-right
+            ctx.DrawLine(new RawVector2(rect.Right, rect.Top), new RawVector2(rect.Right - cornerLen, rect.Top), color, thickness);
+            ctx.DrawLine(new RawVector2(rect.Right, rect.Top), new RawVector2(rect.Right, rect.Top + cornerLen), color, thickness);
+
+            // Bottom-left
+            ctx.DrawLine(new RawVector2(rect.Left, rect.Bottom), new RawVector2(rect.Left + cornerLen, rect.Bottom), color, thickness);
+            ctx.DrawLine(new RawVector2(rect.Left, rect.Bottom), new RawVector2(rect.Left, rect.Bottom - cornerLen), color, thickness);
+
+            // Bottom-right
+            ctx.DrawLine(new RawVector2(rect.Right, rect.Bottom), new RawVector2(rect.Right - cornerLen, rect.Bottom), color, thickness);
+            ctx.DrawLine(new RawVector2(rect.Right, rect.Bottom), new RawVector2(rect.Right, rect.Bottom - cornerLen), color, thickness);
+        }
+
+        private void Draw3DBox(Dx9RenderContext ctx, SKPoint[] corners, DxColor color, float thickness)
+        {
+            // Bottom face (4 edges)
+            ctx.DrawLine(ToRaw(corners[0]), ToRaw(corners[1]), color, thickness);
+            ctx.DrawLine(ToRaw(corners[1]), ToRaw(corners[2]), color, thickness);
+            ctx.DrawLine(ToRaw(corners[2]), ToRaw(corners[3]), color, thickness);
+            ctx.DrawLine(ToRaw(corners[3]), ToRaw(corners[0]), color, thickness);
+
+            // Top face (4 edges)
+            ctx.DrawLine(ToRaw(corners[4]), ToRaw(corners[5]), color, thickness);
+            ctx.DrawLine(ToRaw(corners[5]), ToRaw(corners[6]), color, thickness);
+            ctx.DrawLine(ToRaw(corners[6]), ToRaw(corners[7]), color, thickness);
+            ctx.DrawLine(ToRaw(corners[7]), ToRaw(corners[4]), color, thickness);
+
+            // Vertical edges (4 edges)
+            ctx.DrawLine(ToRaw(corners[0]), ToRaw(corners[4]), color, thickness);
+            ctx.DrawLine(ToRaw(corners[1]), ToRaw(corners[5]), color, thickness);
+            ctx.DrawLine(ToRaw(corners[2]), ToRaw(corners[6]), color, thickness);
+            ctx.DrawLine(ToRaw(corners[3]), ToRaw(corners[7]), color, thickness);
+        }
+
+        private void Draw3DCorners(Dx9RenderContext ctx, SKPoint[] corners, DxColor color, float thickness)
+        {
+            float cornerLen = 8f;
+
+            // Each corner draws 3 lines toward adjacent corners
+            // Bottom corners (0-3)
+            DrawCornerLines(ctx, corners, 0, new[] { 1, 3, 4 }, cornerLen, color, thickness);
+            DrawCornerLines(ctx, corners, 1, new[] { 0, 2, 5 }, cornerLen, color, thickness);
+            DrawCornerLines(ctx, corners, 2, new[] { 1, 3, 6 }, cornerLen, color, thickness);
+            DrawCornerLines(ctx, corners, 3, new[] { 0, 2, 7 }, cornerLen, color, thickness);
+            // Top corners (4-7)
+            DrawCornerLines(ctx, corners, 4, new[] { 5, 7, 0 }, cornerLen, color, thickness);
+            DrawCornerLines(ctx, corners, 5, new[] { 4, 6, 1 }, cornerLen, color, thickness);
+            DrawCornerLines(ctx, corners, 6, new[] { 5, 7, 2 }, cornerLen, color, thickness);
+            DrawCornerLines(ctx, corners, 7, new[] { 4, 6, 3 }, cornerLen, color, thickness);
+        }
+
+        private void DrawCornerLines(Dx9RenderContext ctx, SKPoint[] corners, int corner, int[] adjacents, float len, DxColor color, float thickness)
+        {
+            var c = corners[corner];
+            foreach (var adj in adjacents)
+            {
+                DrawPartialLine(ctx, c, corners[adj], len, color, thickness);
+            }
+        }
+
+        private void DrawPartialLine(Dx9RenderContext ctx, SKPoint from, SKPoint to, float maxLen, DxColor color, float thickness)
+        {
+            var dx = to.X - from.X;
+            var dy = to.Y - from.Y;
+            var dist = MathF.Sqrt(dx * dx + dy * dy);
+            if (dist < 0.001f) return;
+            var ratio = Math.Min(maxLen / dist, 1f);
+            var end = new RawVector2(from.X + dx * ratio, from.Y + dy * ratio);
+            ctx.DrawLine(ToRaw(from), end, color, thickness);
         }
 
         /// <summary>

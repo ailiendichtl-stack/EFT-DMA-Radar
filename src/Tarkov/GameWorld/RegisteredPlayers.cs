@@ -124,6 +124,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
             var allPlayers = _players.Values;
             if (allPlayers.Count == 0)
                 return;
+
             using var scatter = Memory.CreateScatter(VmmSharpEx.Options.VmmFlags.NOCACHE);
             foreach (var player in allPlayers)
             {

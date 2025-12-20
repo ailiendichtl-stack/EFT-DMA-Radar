@@ -263,7 +263,7 @@ namespace LoneEftDmaRadar
             {
                 bool newState = !App.Config.UI.EspPlayerSkeletons;
                 App.Config.UI.EspPlayerSkeletons = newState;
-                App.Config.UI.EspPlayerBoxes = newState;
+                App.Config.UI.EspPlayerBoxStyle = newState ? EspBoxStyle.Box2D : EspBoxStyle.None;
                 App.Config.UI.EspPlayerNames = newState;
                 App.Config.UI.EspPlayerDistance = newState;
             }
@@ -275,7 +275,7 @@ namespace LoneEftDmaRadar
             {
                 bool newState = !App.Config.UI.EspAISkeletons;
                 App.Config.UI.EspAISkeletons = newState;
-                App.Config.UI.EspAIBoxes = newState;
+                App.Config.UI.EspAIBoxStyle = newState ? EspBoxStyle.Box2D : EspBoxStyle.None;
                 App.Config.UI.EspAINames = newState;
                 App.Config.UI.EspAIDistance = newState;
             }

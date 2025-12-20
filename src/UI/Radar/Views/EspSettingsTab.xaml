@@ -87,7 +87,10 @@
             <GroupBox Header="Player ESP" Margin="0,0,0,12">
                 <StackPanel>
                     <WrapPanel>
-                        <CheckBox Content="Box" IsChecked="{Binding EspPlayerBoxes, Mode=TwoWay}" Margin="0,0,16,8" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                            <TextBlock Text="Box:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <ComboBox Width="85" ItemsSource="{Binding BoxStyles}" SelectedItem="{Binding EspPlayerBoxStyle, Mode=TwoWay}"/>
+                        </StackPanel>
                         <CheckBox Content="Skeleton" IsChecked="{Binding EspPlayerSkeletons, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Names" IsChecked="{Binding EspPlayerNames, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Group IDs" IsChecked="{Binding EspGroupIds, Mode=TwoWay}" Margin="0,0,16,8" />
@@ -144,7 +147,10 @@
             <GroupBox Header="AI ESP" Margin="0,0,0,12">
                 <StackPanel>
                     <WrapPanel>
-                        <CheckBox Content="Box" IsChecked="{Binding EspAIBoxes, Mode=TwoWay}" Margin="0,0,16,8" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                            <TextBlock Text="Box:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <ComboBox Width="85" ItemsSource="{Binding BoxStyles}" SelectedItem="{Binding EspAIBoxStyle, Mode=TwoWay}"/>
+                        </StackPanel>
                         <CheckBox Content="Skeleton" IsChecked="{Binding EspAISkeletons, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Names" IsChecked="{Binding EspAINames, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Health Status" IsChecked="{Binding EspAIHealth, Mode=TwoWay}" Margin="0,0,16,8" />

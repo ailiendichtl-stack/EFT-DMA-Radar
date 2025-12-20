@@ -97,14 +97,14 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
-        public bool EspPlayerBoxes
+        public EspBoxStyle EspPlayerBoxStyle
         {
-            get => App.Config.UI.EspPlayerBoxes;
+            get => App.Config.UI.EspPlayerBoxStyle;
             set
             {
-                if (App.Config.UI.EspPlayerBoxes != value)
+                if (App.Config.UI.EspPlayerBoxStyle != value)
                 {
-                    App.Config.UI.EspPlayerBoxes = value;
+                    App.Config.UI.EspPlayerBoxStyle = value;
                     OnPropertyChanged();
                 }
             }
@@ -214,14 +214,14 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
-        public bool EspAIBoxes
+        public EspBoxStyle EspAIBoxStyle
         {
-            get => App.Config.UI.EspAIBoxes;
+            get => App.Config.UI.EspAIBoxStyle;
             set
             {
-                if (App.Config.UI.EspAIBoxes != value)
+                if (App.Config.UI.EspAIBoxStyle != value)
                 {
-                    App.Config.UI.EspAIBoxes = value;
+                    App.Config.UI.EspAIBoxStyle = value;
                     OnPropertyChanged();
                 }
             }
@@ -436,6 +436,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         }
 
         public Array LabelPositions { get; } = Enum.GetValues(typeof(EspLabelPosition));
+        public Array BoxStyles { get; } = Enum.GetValues(typeof(EspBoxStyle));
 
         public EspLabelPosition EspLabelPosition
         {
