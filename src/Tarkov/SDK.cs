@@ -71,6 +71,7 @@ namespace SDK
         {
 			public const uint ObservedPlayerController = 0x20; // EFT.NextObservedPlayer.ObservedPlayerController
 			public const uint Voice = 0x38; // string
+			public const uint AIData = 0x68; // Pointer to AIData (for SpawnType detection)
 			public const uint GroupID = 0x78; // string
 			public const uint Side = 0x8C; // EFT.EPlayerSide
 			public const uint IsAI = 0x98; // bool
@@ -107,10 +108,18 @@ namespace SDK
 
         public readonly partial struct PlayerInfo // EFT, class: ProfileInfo
         {
+            public const uint Nickname = 0x10; // String
             public const uint EntryPoint = 0x28; // String
-            public const uint GroupId = 0x50; // String
+            public const uint Voice = 0x30; // String (for offline AI voice detection)
+            public const uint Settings = 0x38; // WildSpawnSettings (for offline AI role/type)
             public const uint Side = 0x48; // [HUMAN] Int32
             public const uint RegistrationDate = 0x4C; // Int32
+            public const uint GroupId = 0x50; // String
+        }
+
+        public readonly partial struct PlayerInfoSettings // EFT.WildSpawnSettings
+        {
+            public const uint Role = 0x10; // WildSpawnType (ESpawnType enum)
         }
 
         public readonly partial struct MovementContext // EFT, class: MovementContext
@@ -344,6 +353,22 @@ namespace SDK
         {
             public const uint _cachedSlots = 0x90; // EFT.InventoryLogic.Slot[]
         }
+
+        public readonly partial struct AIData
+        {
+            public const uint BotOwner = 0x28; // Pointer to BotOwner
+            public const uint bIsAi = 0x100; // bool
+        }
+
+        public readonly partial struct BotOwner
+        {
+            public const uint SpawnProfileData = 0x3C0; // Pointer to SpawnProfileData
+        }
+
+        public readonly partial struct SpawnProfileData
+        {
+            public const uint SpawnType = 0x10; // ESpawnType enum
+        }
     }
 
     public readonly partial struct Enums
@@ -476,6 +501,85 @@ namespace SDK
             MarkedAsFailed = 7,
             Expired = 8,
             AvailableAfter = 9,
+        }
+
+        /// <summary>
+        /// AI Spawn Type enum - used for boss/raider detection in both online and offline modes.
+        /// </summary>
+        public enum ESpawnType : uint
+        {
+            Marksman = 0,
+            Assault = 1,
+            BossTest = 2,
+            Reshala = 3,
+            FollowerTest = 4,
+            FollowerBully = 5,
+            Killa = 6,
+            Shturman = 7,
+            FollowerKojaniy = 8,
+            PmcBot = 9,
+            CursedAssault = 10,
+            Gluhar = 11,
+            FollowerGluharAssault = 12,
+            FollowerGluharSecurity = 13,
+            FollowerGluharScout = 14,
+            FollowerGluharSnipe = 15,
+            FollowerSanitar = 16,
+            Sanitar = 17,
+            Test = 18,
+            AssaultGroup = 19,
+            SectantWarrior = 20,
+            SectantPriest = 21,
+            Tagilla = 22,
+            FollowerTagilla = 23,
+            ExUsec = 24,
+            Gifter = 25,
+            Knight = 26,
+            BigPipe = 27,
+            BirdEye = 28,
+            Zryachiy = 29,
+            FollowerZryachiy = 30,
+            Kaban = 32,
+            FollowerBoar = 33,
+            ArenaFighter = 34,
+            ArenaFighterEvent = 35,
+            BossBoarSniper = 36,
+            CrazyAssaultEvent = 37,
+            PeacefullZryachiyEvent = 38,
+            SectactPriestEvent = 39,
+            RavangeZryachiyEvent = 40,
+            FollowerBoarClose1 = 41,
+            FollowerBoarClose2 = 42,
+            Kolontay = 43,
+            FollowerKolontayAssault = 44,
+            FollowerKolontaySecurity = 45,
+            ShooterBTR = 46,
+            Partisan = 47,
+            SpiritWinter = 48,
+            SpiritSpring = 49,
+            Peacemaker = 50,
+            PmcBEAR = 51,
+            PmcUSEC = 52,
+            Skier = 53,
+            SectantPredvestnik = 57,
+            SectantPrizrak = 58,
+            SectantOni = 59,
+            InfectedAssault = 60,
+            InfectedPmc = 61,
+            InfectedCivil = 62,
+            InfectedLaborant = 63,
+            InfectedTagilla = 64,
+            BossTagillaAgro = 65,
+            BossKillaAgro = 66,
+            TagillaHelperAgro = 67,
+            BlackDivision = 68,
+            VsRF = 69,
+            VsRFSniper = 70,
+            AssaultTutorial = 71,
+            Sentry = 72,
+            VsRFFight = 73,
+            Civilian = 74,
+            UNKNOWN = uint.MaxValue
         }
     }
 }

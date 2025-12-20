@@ -26,6 +26,7 @@ SOFTWARE.
  *
 */
 
+using LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
 
@@ -33,6 +34,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
 {
     public class ClientPlayer : AbstractPlayer
     {
+        /// <summary>
+        /// True if this is an offline AI bot (not the actual local player).
+        /// </summary>
+        public bool IsOfflineAI { get; }
         /// <summary>
         /// EFT.Profile Address
         /// </summary>
@@ -60,7 +65,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// <summary>
         /// Player is Human-Controlled.
         /// </summary>
-        public override bool IsHuman { get; }
+        public override bool IsHuman { get; protected set; }
         /// <summary>
         /// MovementContext / StateContext
         /// </summary>
@@ -83,6 +88,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             if (!Enum.IsDefined<Enums.EPlayerSide>(PlayerSide))
                 throw new ArgumentOutOfRangeException(nameof(PlayerSide));
 
+            // Check if this is the actual local player or an offline AI bot
+            var localPlayerAddr = Memory.LocalPlayer?.Base ?? 0;
+            IsOfflineAI = playerBase != localPlayerAddr;
+
             GroupID = GetGroupNumber();
             MovementContext = GetMovementContext();
             RotationAddress = ValidateRotationAddr(MovementContext + Offsets.MovementContext._rotation);
@@ -93,6 +102,67 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             SetupBones();
             // Initialize cached position for fallback (in case skeleton updates fail later)
             _cachedPosition = initialPos;
+
+            // For offline AI bots, we need to determine their type and name
+            if (IsOfflineAI)
+            {
+                IsHuman = false; // Offline AI are not human-controlled
+                SetupOfflineAI();
+            }
+            else
+            {
+                IsHuman = true; // Actual local player is human-controlled
+            }
+        }
+
+        /// <summary>
+        /// Sets up name and type for offline AI bots.
+        /// </summary>
+        private void SetupOfflineAI()
+        {
+            if (IsScav)
+            {
+                try
+                {
+                    // Try reading nickname - bosses have specific names like "Решала" (Reshala)
+                    var nicknamePtr = Memory.ReadPtr(Info + Offsets.PlayerInfo.Nickname);
+                    string nickname = nicknamePtr != 0 ? Memory.ReadUnicodeString(nicknamePtr) : "";
+
+                    // Use nickname for role detection
+                    var role = GetAIRoleInfo(nickname);
+                    Name = role.Name;
+                    Type = role.Type;
+
+                    // Register boss spawn for guard timing detection
+                    if (Type == PlayerType.AIBoss)
+                    {
+                        BossSpawnTracker.RegisterBossSpawn(_cachedPosition, Name);
+                    }
+                    // Check if this is a guard via spawn timing (if detected as regular Scav)
+                    else if (Type == PlayerType.AIScav && BossSpawnTracker.TryGetGuardInfo(_cachedPosition, out _))
+                    {
+                        Name = "Guard";
+                        Type = PlayerType.AIRaider;
+                    }
+                }
+                catch
+                {
+                    // Default to Scav if detection fails
+                    Name = "Scav";
+                    Type = PlayerType.AIScav;
+                }
+            }
+            else if (IsPmc)
+            {
+                // PMC bots in offline mode
+                Name = PlayerSide == Enums.EPlayerSide.Bear ? "Bear" : "Usec";
+                Type = PlayerType.PMC;
+            }
+            else
+            {
+                Name = "Unknown";
+                Type = PlayerType.Default;
+            }
         }
 
         public int GetPoseLevel()

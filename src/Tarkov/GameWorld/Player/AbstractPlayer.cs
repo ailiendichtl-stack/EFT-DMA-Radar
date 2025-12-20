@@ -141,14 +141,18 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
 
         private static AbstractPlayer AllocateInternal(ulong playerBase)
         {
+            SpawnDebugLogger.Log($"=== AllocateInternal START: playerBase=0x{playerBase:X} ===");
             AbstractPlayer player;
             var className = ObjectClass.ReadName(playerBase, 64);
             var isClientPlayer = className == "ClientPlayer" || className == "LocalPlayer";
+
+            SpawnDebugLogger.Log($"  className='{className}', isClientPlayer={isClientPlayer}");
 
             if (isClientPlayer)
                 player = new ClientPlayer(playerBase);
             else
                 player = new ObservedPlayer(playerBase);
+            SpawnDebugLogger.Log($"  Player allocated: Name='{player.Name}', Type={player.Type}");
             DebugLogger.LogDebug($"Player '{player.Name}' allocated.");
             return player;
         }
@@ -300,7 +304,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// <summary>
         /// Player is Human-Controlled.
         /// </summary>
-        public virtual bool IsHuman { get; }
+        public virtual bool IsHuman { get; protected set; }
 
         /// <summary>
         /// MovementContext / StateContext
@@ -748,6 +752,76 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         }
 
         /// <summary>
+        /// Lookup AI Info based on SpawnType enum (works in both online and offline modes).
+        /// </summary>
+        /// <param name="spawnType">The spawn type read from memory.</param>
+        /// <returns>AIRole with name and type.</returns>
+        public static AIRole GetAIRoleFromSpawnType(Enums.ESpawnType spawnType)
+        {
+            return spawnType switch
+            {
+                // Bosses
+                Enums.ESpawnType.Reshala => new AIRole { Name = "Reshala", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.Killa or Enums.ESpawnType.BossKillaAgro => new AIRole { Name = "Killa", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.Gluhar => new AIRole { Name = "Gluhar", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.Sanitar => new AIRole { Name = "Sanitar", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.Shturman => new AIRole { Name = "Shturman", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.Tagilla or Enums.ESpawnType.BossTagillaAgro or Enums.ESpawnType.InfectedTagilla => new AIRole { Name = "Tagilla", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.Knight => new AIRole { Name = "Knight", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.BigPipe => new AIRole { Name = "Big Pipe", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.BirdEye => new AIRole { Name = "Birdeye", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.Zryachiy => new AIRole { Name = "Zryachiy", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.Kaban => new AIRole { Name = "Kaban", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.Kolontay => new AIRole { Name = "Kollontay", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.Partisan => new AIRole { Name = "Partisan", Type = PlayerType.AIBoss },
+                Enums.ESpawnType.SectantPriest or Enums.ESpawnType.SectactPriestEvent => new AIRole { Name = "Priest", Type = PlayerType.AIBoss },
+
+                // Cultists/Sectants
+                Enums.ESpawnType.SectantWarrior => new AIRole { Name = "Cultist", Type = PlayerType.AIRaider },
+                Enums.ESpawnType.SectantPredvestnik or Enums.ESpawnType.SectantPrizrak or Enums.ESpawnType.SectantOni => new AIRole { Name = "Cultist", Type = PlayerType.AIRaider },
+
+                // Rogues/ExUSEC
+                Enums.ESpawnType.ExUsec => new AIRole { Name = "Rogue", Type = PlayerType.AIRaider },
+
+                // Raiders (PMC Bots)
+                Enums.ESpawnType.PmcBot or Enums.ESpawnType.PmcBEAR or Enums.ESpawnType.PmcUSEC => new AIRole { Name = "Raider", Type = PlayerType.AIRaider },
+
+                // Arena fighters
+                Enums.ESpawnType.ArenaFighter or Enums.ESpawnType.ArenaFighterEvent => new AIRole { Name = "Arena Fighter", Type = PlayerType.AIRaider },
+
+                // Black Division / VSRF
+                Enums.ESpawnType.BlackDivision => new AIRole { Name = "Black Division", Type = PlayerType.AIRaider },
+                Enums.ESpawnType.VsRF or Enums.ESpawnType.VsRFSniper or Enums.ESpawnType.VsRFFight => new AIRole { Name = "VSRF", Type = PlayerType.AIRaider },
+
+                // BTR Shooter
+                Enums.ESpawnType.ShooterBTR => new AIRole { Name = "BTR Gunner", Type = PlayerType.AIRaider },
+
+                // Boss Followers / Guards
+                Enums.ESpawnType.FollowerBully => new AIRole { Name = "Reshala Guard", Type = PlayerType.AIRaider },
+                Enums.ESpawnType.FollowerSanitar => new AIRole { Name = "Sanitar Guard", Type = PlayerType.AIRaider },
+                Enums.ESpawnType.FollowerTagilla or Enums.ESpawnType.TagillaHelperAgro => new AIRole { Name = "Tagilla Guard", Type = PlayerType.AIRaider },
+                Enums.ESpawnType.FollowerKojaniy => new AIRole { Name = "Shturman Guard", Type = PlayerType.AIRaider },
+                Enums.ESpawnType.FollowerZryachiy => new AIRole { Name = "Zryachiy Guard", Type = PlayerType.AIRaider },
+                Enums.ESpawnType.FollowerBoar or Enums.ESpawnType.FollowerBoarClose1 or Enums.ESpawnType.FollowerBoarClose2 or Enums.ESpawnType.BossBoarSniper => new AIRole { Name = "Kaban Guard", Type = PlayerType.AIRaider },
+                Enums.ESpawnType.FollowerKolontayAssault or Enums.ESpawnType.FollowerKolontaySecurity => new AIRole { Name = "Kollontay Guard", Type = PlayerType.AIRaider },
+                Enums.ESpawnType.FollowerGluharAssault or Enums.ESpawnType.FollowerGluharSecurity or Enums.ESpawnType.FollowerGluharScout or Enums.ESpawnType.FollowerGluharSnipe => new AIRole { Name = "Gluhar Guard", Type = PlayerType.AIRaider },
+
+                // Infected / Zombies
+                Enums.ESpawnType.InfectedAssault or Enums.ESpawnType.InfectedPmc or Enums.ESpawnType.InfectedCivil or Enums.ESpawnType.InfectedLaborant => new AIRole { Name = "Zombie", Type = PlayerType.AIScav },
+
+                // Special
+                Enums.ESpawnType.Gifter => new AIRole { Name = "Santa", Type = PlayerType.AIScav },
+                Enums.ESpawnType.SpiritWinter or Enums.ESpawnType.SpiritSpring => new AIRole { Name = "Spirit", Type = PlayerType.AIScav },
+                Enums.ESpawnType.Peacemaker => new AIRole { Name = "Peacemaker", Type = PlayerType.AIScav },
+                Enums.ESpawnType.Sentry => new AIRole { Name = "Sentry", Type = PlayerType.AIRaider },
+                Enums.ESpawnType.Civilian => new AIRole { Name = "Civilian", Type = PlayerType.AIScav },
+
+                // Default scavs (marksman, assault, cursedAssault, etc.)
+                _ => new AIRole { Name = "Scav", Type = PlayerType.AIScav }
+            };
+        }
+
+        /// <summary>
         /// Lookup AI Info based on Voice Line.
         /// </summary>
         /// <param name="voiceLine"></param>
@@ -877,6 +951,76 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                         Type = PlayerType.AIScav
                     };
             }
+
+            // Nickname detection for offline mode (bosses have specific nicknames)
+            if (!string.IsNullOrEmpty(voiceLine))
+            {
+                AIRole? nicknameMatch = voiceLine.ToLowerInvariant() switch
+                {
+                    // Russian boss nicknames
+                    "решала" => new AIRole { Name = "Reshala", Type = PlayerType.AIBoss },
+                    "санитар" => new AIRole { Name = "Sanitar", Type = PlayerType.AIBoss },
+                    "глухарь" => new AIRole { Name = "Gluhar", Type = PlayerType.AIBoss },
+                    "килла" => new AIRole { Name = "Killa", Type = PlayerType.AIBoss },
+                    "тагилла" => new AIRole { Name = "Tagilla", Type = PlayerType.AIBoss },
+                    "штурман" => new AIRole { Name = "Shturman", Type = PlayerType.AIBoss },
+                    "кабан" => new AIRole { Name = "Kaban", Type = PlayerType.AIBoss },
+                    "партизан" => new AIRole { Name = "Partisan", Type = PlayerType.AIBoss },
+                    "коллонтай" or "колонтай" => new AIRole { Name = "Kollontay", Type = PlayerType.AIBoss },
+                    "зрячий" => new AIRole { Name = "Zryachiy", Type = PlayerType.AIBoss },
+                    "найт" or "рыцарь" => new AIRole { Name = "Knight", Type = PlayerType.AIBoss },
+                    "птичий глаз" => new AIRole { Name = "Birdeye", Type = PlayerType.AIBoss },
+                    "большая труба" => new AIRole { Name = "Big Pipe", Type = PlayerType.AIBoss },
+                    // English boss nicknames (Goons use English names in offline mode)
+                    "knight" => new AIRole { Name = "Knight", Type = PlayerType.AIBoss },
+                    "birdeye" => new AIRole { Name = "Birdeye", Type = PlayerType.AIBoss },
+                    "big pipe" => new AIRole { Name = "Big Pipe", Type = PlayerType.AIBoss },
+                    _ => null
+                };
+                if (nicknameMatch.HasValue)
+                    return nicknameMatch.Value;
+            }
+
+            // Offline mode voice format parsing (e.g., "bot_Shturman_2456", "boSanitar", etc.)
+            if (voiceLine.StartsWith("bot_", StringComparison.OrdinalIgnoreCase) ||
+                voiceLine.StartsWith("bo", StringComparison.OrdinalIgnoreCase))
+            {
+                // Try to extract the boss/AI name from the voice string
+                string namePart = voiceLine;
+                if (voiceLine.StartsWith("bot_", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Format: "bot_Shturman_2456" -> extract "Shturman"
+                    namePart = voiceLine.Substring(4);
+                    var underscoreIdx = namePart.IndexOf('_');
+                    if (underscoreIdx > 0)
+                        namePart = namePart.Substring(0, underscoreIdx);
+                }
+                else if (voiceLine.StartsWith("bo", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Format: "boSanitar" or "bosanitar" -> extract "Sanitar"
+                    namePart = voiceLine.Substring(2);
+                }
+
+                var lowerName = namePart.ToLowerInvariant();
+                return lowerName switch
+                {
+                    "shturman" or "sturman" => new AIRole { Name = "Shturman", Type = PlayerType.AIBoss },
+                    "sanitar" => new AIRole { Name = "Sanitar", Type = PlayerType.AIBoss },
+                    "gluhar" => new AIRole { Name = "Gluhar", Type = PlayerType.AIBoss },
+                    "reshala" or "bully" => new AIRole { Name = "Reshala", Type = PlayerType.AIBoss },
+                    "killa" => new AIRole { Name = "Killa", Type = PlayerType.AIBoss },
+                    "tagilla" => new AIRole { Name = "Tagilla", Type = PlayerType.AIBoss },
+                    "knight" => new AIRole { Name = "Knight", Type = PlayerType.AIBoss },
+                    "bigpipe" => new AIRole { Name = "Big Pipe", Type = PlayerType.AIBoss },
+                    "birdeye" => new AIRole { Name = "Birdeye", Type = PlayerType.AIBoss },
+                    "kaban" or "boar" => new AIRole { Name = "Kaban", Type = PlayerType.AIBoss },
+                    "kolontay" or "kollontay" => new AIRole { Name = "Kollontay", Type = PlayerType.AIBoss },
+                    "partisan" => new AIRole { Name = "Partisan", Type = PlayerType.AIBoss },
+                    "zryachiy" => new AIRole { Name = "Zryachiy", Type = PlayerType.AIBoss },
+                    _ => new AIRole { Name = "Scav", Type = PlayerType.AIScav }
+                };
+            }
+
             if (voiceLine.Contains("scav", StringComparison.OrdinalIgnoreCase))
                 return new AIRole
                 {
@@ -904,7 +1048,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             DebugLogger.LogDebug($"Unknown Voice Line: {voiceLine}");
             return new AIRole
             {
-                Name = "AI",
+                Name = "Scav",
                 Type = PlayerType.AIScav
             };
         }

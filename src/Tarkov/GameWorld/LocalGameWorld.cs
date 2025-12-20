@@ -34,6 +34,7 @@ using LoneEftDmaRadar.Tarkov.GameWorld.Exits;
 using LoneEftDmaRadar.Tarkov.GameWorld.Explosives;
 using LoneEftDmaRadar.Tarkov.GameWorld.Loot;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
+using LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
 using LoneEftDmaRadar.UI.Misc;
 using VmmSharpEx.Options;
@@ -88,6 +89,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
             {
                 Base = localGameWorld;
                 MapID = mapID;
+                // Reset boss spawn tracker for new raid (used for guard detection via spawn timing)
+                BossSpawnTracker.Reset();
                 _t1 = new WorkerThread()
                 {
                     Name = "Realtime Worker",

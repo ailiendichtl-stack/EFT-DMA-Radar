@@ -30,7 +30,6 @@ using LoneEftDmaRadar.Misc.Services;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
-using LoneEftDmaRadar.UI.Misc;
 using LoneEftDmaRadar.UI.Radar.ViewModels;
 using LoneEftDmaRadar.Web.ProfileApi;
 using LoneEftDmaRadar.Web.ProfileApi.Schema;
@@ -143,7 +142,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// <summary>
         /// Player is Human-Controlled.
         /// </summary>
-        public override bool IsHuman { get; }
+        public override bool IsHuman { get; protected set; }
         /// <summary>
         /// MovementContext / StateContext
         /// </summary>
@@ -195,11 +194,23 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             {
                 if (isAI)
                 {
-                    var voicePtr = Memory.ReadPtr(this + Offsets.ObservedPlayerView.Voice);
-                    string voice = Memory.ReadUnicodeString(voicePtr);
-                    var role = GetAIRoleInfo(voice);
-                    Name = role.Name;
-                    Type = role.Type;
+                    // Try SpawnType first (works reliably in both online and offline modes)
+                    var spawnType = ReadSpawnType();
+                    if (spawnType != Enums.ESpawnType.UNKNOWN)
+                    {
+                        var role = GetAIRoleFromSpawnType(spawnType);
+                        Name = role.Name;
+                        Type = role.Type;
+                    }
+                    else
+                    {
+                        // Fallback to voice parsing
+                        var voicePtr = Memory.ReadPtr(this + Offsets.ObservedPlayerView.Voice);
+                        string voice = Memory.ReadUnicodeString(voicePtr);
+                        var role = GetAIRoleInfo(voice);
+                        Name = role.Name;
+                        Type = role.Type;
+                    }
                 }
                 else
                 {
@@ -216,7 +227,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     PlayerType.Teammate : PlayerType.PMC;
             }
             else
+            {
                 throw new NotImplementedException(nameof(PlayerSide));
+            }
             if (IsHuman)
             {
                 long acctIdLong = long.Parse(AccountID);
@@ -228,7 +241,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     {
                         var profileData = dto.ToProfileData();
                         Profile.Data = profileData;
-                        DebugLogger.LogDebug($"[ObservedPlayer] Got Profile (Cached) '{acctIdLong}'!");
                     }
                     catch
                     {
@@ -280,6 +292,41 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     _ => Interlocked.Increment(ref _lastGroupNumber));
             }
             catch { return -1; } // will return null if Solo / Don't have a team
+        }
+
+        /// <summary>
+        /// Reads the SpawnType enum from memory via AIData -> BotOwner -> SpawnProfileData chain.
+        /// Works in both online and offline modes for reliable boss/raider detection.
+        /// </summary>
+        /// <returns>ESpawnType enum value, or UNKNOWN if reading fails.</returns>
+        private Enums.ESpawnType ReadSpawnType()
+        {
+            try
+            {
+                var aiData = Memory.ReadPtr(this + Offsets.ObservedPlayerView.AIData);
+                if (aiData == 0)
+                    return Enums.ESpawnType.UNKNOWN;
+
+                var botOwner = Memory.ReadPtr(aiData + Offsets.AIData.BotOwner);
+                if (botOwner == 0)
+                    return Enums.ESpawnType.UNKNOWN;
+
+                var spawnProfileData = Memory.ReadPtr(botOwner + Offsets.BotOwner.SpawnProfileData);
+                if (spawnProfileData == 0)
+                    return Enums.ESpawnType.UNKNOWN;
+
+                var spawnTypeValue = Memory.ReadValue<uint>(spawnProfileData + Offsets.SpawnProfileData.SpawnType);
+
+                // Validate that it's a known enum value
+                if (Enum.IsDefined(typeof(Enums.ESpawnType), spawnTypeValue))
+                    return (Enums.ESpawnType)spawnTypeValue;
+
+                return Enums.ESpawnType.UNKNOWN;
+            }
+            catch
+            {
+                return Enums.ESpawnType.UNKNOWN;
+            }
         }
 
         /// <summary>
@@ -373,10 +420,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 else
                     HealthStatus = Enums.ETagStatus.Healthy;
             }
-            catch (Exception ex)
-            {
-                DebugLogger.LogDebug($"ERROR updating Health Status for '{Name}': {ex}");
-            }
+            catch { } // Ignore health status errors
         }
 
         private static readonly uint[] _transformInternalChain =

@@ -86,7 +86,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// <summary>
         /// Player is Human-Controlled.
         /// </summary>
-        public override bool IsHuman { get; }
+        public override bool IsHuman { get; protected set; }
 
         public LocalPlayer(ulong playerBase) : base(playerBase)
         {
