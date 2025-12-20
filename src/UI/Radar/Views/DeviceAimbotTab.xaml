@@ -135,7 +135,7 @@
                         <ComboBoxItem Content="Closest Distance" />
                     </ComboBox>
 
-                    <TextBlock Text="{Binding Smoothing, StringFormat='Smoothing: {0:F1}x'}" 
+                    <TextBlock Text="{Binding Smoothing, StringFormat='Smoothing: {0:F1}x'}"
                                FontWeight="Bold"
                                Margin="8,8,8,4" />
                     <Slider Value="{Binding Smoothing, Mode=TwoWay}"
@@ -144,7 +144,17 @@
                             TickFrequency="0.5"
                             IsSnapToTickEnabled="True"
                             Margin="8,4,8,8" />
-                    
+
+                    <TextBlock Text="{Binding PollingRateHz, StringFormat='Polling Rate: {0} Hz'}"
+                               FontWeight="Bold"
+                               Margin="8,8,8,4" />
+                    <Slider Value="{Binding PollingRateHz, Mode=TwoWay}"
+                            Minimum="30"
+                            Maximum="1000"
+                            TickFrequency="10"
+                            IsSnapToTickEnabled="True"
+                            Margin="8,4,8,8" />
+
                     <TextBlock Text="{Binding FOV, StringFormat='FOV: {0:F0}'}" 
                                FontWeight="Bold"
                                Margin="8,8,8,4" />

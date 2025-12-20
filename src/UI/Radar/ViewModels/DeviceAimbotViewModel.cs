@@ -115,6 +115,12 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             set { App.Config.Device.Smoothing = value; OnPropertyChanged(); }
         }
 
+        public int PollingRateHz
+        {
+            get => App.Config.Device.PollingRateHz;
+            set { App.Config.Device.PollingRateHz = Math.Clamp(value, 30, 1000); OnPropertyChanged(); }
+        }
+
         public bool Enabled
         {
             get => App.Config.Device.Enabled;

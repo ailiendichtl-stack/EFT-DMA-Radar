@@ -1013,6 +1013,12 @@ namespace LoneEftDmaRadar
         /// </summary>
         public float Smoothing { get; set; } = 1.0f;
 
+        /// <summary>
+        /// Polling rate in Hz for the aimbot loop. Higher = more responsive but more CPU usage.
+        /// Default: 125 Hz (~8ms per tick). Range: 30-1000 Hz.
+        /// </summary>
+        public int PollingRateHz { get; set; } = 125;
+
         // Targeting
         public Bones TargetBone { get; set; } = Bones.HumanHead;
         public float FOV { get; set; } = 90f;

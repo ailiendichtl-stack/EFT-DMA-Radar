@@ -66,6 +66,17 @@ namespace LoneEftDmaRadar.UI.Misc
         private AbstractPlayer _cachedClosestBoneTarget;
         private long _closestBoneCacheTimeTicks;
         private const long CLOSEST_BONE_CACHE_DURATION_TICKS = 500_000; // 50ms in ticks
+
+        // === SMOOTHING IMPROVEMENTS (Step 2) ===
+        // Precision timing
+        private readonly Stopwatch _loopTimer = new();
+
+        // Fractional accumulators - track sub-pixel movement to prevent rounding loss
+        private float _accumX, _accumY;
+
+        // Smoothing constants
+        private const float SMOOTHING_REFERENCE_RATE = 60f; // Reference polling rate for smoothing calculations
+        private const float MAX_MOVE_PER_TICK = 127f; // Device limit
         #endregion
 
         private void SendDeviceMove(int dx, int dy)
@@ -153,6 +164,9 @@ namespace LoneEftDmaRadar.UI.Misc
 
             while (!_disposed)
             {
+                // Start precision timer at beginning of each iteration
+                _loopTimer.Restart();
+
                 try
                 {
                     // 1) Check if we're in raid with a valid local player
@@ -267,7 +281,24 @@ namespace LoneEftDmaRadar.UI.Misc
                     // 8) Aim
                     AimAtTarget(localPlayer, _lockedTarget, fireportPosOpt);
 
-                    Thread.Sleep(8); // ~125Hz
+                    // === PRECISION TIMING (Step 2) ===
+                    // Use configurable polling rate with sub-ms precision
+                    int pollingRate = Math.Max(30, Config.PollingRateHz);
+                    int targetIntervalMs = 1000 / pollingRate;
+                    double elapsedMs = _loopTimer.Elapsed.TotalMilliseconds;
+                    int remainingMs = targetIntervalMs - (int)elapsedMs;
+
+                    // Sleep for bulk of remaining time (if > 1ms)
+                    if (remainingMs > 1)
+                    {
+                        Thread.Sleep(remainingMs - 1);
+                    }
+
+                    // Spin-wait for final sub-millisecond precision
+                    while (_loopTimer.Elapsed.TotalMilliseconds < targetIntervalMs)
+                    {
+                        Thread.SpinWait(10);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -495,6 +526,9 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 _cachedClosestBone = default;
                 _cachedClosestBoneTarget = null;
             }
+            // Clear fractional accumulators to prevent carryover
+            _accumX = 0;
+            _accumY = 0;
         }
 
         private bool TryGetTargetBone(AbstractPlayer target, Bones targetBone, out UnityTransform boneTransform)
@@ -596,20 +630,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             float deltaX = screenPos.X - center.X;
             float deltaY = screenPos.Y - center.Y;
 
-            // Apply smoothing (>=1). Higher values = slower movement.
-            float smooth = Math.Max(1f, Config.Smoothing);
-            deltaX /= smooth;
-            deltaY /= smooth;
-
-            // Convert to mouse movement
-            int moveX = (int)Math.Round(deltaX);
-            int moveY = (int)Math.Round(deltaY);
-
-            // Ensure at least 1 pixel step when delta exists
-            if (moveX == 0 && Math.Abs(deltaX) > 0.001f)
-                moveX = Math.Sign(deltaX);
-            if (moveY == 0 && Math.Abs(deltaY) > 0.001f)
-                moveY = Math.Sign(deltaY);
+            // Calculate smooth movement with fractional accumulation
+            var (moveX, moveY) = CalculateSmoothMovement(deltaX, deltaY);
 
             // Apply movement
             if (moveX != 0 || moveY != 0)
@@ -617,6 +639,56 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 SendDeviceMove(moveX, moveY);
                 DebugLogger.LogDebug($"[DeviceAimbot] Aiming at target {target.Name}: Move({moveX}, {moveY})");
             }
+        }
+
+        /// <summary>
+        /// Calculates smooth mouse movement with fractional accumulation.
+        /// Prevents rounding loss and adapts to polling rate for consistent feel.
+        /// </summary>
+        private (int dx, int dy) CalculateSmoothMovement(float deltaX, float deltaY)
+        {
+            float distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            // Fixed deadzone - 0.5px at all zoom levels
+            if (distance < 0.5f)
+            {
+                _accumX = 0;
+                _accumY = 0;
+                return (0, 0);
+            }
+
+            // Rate compensation for high polling rates
+            // Higher polling rates need smaller movements per tick for same perceived speed
+            float pollingRate = Math.Max(30f, Config.PollingRateHz);
+            float rateScale = MathF.Sqrt(pollingRate / SMOOTHING_REFERENCE_RATE);
+
+            // Smoothing 1 = instant (no rate scaling)
+            // Smoothing 2+ = apply rate scaling for consistent feel at high poll rates
+            float effectiveSmoothing = Config.Smoothing <= 1f
+                ? 1f
+                : Config.Smoothing * rateScale;
+
+            // Simple proportional control: move = delta / smoothing
+            float moveX = deltaX / effectiveSmoothing;
+            float moveY = deltaY / effectiveSmoothing;
+
+            // Clamp to device limits (-127 to 127)
+            moveX = Math.Clamp(moveX, -MAX_MOVE_PER_TICK, MAX_MOVE_PER_TICK);
+            moveY = Math.Clamp(moveY, -MAX_MOVE_PER_TICK, MAX_MOVE_PER_TICK);
+
+            // Accumulate fractional parts (prevents rounding loss)
+            _accumX += moveX;
+            _accumY += moveY;
+
+            // Extract integer part for this frame
+            int resultX = (int)_accumX;
+            int resultY = (int)_accumY;
+
+            // Keep only fractional remainder for next frame
+            _accumX -= resultX;
+            _accumY -= resultY;
+
+            return (resultX, resultY);
         }
 private void ApplyMemoryAim(LocalPlayer localPlayer, Vector3 targetPosition)
 {
