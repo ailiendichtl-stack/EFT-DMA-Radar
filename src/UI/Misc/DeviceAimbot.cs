@@ -819,8 +819,8 @@ private static float RadToDeg(float radians)
                 // Apply prediction
                 Vector3 predictedPos = targetPos;
 
-                // Add drop compensation
-                //predictedPos.Y += sim.DropCompensation;
+                // Add drop compensation (scaled by user-configured factor)
+                predictedPos.Y += sim.DropCompensation * Config.DropCompensationFactor;
 
                 // Add lead for moving targets
                 if (targetVelocity != Vector3.Zero)

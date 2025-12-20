@@ -179,6 +179,16 @@
                               IsChecked="{Binding EnablePrediction, Mode=TwoWay}"
                               Margin="8,4,8,8" />
 
+                    <TextBlock Text="{Binding DropCompensationFactor, StringFormat='Drop Compensation: {0:P0}'}"
+                               FontWeight="Bold"
+                               Margin="8,8,8,4" />
+                    <Slider Value="{Binding DropCompensationFactor, Mode=TwoWay}"
+                            Minimum="0.1"
+                            Maximum="1.0"
+                            TickFrequency="0.1"
+                            IsSnapToTickEnabled="True"
+                            Margin="8,4,8,8" />
+
                     <Separator Margin="8,12,8,12" />
 
                     <CheckBox Content="Show FOV Circle on ESP"

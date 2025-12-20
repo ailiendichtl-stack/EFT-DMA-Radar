@@ -214,6 +214,12 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             set { App.Config.Device.EnablePrediction = value; OnPropertyChanged(); }
         }
 
+        public float DropCompensationFactor
+        {
+            get => App.Config.Device.DropCompensationFactor;
+            set { App.Config.Device.DropCompensationFactor = Math.Clamp(value, 0.1f, 1.0f); OnPropertyChanged(); }
+        }
+
         public bool NoRecoilEnabled
         {
             get => App.Config.MemWrites.NoRecoilEnabled;

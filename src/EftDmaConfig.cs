@@ -1025,6 +1025,7 @@ namespace LoneEftDmaRadar
         public float MaxDistance { get; set; } = 300f;
         public TargetingMode Targeting { get; set; } = TargetingMode.ClosestToCrosshair;
         public bool EnablePrediction { get; set; } = true;
+        public float DropCompensationFactor { get; set; } = 0.5f; // 0.1 to 1.0 multiplier for drop compensation
 
         // Target Filters
         public bool TargetPMC { get; set; } = true;
