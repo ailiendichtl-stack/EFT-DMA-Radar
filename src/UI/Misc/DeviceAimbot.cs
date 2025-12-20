@@ -54,6 +54,18 @@ namespace LoneEftDmaRadar.UI.Misc
         private ulong _cachedNewShotRecoil;
         private float _lastRecoilAmount = 1.0f;
         private float _lastSwayAmount = 1.0f;
+
+        // === PERFORMANCE CACHING (Step 1) ===
+        // Ballistics cache - weapon/ammo rarely changes, avoid re-reading every frame
+        private ulong _cachedBallisticsHandsAddr;
+        private long _ballisticsCacheTimeTicks;
+        private const long BALLISTICS_CACHE_DURATION_TICKS = 5_000_000; // 500ms in ticks
+
+        // Closest bone cache - avoid recalculating every frame
+        private Bones _cachedClosestBone;
+        private AbstractPlayer _cachedClosestBoneTarget;
+        private long _closestBoneCacheTimeTicks;
+        private const long CLOSEST_BONE_CACHE_DURATION_TICKS = 500_000; // 50ms in ticks
         #endregion
 
         private void SendDeviceMove(int dx, int dy)
@@ -385,7 +397,29 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
 
     return shouldTarget;
 }
-        private bool IsTargetValid(AbstractPlayer target, LocalPlayer localPlayer)
+        /// <summary>
+        /// Fast validation for locked targets - O(1), skips expensive bone iteration.
+        /// Used when we already have a locked target and just need to verify it's still valid.
+        /// </summary>
+        private bool IsTargetValidFast(AbstractPlayer target, LocalPlayer localPlayer)
+        {
+            // Quick checks only - no bone iteration
+            if (target == null || !target.IsActive || !target.IsAlive)
+                return false;
+
+            float maxDistance = Config.MaxDistance <= 0 ? float.MaxValue : Config.MaxDistance;
+            float distance = Vector3.Distance(localPlayer.Position, target.Position);
+            if (distance > maxDistance)
+                return false;
+
+            // Just check skeleton exists, don't iterate bones
+            return target.Skeleton?.BoneTransforms != null && target.Skeleton.BoneTransforms.Count > 0;
+        }
+
+        /// <summary>
+        /// Full validation with FOV check - O(n bones), used for initial target acquisition.
+        /// </summary>
+        private bool IsTargetValidFull(AbstractPlayer target, LocalPlayer localPlayer)
         {
             _lastIsTargetValid = false;
             _lastLockedTargetFov = float.NaN;
@@ -436,11 +470,30 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             return false;
         }
 
+        /// <summary>
+        /// Uses fast validation for locked targets, full validation only when needed.
+        /// </summary>
+        private bool IsTargetValid(AbstractPlayer target, LocalPlayer localPlayer)
+        {
+            // Use fast path for already-locked targets (skip FOV re-check)
+            // The target was already validated when acquired, just check it's still alive/in-range
+            if (target == _lockedTarget && _lockedTarget != null)
+            {
+                return IsTargetValidFast(target, localPlayer);
+            }
+
+            // Full validation for new targets
+            return IsTargetValidFull(target, localPlayer);
+        }
+
         private void ResetTarget()
         {
             if (_lockedTarget != null)
             {
                 _lockedTarget = null;
+                // Clear bone cache when target changes
+                _cachedClosestBone = default;
+                _cachedClosestBoneTarget = null;
             }
         }
 
@@ -448,25 +501,47 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
         {
             boneTransform = null;
 
-            // Closest-visible bone option
+            // Closest-visible bone option - with caching to avoid expensive recalculation every frame
             if (targetBone == Bones.Closest)
             {
-                float bestFov = float.MaxValue;
-                foreach (var candidate in target.Skeleton.BoneTransforms.Values)
+                long nowTicks = DateTime.UtcNow.Ticks;
+
+                // Check if we can use cached closest bone (same target and cache not expired)
+                if (_cachedClosestBone != default &&
+                    _cachedClosestBoneTarget == target &&
+                    (nowTicks - _closestBoneCacheTimeTicks) < CLOSEST_BONE_CACHE_DURATION_TICKS)
                 {
-                    if (CameraManager.WorldToScreen(in candidate.Position, out var screenPos))
+                    // Use cached bone selection
+                    if (target.Skeleton.BoneTransforms.TryGetValue(_cachedClosestBone, out boneTransform))
+                        return true;
+                }
+
+                // Cache miss or expired - recalculate closest bone
+                float bestFov = float.MaxValue;
+                Bones bestBone = default;
+
+                foreach (var kvp in target.Skeleton.BoneTransforms)
+                {
+                    if (CameraManager.WorldToScreen(in kvp.Value.Position, out var screenPos))
                     {
                         float fov = CameraManager.GetFovMagnitude(screenPos);
                         if (fov < bestFov)
                         {
                             bestFov = fov;
-                            boneTransform = candidate;
+                            boneTransform = kvp.Value;
+                            bestBone = kvp.Key;
                         }
                     }
                 }
 
                 if (boneTransform != null)
+                {
+                    // Cache the result
+                    _cachedClosestBone = bestBone;
+                    _cachedClosestBoneTarget = target;
+                    _closestBoneCacheTimeTicks = nowTicks;
                     return true;
+                }
             }
 
             // Specific bone
@@ -698,8 +773,20 @@ private static float RadToDeg(float radians)
                 if (handsInfo == null || !handsInfo.IsWeapon || handsInfo.ItemAddr == 0)
                     return null;
 
-                ulong itemBase = handsInfo.ItemAddr;
-                
+                ulong handsAddr = handsInfo.ItemAddr;
+                long nowTicks = DateTime.UtcNow.Ticks;
+
+                // === BALLISTICS CACHING ===
+                // Check if we can use cached ballistics (same weapon and cache not expired)
+                if (_lastBallistics != null &&
+                    handsAddr == _cachedBallisticsHandsAddr &&
+                    (nowTicks - _ballisticsCacheTimeTicks) < BALLISTICS_CACHE_DURATION_TICKS)
+                {
+                    return _lastBallistics; // Return cached result
+                }
+
+                ulong itemBase = handsAddr;
+
                 // Validate itemBase before proceeding
                 if (!MemDMA.IsValidVirtualAddress(itemBase))
                     return CreateFallbackBallistics();
@@ -751,6 +838,10 @@ private static float RadToDeg(float radians)
 
                 if (!ballistics.IsAmmoValid)
                     return CreateFallbackBallistics();
+
+                // Cache the result
+                _cachedBallisticsHandsAddr = handsAddr;
+                _ballisticsCacheTimeTicks = nowTicks;
 
                 return ballistics;
             }
