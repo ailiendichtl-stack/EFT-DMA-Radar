@@ -821,6 +821,27 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         }
         #endregion
 
+        #region AmmoCounter
+        public bool AmmoCounterEnabled
+        {
+            get => App.Config.UI.AmmoCounter.Enabled;
+            set
+            {
+                if (App.Config.UI.AmmoCounter.Enabled != value)
+                {
+                    App.Config.UI.AmmoCounter.Enabled = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string AmmoCounterTextColor
+        {
+            get => App.Config.UI.AmmoCounter.TextColor;
+            set { App.Config.UI.AmmoCounter.TextColor = value; OnPropertyChanged(); }
+        }
+        #endregion
+
         public string EspFontFamily
         {
             get => App.Config.UI.EspFontFamily;

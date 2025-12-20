@@ -179,6 +179,12 @@ namespace SDK
             public const uint Version = 0x7C; // Int32
         }
 
+        public readonly partial struct Item // EFT.InventoryLogic.Item - Ammo counter offsets
+        {
+            public const uint StackCount = 0x24; // Current stack/ammo count (Int32)
+            public const uint Cartridges = 0xA8; // EFT.InventoryLogic.StackSlot (on magazine items)
+        }
+
         public readonly partial struct ItemTemplate // EFT.InventoryLogic, class: ItemTemplate
         {
             public const uint ShortName = 0x18; // String
@@ -299,6 +305,10 @@ namespace SDK
         {
             public const uint _items = 0x10; // System.Collections.Generic.List<Item>
             public const uint MaxCount = 0x38; // Int32
+
+            // Ammo counter offsets (from CyNickal - used when reading via Item.Cartridges path)
+            public const uint Max = 0x10; // Max capacity (Int32)
+            public const uint Items = 0x18; // System.Collections.Generic.List<Item>
         }
 
         public readonly partial struct Slot //Class: EFT.InventoryLogic.Slot

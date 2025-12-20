@@ -82,6 +82,11 @@ namespace LoneEftDmaRadar.UI.ESP
 
         private bool _isFullscreen;
 
+        // Ammo Counter Widget
+        private AmmoCounterWidget _ammoWidget;
+        private float _mouseX;
+        private float _mouseY;
+
         /// <summary>
         /// LocalPlayer (who is running Radar) 'Player' object.
         /// </summary>
@@ -177,6 +182,9 @@ namespace LoneEftDmaRadar.UI.ESP
                 state: null,
                 dueTime: 0,
                 period: 4); // 4ms = ~250 FPS max capability, actual FPS controlled by EspMaxFPS setting
+
+            // Initialize ammo counter widget
+            _ammoWidget = new AmmoCounterWidget();
         }
 
         private void InitializeRenderSurface()
@@ -192,6 +200,8 @@ namespace LoneEftDmaRadar.UI.ESP
             _dxOverlay.RenderFrame = RenderSurface;
             _dxOverlay.DeviceInitFailed += Overlay_DeviceInitFailed;
             _dxOverlay.MouseDown += GlControl_MouseDown;
+            _dxOverlay.MouseMove += GlControl_MouseMove;
+            _dxOverlay.MouseUp += GlControl_MouseUp;
             _dxOverlay.DoubleClick += GlControl_DoubleClick;
             _dxOverlay.KeyDown += GlControl_KeyDown;
 
@@ -367,6 +377,22 @@ namespace LoneEftDmaRadar.UI.ESP
                         if (App.Config.UI.MiniRadar.Enabled)
                         {
                             DrawMiniRadar(ctx, localPlayer, allPlayers, screenWidth, screenHeight);
+                        }
+
+                        // Draw Ammo Counter Widget (always show when enabled, use placeholder if no valid data)
+                        if (App.Config.UI.AmmoCounter.Enabled && _ammoWidget != null)
+                        {
+                            // Ensure FirearmManager is updated for ammo counter
+                            localPlayer?.UpdateFirearmManager();
+
+                            // Update hover state for transparent-until-hover behavior
+                            _ammoWidget.UpdateHoverState(_mouseX, _mouseY, screenWidth, screenHeight);
+
+                            var mag = localPlayer?.FirearmManager?.Magazine;
+                            int currentAmmo = mag?.HasValidAmmo == true ? mag.CurrentAmmo : -1;
+                            int maxAmmo = mag?.HasValidAmmo == true ? mag.MaxAmmo : -1;
+                            string ammoTypeName = mag?.HasValidAmmo == true ? mag.AmmoTypeName : null;
+                            _ammoWidget.Draw(ctx, currentAmmo, maxAmmo, ammoTypeName);
                         }
 
                         DrawFPS(ctx, screenWidth, screenHeight);
@@ -1502,7 +1528,38 @@ namespace LoneEftDmaRadar.UI.ESP
         {
             if (e.Button == WinForms.MouseButtons.Left)
             {
+                // Check if ammo widget handles the click first
+                if (_ammoWidget != null && App.Config.UI.AmmoCounter.Enabled)
+                {
+                    float screenWidth = _dxOverlay?.Width ?? 1920;
+                    float screenHeight = _dxOverlay?.Height ?? 1080;
+                    if (_ammoWidget.OnMouseDown(e.X, e.Y, screenWidth, screenHeight))
+                        return; // Widget handled the click
+                }
+
                 try { this.DragMove(); } catch { /* ignore dragging errors */ }
+            }
+        }
+
+        private void GlControl_MouseMove(object sender, WinForms.MouseEventArgs e)
+        {
+            // Track mouse position for hover detection
+            _mouseX = e.X;
+            _mouseY = e.Y;
+
+            if (_ammoWidget != null && _ammoWidget.IsInteracting)
+            {
+                float screenWidth = _dxOverlay?.Width ?? 1920;
+                float screenHeight = _dxOverlay?.Height ?? 1080;
+                _ammoWidget.OnMouseMove(e.X, e.Y, screenWidth, screenHeight);
+            }
+        }
+
+        private void GlControl_MouseUp(object sender, WinForms.MouseEventArgs e)
+        {
+            if (_ammoWidget != null && _ammoWidget.IsInteracting)
+            {
+                _ammoWidget.OnMouseUp();
             }
         }
 

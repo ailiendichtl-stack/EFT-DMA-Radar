@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Drawing;
 using SharpDX;
 using SharpDX.Direct3D9;
@@ -38,6 +39,9 @@ namespace LoneEftDmaRadar.UI.ESP
         private int _fontSizeSmall = 10;
         private int _fontSizeMedium = 12;
         private int _fontSizeLarge = 24;
+
+        // Font cache for dynamically scaled fonts
+        private readonly ConcurrentDictionary<int, D3D9Font> _fontCache = new();
 
         private readonly object _deviceLock = new();
         private byte[] _pendingMapPixels;
@@ -110,7 +114,7 @@ namespace LoneEftDmaRadar.UI.ESP
                     _device.SetRenderState(RenderState.SourceBlend, Blend.SourceAlpha);
                     _device.SetRenderState(RenderState.DestinationBlend, Blend.InverseSourceAlpha);
 
-                    var ctx = new Dx9RenderContext(_device, _line, _fontSmall, _fontMedium, _fontLarge, _mapTexture, Width, Height);
+                    var ctx = new Dx9RenderContext(_device, _line, _fontSmall, _fontMedium, _fontLarge, _mapTexture, Width, Height, GetOrCreateFont);
                     RenderFrame?.Invoke(ctx);
 
                     _device.EndScene();
@@ -358,6 +362,27 @@ namespace LoneEftDmaRadar.UI.ESP
             return Math.Clamp(value, 6, 72);
         }
 
+        /// <summary>
+        /// Get or create a font of the specified size from the cache.
+        /// </summary>
+        private D3D9Font GetOrCreateFont(int size)
+        {
+            size = ClampFontSize(size);
+            return _fontCache.GetOrAdd(size, s => CreateFont(s));
+        }
+
+        /// <summary>
+        /// Clear the font cache (call when device is reset/disposed).
+        /// </summary>
+        private void ClearFontCache()
+        {
+            foreach (var font in _fontCache.Values)
+            {
+                font?.Dispose();
+            }
+            _fontCache.Clear();
+        }
+
         private void RebuildFonts()
         {
             _fontSmall?.Dispose();
@@ -375,6 +400,7 @@ namespace LoneEftDmaRadar.UI.ESP
             _fontSmall?.Dispose();
             _fontMedium?.Dispose();
             _fontLarge?.Dispose();
+            ClearFontCache();
             _mapTexture?.Dispose();
             _device?.Dispose();
             _d3d?.Dispose();
@@ -410,6 +436,7 @@ namespace LoneEftDmaRadar.UI.ESP
         private readonly D3D9Font _fontMedium;
         private readonly D3D9Font _fontLarge;
         private readonly Texture _mapTexture;
+        private readonly Func<int, D3D9Font> _fontGetter;
 
         public int Width { get; }
         public int Height { get; }
@@ -422,7 +449,8 @@ namespace LoneEftDmaRadar.UI.ESP
             D3D9Font fontLarge,
             Texture mapTexture,
             int width,
-            int height)
+            int height,
+            Func<int, D3D9Font> fontGetter = null)
         {
             _device = device;
             _line = line;
@@ -432,6 +460,7 @@ namespace LoneEftDmaRadar.UI.ESP
             _mapTexture = mapTexture;
             Width = width;
             Height = height;
+            _fontGetter = fontGetter;
         }
 
         public void Clear(DxColor color)
@@ -566,6 +595,38 @@ namespace LoneEftDmaRadar.UI.ESP
         public void DrawText(string text, float x, float y, DxColor color, DxTextSize size, bool centerX = false, bool centerY = false)
         {
             var font = GetFont(size);
+            if (font is null) return;
+
+            var bounds = font.MeasureText(null, text, FontDrawFlags.Left);
+
+            int textWidth = Math.Max(1, bounds.Right - bounds.Left);
+            int textHeight = Math.Max(1, bounds.Bottom - bounds.Top);
+
+            float drawX = x;
+            float drawY = y;
+
+            if (centerX)
+                drawX -= textWidth / 2f;
+            if (centerY)
+                drawY -= textHeight / 2f;
+
+            var rect = new RawRectangle(
+                (int)drawX,
+                (int)drawY,
+                (int)drawX + textWidth + 2,
+                (int)drawY + textHeight + 2);
+
+            font.DrawText(null, text, rect, FontDrawFlags.NoClip, color);
+        }
+
+        /// <summary>
+        /// Draw text with a specific font size in pixels.
+        /// </summary>
+        public void DrawTextScaled(string text, float x, float y, DxColor color, int fontSize, bool centerX = false, bool centerY = false)
+        {
+            if (_fontGetter is null) return;
+
+            var font = _fontGetter(fontSize);
             if (font is null) return;
 
             var bounds = font.MeasureText(null, text, FontDrawFlags.Left);

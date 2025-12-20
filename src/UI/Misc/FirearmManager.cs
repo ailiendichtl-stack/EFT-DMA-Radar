@@ -65,7 +65,10 @@ namespace LoneEftDmaRadar.UI.Misc
             {
                 var hands = _localPlayer.HandsController;
                 if (!MemDMA.IsValidVirtualAddress(hands))
+                {
+                    DebugLogger.LogDebug("[FirearmManager] Invalid HandsController address");
                     return;
+                }
 
                 if (hands != _hands)
                 {
@@ -73,6 +76,7 @@ namespace LoneEftDmaRadar.UI.Misc
                     ResetFireport();
                     Magazine = new(_localPlayer);
                     _hands = GetHandsInfo(hands);
+                    DebugLogger.LogDebug($"[FirearmManager] New hands detected. IsWeapon: {_hands?.IsWeapon}");
                 }
 
                 if (_hands?.IsWeapon == true)
@@ -136,6 +140,9 @@ namespace LoneEftDmaRadar.UI.Misc
                             ResetFireport();
                         }
                     }
+
+                    // Update ammo count for the ammo counter widget
+                    Magazine?.UpdateAmmoCount();
                 }
             }
             catch (Exception ex)
@@ -181,9 +188,113 @@ namespace LoneEftDmaRadar.UI.Misc
         {
             private readonly LocalPlayer _localPlayer;
 
+            /// <summary>
+            /// Current ammo count in magazine.
+            /// </summary>
+            public int CurrentAmmo { get; private set; }
+
+            /// <summary>
+            /// Maximum ammo capacity of magazine.
+            /// </summary>
+            public int MaxAmmo { get; private set; }
+
+            /// <summary>
+            /// Short name of the currently loaded ammo type.
+            /// </summary>
+            public string AmmoTypeName { get; private set; }
+
+            /// <summary>
+            /// True if valid ammo data is available.
+            /// </summary>
+            public bool HasValidAmmo => MaxAmmo > 0 && CurrentAmmo >= 0;
+
             public MagazineManager(LocalPlayer localPlayer)
             {
                 _localPlayer = localPlayer;
+            }
+
+            /// <summary>
+            /// Updates the current and max ammo count from memory.
+            /// Uses pointer chain: HandsController -> Item -> MagSlot -> Magazine -> Cartridges
+            /// </summary>
+            public void UpdateAmmoCount()
+            {
+                CurrentAmmo = 0;
+                MaxAmmo = 0;
+                AmmoTypeName = null;
+
+                try
+                {
+                    var handsController = _localPlayer.HandsController;
+                    if (!MemDMA.IsValidVirtualAddress(handsController))
+                        return;
+
+                    // Read the held item (weapon)
+                    var itemBase = MemoryInterface.Memory.ReadPtr(handsController + Offsets.ItemHandsController.Item, false);
+                    if (!MemDMA.IsValidVirtualAddress(itemBase))
+                        return;
+
+                    // Read the magazine slot
+                    var magSlot = MemoryInterface.Memory.ReadPtr(itemBase + Offsets.LootItemWeapon._magSlotCache, false);
+                    if (!MemDMA.IsValidVirtualAddress(magSlot))
+                        return;
+
+                    // Read the magazine item from slot
+                    var magItem = MemoryInterface.Memory.ReadPtr(magSlot + Offsets.Slot.ContainedItem, false);
+                    if (!MemDMA.IsValidVirtualAddress(magItem))
+                        return;
+
+                    // Read cartridges (StackSlot) from magazine
+                    var cartridges = MemoryInterface.Memory.ReadPtr(magItem + Offsets.Item.Cartridges, false);
+                    if (!MemDMA.IsValidVirtualAddress(cartridges))
+                        return;
+
+                    // Read max ammo from StackSlot.Max
+                    MaxAmmo = MemoryInterface.Memory.ReadValue<int>(cartridges + Offsets.StackSlot.Max, false);
+
+                    // Read items list from StackSlot.Items
+                    var itemsList = MemoryInterface.Memory.ReadPtr(cartridges + Offsets.StackSlot.Items, false);
+                    if (!MemDMA.IsValidVirtualAddress(itemsList))
+                        return;
+
+                    // Read the internal array from List<T> (offset 0x10)
+                    var listItems = MemoryInterface.Memory.ReadPtr(itemsList + 0x10, false);
+                    if (!MemDMA.IsValidVirtualAddress(listItems))
+                        return;
+
+                    // Read first ammo item (offset 0x20 from array base)
+                    var firstAmmoItem = MemoryInterface.Memory.ReadPtr(listItems + 0x20, false);
+                    if (!MemDMA.IsValidVirtualAddress(firstAmmoItem))
+                        return;
+
+                    // Read current ammo count from Item.StackCount
+                    CurrentAmmo = MemoryInterface.Memory.ReadValue<int>(firstAmmoItem + Offsets.Item.StackCount, false);
+
+                    // Read ammo type name from template
+                    try
+                    {
+                        var ammoTemplate = MemoryInterface.Memory.ReadPtr(firstAmmoItem + Offsets.LootItem.Template, false);
+                        if (MemDMA.IsValidVirtualAddress(ammoTemplate))
+                        {
+                            var ammoIdPtr = MemoryInterface.Memory.ReadValue<MongoID>(ammoTemplate + Offsets.ItemTemplate._id, false);
+                            var ammoId = ammoIdPtr.ReadString(64, false);
+                            if (ammoId?.Length == 24 && TarkovDataManager.AllItems.TryGetValue(ammoId, out var ammoItem))
+                            {
+                                AmmoTypeName = string.IsNullOrWhiteSpace(ammoItem.ShortName) ? ammoItem.Name : ammoItem.ShortName;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ammo type lookup failed, but we still have count
+                    }
+                }
+                catch
+                {
+                    CurrentAmmo = 0;
+                    MaxAmmo = 0;
+                    AmmoTypeName = null;
+                }
             }
 
             /// <summary>

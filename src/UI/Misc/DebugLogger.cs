@@ -15,6 +15,9 @@ namespace LoneEftDmaRadar.UI.Misc
         private static extern bool FreeConsole();
 
         private static bool _isConsoleAllocated = false;
+        private static bool _isFileLoggingEnabled = false;
+        private static readonly string _logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "debug.log");
+        private static readonly object _fileLock = new object();
 
         public static void Toggle()
         {
@@ -43,8 +46,6 @@ namespace LoneEftDmaRadar.UI.Misc
 
         public static void Log(string message, LogLevel level = LogLevel.Info)
         {
-            if (!_isConsoleAllocated) return;
-
             var timestamp = $"[{DateTime.Now:HH:mm:ss.fff}] ";
             var levelStr = level switch
             {
@@ -56,7 +57,26 @@ namespace LoneEftDmaRadar.UI.Misc
                 _ => ""
             };
 
-            Console.WriteLine($"{timestamp}{levelStr}{message}");
+            var formattedMessage = $"{timestamp}{levelStr}{message}";
+
+            // Console output
+            if (_isConsoleAllocated)
+            {
+                Console.WriteLine(formattedMessage);
+            }
+
+            // File output (always enabled for debugging)
+            if (_isFileLoggingEnabled)
+            {
+                try
+                {
+                    lock (_fileLock)
+                    {
+                        File.AppendAllText(_logFilePath, formattedMessage + Environment.NewLine);
+                    }
+                }
+                catch { /* Ignore file write errors */ }
+            }
         }
 
         public static void LogDebug(string message) => Log(message, LogLevel.Debug);

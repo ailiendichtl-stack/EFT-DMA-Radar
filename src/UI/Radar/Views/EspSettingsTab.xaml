@@ -313,7 +313,7 @@
             <GroupBox Header="Mini Radar" Margin="0,0,0,12">
                 <StackPanel>
                     <CheckBox Content="Enable Mini Radar" IsChecked="{Binding MiniRadarEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
-                    
+
                     <WrapPanel Margin="0,0,0,8" IsEnabled="{Binding MiniRadarEnabled}">
                          <TextBlock Text="Size:" VerticalAlignment="Center" Width="60"/>
                          <Slider Width="150" Minimum="150" Maximum="512" Value="{Binding MiniRadarSize, Mode=TwoWay}" SmallChange="10" LargeChange="50"/>
@@ -338,6 +338,27 @@
                          <CheckBox Content="Grenades" IsChecked="{Binding MiniRadarShowGrenades, Mode=TwoWay}" Margin="0,0,12,0"/>
                     </WrapPanel>
                     <CheckBox Content="Invert Map Colors (Dark)" IsChecked="{Binding MiniRadarInvertColors, Mode=TwoWay}" IsEnabled="{Binding MiniRadarEnabled}" Margin="0,8,0,0"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Ammo Counter Settings -->
+            <GroupBox Header="Ammo Counter" Margin="0,0,0,12">
+                <StackPanel>
+                    <WrapPanel>
+                        <CheckBox Content="Enable Ammo Counter" IsChecked="{Binding AmmoCounterEnabled, Mode=TwoWay}" Margin="0,0,16,8"
+                                  ToolTip="Displays your current ammo count (XX/XX) on the ESP overlay. Drag to reposition, drag corner to resize."/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Text Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <xctk:ColorPicker Width="42" Height="26"
+                                              SelectedColor="{Binding AmmoCounterTextColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
+                                              UsingAlphaChannel="True"
+                                              ShowRecentColors="False"/>
+                        </StackPanel>
+                    </WrapPanel>
+                    <TextBlock Text="Drag the widget to reposition. Drag bottom-right corner to resize. Shows ammo type below count."
+                               Foreground="Gray"
+                               FontSize="10"
+                               Margin="0,0,0,0"/>
                 </StackPanel>
             </GroupBox>
 

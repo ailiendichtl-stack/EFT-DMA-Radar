@@ -609,6 +609,13 @@ namespace LoneEftDmaRadar
         public MiniRadarConfig MiniRadar { get; private set; } = new();
 
         /// <summary>
+        /// Ammo Counter Widget Configuration.
+        /// </summary>
+        [JsonPropertyName("ammoCounter")]
+        [JsonInclude]
+        public AmmoCounterConfig AmmoCounter { get; private set; } = new();
+
+        /// <summary>
         /// Show Player Names in ESP.
         /// </summary>
         [JsonPropertyName("espPlayerNames")]
@@ -1254,5 +1261,59 @@ namespace LoneEftDmaRadar
 
         [JsonPropertyName("invertColors")]
         public bool InvertColors { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Configuration for the Ammo Counter ESP widget.
+    /// </summary>
+    public sealed class AmmoCounterConfig
+    {
+        /// <summary>
+        /// Enable/Disable the ammo counter widget.
+        /// </summary>
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// X position on screen (-1 = auto center bottom).
+        /// </summary>
+        [JsonPropertyName("positionX")]
+        public float PositionX { get; set; } = -1;
+
+        /// <summary>
+        /// Y position on screen (-1 = auto center bottom).
+        /// </summary>
+        [JsonPropertyName("positionY")]
+        public float PositionY { get; set; } = -1;
+
+        /// <summary>
+        /// Widget width in pixels.
+        /// </summary>
+        [JsonPropertyName("width")]
+        public float Width { get; set; } = 100;
+
+        /// <summary>
+        /// Widget height in pixels.
+        /// </summary>
+        [JsonPropertyName("height")]
+        public float Height { get; set; } = 40;
+
+        /// <summary>
+        /// Background color (ARGB hex format).
+        /// </summary>
+        [JsonPropertyName("backgroundColor")]
+        public string BackgroundColor { get; set; } = "#80000000";
+
+        /// <summary>
+        /// Text color (ARGB hex format).
+        /// </summary>
+        [JsonPropertyName("textColor")]
+        public string TextColor { get; set; } = "#FFFF00FF"; // Magenta default
+
+        /// <summary>
+        /// Font size for the ammo text.
+        /// </summary>
+        [JsonPropertyName("fontSize")]
+        public int FontSize { get; set; } = 24;
     }
 }
