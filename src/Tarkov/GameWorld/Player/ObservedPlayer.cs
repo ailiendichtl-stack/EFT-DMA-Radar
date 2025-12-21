@@ -26,6 +26,7 @@ SOFTWARE.
  *
 */
 
+using LoneEftDmaRadar.DMA;
 using LoneEftDmaRadar.Misc.Services;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
@@ -33,6 +34,7 @@ using LoneEftDmaRadar.Tarkov.Unity.Structures;
 using LoneEftDmaRadar.UI.Radar.ViewModels;
 using LoneEftDmaRadar.Web.ProfileApi;
 using LoneEftDmaRadar.Web.ProfileApi.Schema;
+using LoneEftDmaRadar.Web.TarkovDev.Data;
 using VmmSharpEx.Scatter;
 
 namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
@@ -160,11 +162,91 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// </summary>
         public Enums.ETagStatus HealthStatus { get; private set; } = Enums.ETagStatus.Healthy;
 
+        #region Weapon Detection
+
+        private string _cachedWeaponName;
+        private ulong _lastObservedHands;
+        private DateTime _lastWeaponUpdate = DateTime.MinValue;
+        private static readonly TimeSpan _weaponUpdateInterval = TimeSpan.FromMilliseconds(500);
+
         /// <summary>
-        /// Currently held weapon name.
-        /// TODO: Implement for online mode using ObservedPlayerHands chain.
+        /// Currently held weapon name for online players.
+        /// Chain: MovementContext (StateContext) → ObservedPlayerHands → Item
         /// </summary>
-        public override string HeldWeaponName => null; // Placeholder for online
+        public override string HeldWeaponName
+        {
+            get
+            {
+                if (DateTime.UtcNow - _lastWeaponUpdate < _weaponUpdateInterval)
+                    return _cachedWeaponName;
+
+                _lastWeaponUpdate = DateTime.UtcNow;
+
+                try
+                {
+                    // MovementContext is already the ObservedPlayerStateContext (ObservedMovementState)
+                    // Chain: MovementContext -> ObservedPlayerHands (0x130) -> Item (0x58)
+                    if (!MemDMA.IsValidVirtualAddress(MovementContext))
+                        return _cachedWeaponName;
+
+                    var observedHands = Memory.ReadPtr(MovementContext + Offsets.ObservedMovementState.ObservedPlayerHands, false);
+                    if (!MemDMA.IsValidVirtualAddress(observedHands))
+                        return _cachedWeaponName;
+
+                    if (observedHands != _lastObservedHands)
+                    {
+                        _lastObservedHands = observedHands;
+
+                        // Read item from ObservedPlayerHands (offset 0x58)
+                        var itemBase = Memory.ReadPtr(observedHands + Offsets.ObservedPlayerHands.Item, false);
+                        if (!MemDMA.IsValidVirtualAddress(itemBase))
+                        {
+                            _cachedWeaponName = null;
+                            return _cachedWeaponName;
+                        }
+
+                        // Use the same template chain as offline
+                        _cachedWeaponName = ReadWeaponNameFromHandsItem(itemBase);
+                    }
+                }
+                catch
+                {
+                    _cachedWeaponName = null;
+                }
+
+                return _cachedWeaponName;
+            }
+        }
+
+        /// <summary>
+        /// Reads weapon name from item base address (skips HandsController offset).
+        /// </summary>
+        private static string ReadWeaponNameFromHandsItem(ulong itemBase)
+        {
+            try
+            {
+                var itemTemp = Memory.ReadPtr(itemBase + Offsets.LootItem.Template, false);
+                if (!MemDMA.IsValidVirtualAddress(itemTemp))
+                    return null;
+
+                var mongoId = Memory.ReadValue<MongoID>(itemTemp + Offsets.ItemTemplate._id, false);
+                var itemId = mongoId.ReadString(64, false);
+
+                if (string.IsNullOrEmpty(itemId) || itemId.Length != 24)
+                    return null;
+
+                if (TarkovDataManager.AllItems.TryGetValue(itemId, out var item) && item.IsWeapon)
+                    return item.ShortName;
+
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        #endregion
 
         internal ObservedPlayer(ulong playerBase) : base(playerBase)
         {

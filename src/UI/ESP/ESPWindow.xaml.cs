@@ -1357,13 +1357,6 @@ namespace LoneEftDmaRadar.UI.ESP
             if (!string.IsNullOrWhiteSpace(factionText))
                 text = string.IsNullOrWhiteSpace(text) ? factionText : $"{text} [{factionText}]";
 
-            // Add weapon display for AI players
-            if (player.IsAI)
-            {
-                var weaponText = player.WeaponDisplayText;
-                text = string.IsNullOrWhiteSpace(text) ? weaponText : $"{text} [{weaponText}]";
-            }
-
             if (string.IsNullOrWhiteSpace(text))
                 return;
 
@@ -1376,19 +1369,23 @@ namespace LoneEftDmaRadar.UI.ESP
 
             var labelPos = player.IsAI ? App.Config.UI.EspLabelPositionAI : App.Config.UI.EspLabelPosition;
 
+            // Check if weapons should be shown based on player type
+            bool showWeapon = player.IsAI ? App.Config.UI.EspAIWeapons : App.Config.UI.EspPlayerWeapons;
+            int extraHeightForWeapon = showWeapon ? textHeight + 2 : 0;
+
             if (bbox.HasValue)
             {
                 var box = bbox.Value;
                 drawX = box.Left + (box.Width / 2f);
                 drawY = labelPos == EspLabelPosition.Top
-                    ? box.Top - textHeight - textPadding
+                    ? box.Top - textHeight - textPadding - extraHeightForWeapon
                     : box.Bottom + textPadding;
             }
             else if (TryProject(player.GetBonePos(Bones.HumanHead), screenWidth, screenHeight, out var headScreen))
             {
                 drawX = headScreen.X;
                 drawY = labelPos == EspLabelPosition.Top
-                    ? headScreen.Y - textHeight - textPadding
+                    ? headScreen.Y - textHeight - textPadding - extraHeightForWeapon
                     : headScreen.Y + textPadding;
             }
             else
@@ -1397,6 +1394,14 @@ namespace LoneEftDmaRadar.UI.ESP
             }
 
             ctx.DrawText(text, drawX, drawY, color, DxTextSize.Medium, centerX: true);
+
+            // Draw weapon on a new line below the name
+            if (showWeapon)
+            {
+                var weaponText = player.WeaponDisplayText;
+                float weaponY = drawY + textHeight + 2;
+                ctx.DrawText(weaponText, drawX, weaponY, color, DxTextSize.Medium, centerX: true);
+            }
         }
 
         /// <summary>

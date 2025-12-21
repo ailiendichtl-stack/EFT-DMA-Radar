@@ -99,6 +99,16 @@ namespace SDK
             public const uint _playerCorpse = 0x20; // EFT.Interactive.ObservedCorpse
         }
 
+        public readonly partial struct ObservedMovementState
+        {
+            public const uint ObservedPlayerHands = 0x130; // EFT.NextObservedPlayer.ObservedPlayerHandsController
+        }
+
+        public readonly partial struct ObservedPlayerHands // EFT.NextObservedPlayer.ObservedPlayerHandsController
+        {
+            public const uint Item = 0x58; // EFT.InventoryLogic.Item
+        }
+
         public readonly partial struct Profile // EFT, class: Profile
         {
             public const uint Id = 0x10; // String

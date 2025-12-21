@@ -29,7 +29,6 @@ SOFTWARE.
 using LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
-using LoneEftDmaRadar.UI.Misc;
 
 namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
 {
@@ -106,18 +105,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 {
                     var hands = Memory.ReadPtr(Base + Offsets.Player._handsController, false);
 
-                    DebugLogger.LogDebug($"[Weapon] {Name}: HandsController=0x{hands:X}, Last=0x{_lastHandsController:X}");
-
                     if (hands != _lastHandsController)
                     {
                         _lastHandsController = hands;
-                        _cachedWeaponName = ReadWeaponNameFromHands(hands, Name);
-                        DebugLogger.LogDebug($"[Weapon] {Name}: Updated weapon to '{_cachedWeaponName ?? "null"}'");
+                        _cachedWeaponName = ReadWeaponNameFromHands(hands);
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    DebugLogger.LogDebug($"[Weapon] {Name}: Error reading hands - {ex.Message}");
                     _cachedWeaponName = null;
                 }
 

@@ -436,61 +436,35 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// Attempts to read weapon name from a HandsController address.
         /// </summary>
         /// <param name="handsController">HandsController memory address.</param>
-        /// <param name="playerName">Player name for debug logging.</param>
         /// <returns>Weapon short name, or null if not a weapon/unarmed.</returns>
-        protected static string ReadWeaponNameFromHands(ulong handsController, string playerName = null)
+        protected static string ReadWeaponNameFromHands(ulong handsController)
         {
             try
             {
                 if (!MemDMA.IsValidVirtualAddress(handsController))
-                {
-                    DebugLogger.LogDebug($"[Weapon] {playerName}: HandsController invalid (0x{handsController:X})");
                     return null;
-                }
 
                 var itemBase = Memory.ReadPtr(handsController + Offsets.ItemHandsController.Item, false);
                 if (!MemDMA.IsValidVirtualAddress(itemBase))
-                {
-                    DebugLogger.LogDebug($"[Weapon] {playerName}: Item pointer invalid (0x{itemBase:X})");
                     return null;
-                }
 
                 var itemTemp = Memory.ReadPtr(itemBase + Offsets.LootItem.Template, false);
                 if (!MemDMA.IsValidVirtualAddress(itemTemp))
-                {
-                    DebugLogger.LogDebug($"[Weapon] {playerName}: Template pointer invalid");
                     return null;
-                }
 
                 var mongoId = Memory.ReadValue<MongoID>(itemTemp + Offsets.ItemTemplate._id, false);
                 var itemId = mongoId.ReadString(64, false);
 
                 if (string.IsNullOrEmpty(itemId) || itemId.Length != 24)
-                {
-                    DebugLogger.LogDebug($"[Weapon] {playerName}: Invalid item ID '{itemId}'");
                     return null;
-                }
 
-                if (TarkovDataManager.AllItems.TryGetValue(itemId, out var item))
-                {
-                    if (item.IsWeapon)
-                    {
-                        DebugLogger.LogDebug($"[Weapon] {playerName}: Found weapon '{item.ShortName}' (ID: {itemId})");
-                        return item.ShortName;
-                    }
-                    else
-                    {
-                        DebugLogger.LogDebug($"[Weapon] {playerName}: Holding non-weapon '{item.ShortName}'");
-                        return null;
-                    }
-                }
+                if (TarkovDataManager.AllItems.TryGetValue(itemId, out var item) && item.IsWeapon)
+                    return item.ShortName;
 
-                DebugLogger.LogDebug($"[Weapon] {playerName}: Item ID not in database: {itemId}");
                 return null;
             }
-            catch (Exception ex)
+            catch
             {
-                DebugLogger.LogDebug($"[Weapon] {playerName}: Exception - {ex.Message}");
                 return null;
             }
         }
@@ -1391,7 +1365,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             else if (IsAIActive)
             {
                 lines.Add(name);
-                lines.Add($"Weapon: {WeaponDisplayText}");
             }
 
             if (this is ObservedPlayer obs2 && obs2.Equipment.Items is IReadOnlyDictionary<string, TarkovMarketItem> equipment)
