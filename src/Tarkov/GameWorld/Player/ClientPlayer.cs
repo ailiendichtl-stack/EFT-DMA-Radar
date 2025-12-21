@@ -29,6 +29,7 @@ SOFTWARE.
 using LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
+using LoneEftDmaRadar.UI.Misc;
 
 namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
 {
@@ -78,6 +79,53 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// Player Rotation Field Address (view angles).
         /// </summary>
         public override ulong RotationAddress { get; }
+
+        #region Weapon Detection
+
+        private string _cachedWeaponName;
+        private ulong _lastHandsController;
+        private DateTime _lastWeaponUpdate = DateTime.MinValue;
+        private static readonly TimeSpan _weaponUpdateInterval = TimeSpan.FromMilliseconds(500);
+
+        /// <summary>
+        /// Currently held weapon name for offline AI bots.
+        /// </summary>
+        public override string HeldWeaponName
+        {
+            get
+            {
+                if (!IsOfflineAI)
+                    return null; // LocalPlayer uses FirearmManager
+
+                if (DateTime.UtcNow - _lastWeaponUpdate < _weaponUpdateInterval)
+                    return _cachedWeaponName;
+
+                _lastWeaponUpdate = DateTime.UtcNow;
+
+                try
+                {
+                    var hands = Memory.ReadPtr(Base + Offsets.Player._handsController, false);
+
+                    DebugLogger.LogDebug($"[Weapon] {Name}: HandsController=0x{hands:X}, Last=0x{_lastHandsController:X}");
+
+                    if (hands != _lastHandsController)
+                    {
+                        _lastHandsController = hands;
+                        _cachedWeaponName = ReadWeaponNameFromHands(hands, Name);
+                        DebugLogger.LogDebug($"[Weapon] {Name}: Updated weapon to '{_cachedWeaponName ?? "null"}'");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.LogDebug($"[Weapon] {Name}: Error reading hands - {ex.Message}");
+                    _cachedWeaponName = null;
+                }
+
+                return _cachedWeaponName;
+            }
+        }
+
+        #endregion
 
         internal ClientPlayer(ulong playerBase) : base(playerBase)
         {

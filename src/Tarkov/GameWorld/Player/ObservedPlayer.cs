@@ -160,6 +160,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// </summary>
         public Enums.ETagStatus HealthStatus { get; private set; } = Enums.ETagStatus.Healthy;
 
+        /// <summary>
+        /// Currently held weapon name.
+        /// TODO: Implement for online mode using ObservedPlayerHands chain.
+        /// </summary>
+        public override string HeldWeaponName => null; // Placeholder for online
+
         internal ObservedPlayer(ulong playerBase) : base(playerBase)
         {
             var localPlayer = Memory.LocalPlayer;

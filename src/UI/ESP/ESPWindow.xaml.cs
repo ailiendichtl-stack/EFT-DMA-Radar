@@ -1357,6 +1357,13 @@ namespace LoneEftDmaRadar.UI.ESP
             if (!string.IsNullOrWhiteSpace(factionText))
                 text = string.IsNullOrWhiteSpace(text) ? factionText : $"{text} [{factionText}]";
 
+            // Add weapon display for AI players
+            if (player.IsAI)
+            {
+                var weaponText = player.WeaponDisplayText;
+                text = string.IsNullOrWhiteSpace(text) ? weaponText : $"{text} [{weaponText}]";
+            }
+
             if (string.IsNullOrWhiteSpace(text))
                 return;
 
