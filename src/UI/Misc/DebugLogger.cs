@@ -15,7 +15,7 @@ namespace LoneEftDmaRadar.UI.Misc
         private static extern bool FreeConsole();
 
         private static bool _isConsoleAllocated = false;
-        private static bool _isFileLoggingEnabled = false;
+        private static bool _isFileLoggingEnabled = false;  // Set to true to enable spawn debug logging
         private static readonly string _logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "debug.log");
         private static readonly object _fileLock = new object();
 

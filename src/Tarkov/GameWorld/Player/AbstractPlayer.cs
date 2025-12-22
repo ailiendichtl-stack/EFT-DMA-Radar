@@ -152,8 +152,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 player = new ClientPlayer(playerBase);
             else
                 player = new ObservedPlayer(playerBase);
-            SpawnDebugLogger.Log($"  Player allocated: Name='{player.Name}', Type={player.Type}");
-            DebugLogger.LogDebug($"Player '{player.Name}' allocated.");
+            SpawnDebugLogger.Log($"  Player allocated: Name='{player.Name}', Type={player.Type}, Side={player.PlayerSide}");
+            DebugLogger.LogDebug($"Player '{player.Name}' allocated (Side={player.PlayerSide}).");
             return player;
         }
 
@@ -830,8 +830,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 // Rogues/ExUSEC
                 Enums.ESpawnType.ExUsec => new AIRole { Name = "Rogue", Type = PlayerType.AIRaider },
 
-                // Raiders (PMC Bots)
-                Enums.ESpawnType.PmcBot or Enums.ESpawnType.PmcBEAR or Enums.ESpawnType.PmcUSEC => new AIRole { Name = "Raider", Type = PlayerType.AIRaider },
+                // PMC Bots (AI PMCs in offline PvE)
+                Enums.ESpawnType.PmcBEAR => new AIRole { Name = "Bear", Type = PlayerType.PMC },
+                Enums.ESpawnType.PmcUSEC => new AIRole { Name = "Usec", Type = PlayerType.PMC },
+                Enums.ESpawnType.PmcBot => new AIRole { Name = "PMC", Type = PlayerType.PMC },
 
                 // Arena fighters
                 Enums.ESpawnType.ArenaFighter or Enums.ESpawnType.ArenaFighterEvent => new AIRole { Name = "Arena Fighter", Type = PlayerType.AIRaider },
@@ -875,6 +877,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// <returns></returns>
         public static AIRole GetAIRoleInfo(string voiceLine)
         {
+            DebugLogger.LogDebug($"[PlayerDetect] GetAIRoleInfo called with: '{voiceLine}'");
+
             switch (voiceLine)
             {
                 case "BossSanitar":
@@ -1002,7 +1006,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             // Nickname detection for offline mode (bosses have specific nicknames)
             if (!string.IsNullOrEmpty(voiceLine))
             {
-                AIRole? nicknameMatch = voiceLine.ToLowerInvariant() switch
+                var lowerVoice = voiceLine.ToLowerInvariant();
+                DebugLogger.LogDebug($"[PlayerDetect] Checking nickname match for: '{lowerVoice}'");
+
+                AIRole? nicknameMatch = lowerVoice switch
                 {
                     // Russian boss nicknames
                     "решала" => new AIRole { Name = "Reshala", Type = PlayerType.AIBoss },
@@ -1025,13 +1032,18 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     _ => null
                 };
                 if (nicknameMatch.HasValue)
+                {
+                    DebugLogger.LogDebug($"[PlayerDetect] Nickname matched: '{nicknameMatch.Value.Name}'");
                     return nicknameMatch.Value;
+                }
             }
 
             // Offline mode voice format parsing (e.g., "bot_Shturman_2456", "boSanitar", etc.)
             if (voiceLine.StartsWith("bot_", StringComparison.OrdinalIgnoreCase) ||
                 voiceLine.StartsWith("bo", StringComparison.OrdinalIgnoreCase))
             {
+                DebugLogger.LogDebug($"[PlayerDetect] Parsing bot prefix format: '{voiceLine}'");
+
                 // Try to extract the boss/AI name from the voice string
                 string namePart = voiceLine;
                 if (voiceLine.StartsWith("bot_", StringComparison.OrdinalIgnoreCase))
@@ -1049,6 +1061,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 }
 
                 var lowerName = namePart.ToLowerInvariant();
+                DebugLogger.LogDebug($"[PlayerDetect] Extracted name part: '{lowerName}'");
+
                 return lowerName switch
                 {
                     "shturman" or "sturman" => new AIRole { Name = "Shturman", Type = PlayerType.AIBoss },
@@ -1068,31 +1082,46 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 };
             }
 
+            DebugLogger.LogDebug($"[PlayerDetect] Checking keyword fallbacks for: '{voiceLine}'");
+
             if (voiceLine.Contains("scav", StringComparison.OrdinalIgnoreCase))
+            {
+                DebugLogger.LogDebug($"[PlayerDetect] Matched 'scav' keyword");
                 return new AIRole
                 {
                     Name = "Scav",
                     Type = PlayerType.AIScav
                 };
+            }
             if (voiceLine.Contains("boss", StringComparison.OrdinalIgnoreCase))
+            {
+                DebugLogger.LogDebug($"[PlayerDetect] Matched 'boss' keyword");
                 return new AIRole
                 {
                     Name = "Boss",
                     Type = PlayerType.AIBoss
                 };
+            }
             if (voiceLine.Contains("usec", StringComparison.OrdinalIgnoreCase))
+            {
+                DebugLogger.LogDebug($"[PlayerDetect] Matched 'usec' keyword");
                 return new AIRole
                 {
                     Name = "Usec",
                     Type = PlayerType.AIRaider
                 };
+            }
             if (voiceLine.Contains("bear", StringComparison.OrdinalIgnoreCase))
+            {
+                DebugLogger.LogDebug($"[PlayerDetect] Matched 'bear' keyword");
                 return new AIRole
                 {
                     Name = "Bear",
                     Type = PlayerType.AIRaider
                 };
-            DebugLogger.LogDebug($"Unknown Voice Line: {voiceLine}");
+            }
+
+            DebugLogger.LogDebug($"[PlayerDetect] No match found, defaulting to Scav. Voice line: '{voiceLine}'");
             return new AIRole
             {
                 Name = "Scav",
