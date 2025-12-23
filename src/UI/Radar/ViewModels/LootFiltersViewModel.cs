@@ -56,6 +56,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             AddFilterCommand = new SimpleCommand(OnAddFilter);
             RenameFilterCommand = new SimpleCommand(OnRenameFilter);
             DeleteFilterCommand = new SimpleCommand(OnDeleteFilter);
+            RestoreDefaultsCommand = new SimpleCommand(OnRestoreDefaults);
 
             AddEntryCommand = new SimpleCommand(OnAddEntry);
             DeleteEntryCommand = new SimpleCommand(OnDeleteEntry);
@@ -246,6 +247,90 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 MessageBox.Show(
                     MainWindow.Instance,
                     $"ERROR Deleting Filter: {ex.Message}",
+                    "Loot Filter",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        public ICommand RestoreDefaultsCommand { get; }
+        private void OnRestoreDefaults()
+        {
+            var result = MessageBox.Show(
+                MainWindow.Instance,
+                "This will replace ALL your current loot filters with the default presets.\n\n" +
+                "Are you sure you want to continue?",
+                "Restore Default Filters",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                // Clear existing filters
+                App.Config.LootFilters.Filters.Clear();
+
+                // Add default filters
+                App.Config.LootFilters.Filters.TryAdd("Value Items", new UserLootFilter
+                {
+                    Enabled = true,
+                    Color = "#FFFF0000",
+                    Entries = DefaultFilters.ValueItems
+                });
+                App.Config.LootFilters.Filters.TryAdd("Top Ammo", new UserLootFilter
+                {
+                    Enabled = true,
+                    Color = "#FF44A8FF",
+                    Entries = DefaultFilters.TopAmmo
+                });
+                App.Config.LootFilters.Filters.TryAdd("Valuable Keys", new UserLootFilter
+                {
+                    Enabled = true,
+                    Color = "#FFEF40FF",
+                    Entries = DefaultFilters.ValuableKeys
+                });
+                App.Config.LootFilters.Filters.TryAdd("Kappa Items", new UserLootFilter
+                {
+                    Enabled = true,
+                    Color = "#FFFF9421",
+                    Entries = DefaultFilters.KappaItems
+                });
+                App.Config.LootFilters.Filters.TryAdd("Prestige Items", new UserLootFilter
+                {
+                    Enabled = true,
+                    Color = "#FF696C1B",
+                    Entries = DefaultFilters.PrestigeItems
+                });
+                App.Config.LootFilters.Filters.TryAdd("Quest Items", new UserLootFilter
+                {
+                    Enabled = true,
+                    Color = "#FF16641E",
+                    Entries = DefaultFilters.QuestItems
+                });
+
+                // Update UI
+                FilterNames.Clear();
+                foreach (var key in App.Config.LootFilters.Filters.Keys)
+                    FilterNames.Add(key);
+
+                App.Config.LootFilters.Selected = "Value Items";
+                SelectedFilterName = "Value Items";
+
+                RefreshLootFilter();
+
+                MessageBox.Show(
+                    MainWindow.Instance,
+                    "Default filters have been restored successfully!",
+                    "Restore Default Filters",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    MainWindow.Instance,
+                    $"ERROR Restoring Defaults: {ex.Message}",
                     "Loot Filter",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

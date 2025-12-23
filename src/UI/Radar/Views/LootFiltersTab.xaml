@@ -55,7 +55,11 @@
                     Margin="0,0,5,0" />
             <Button Content="Delete"
                     Command="{Binding DeleteFilterCommand}"
-                    Margin="0,0,10,0" />
+                    Margin="0,0,5,0" />
+            <Button Content="Restore Defaults"
+                    Command="{Binding RestoreDefaultsCommand}"
+                    Margin="0,0,10,0"
+                    ToolTip="Replace all filters with the default filter presets" />
             <TextBlock Text="Color:"
                        VerticalAlignment="Center"
                        Margin="0,0,5,0" />

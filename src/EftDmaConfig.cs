@@ -1122,7 +1122,7 @@ namespace LoneEftDmaRadar
         /// Currently selected filter.
         /// </summary>
         [JsonPropertyName("selected")]
-        public string Selected { get; set; } = "default";
+        public string Selected { get; set; } = "Value Items";
         /// <summary>
         /// Filter Entries.
         /// </summary>
@@ -1130,7 +1130,12 @@ namespace LoneEftDmaRadar
         [JsonPropertyName("filters")]
         public ConcurrentDictionary<string, UserLootFilter> Filters { get; private set; } = new() // Key is just a name, doesnt need to be case insensitive
         {
-            ["default"] = new()
+            ["Value Items"] = new() { Enabled = true, Color = "#FFFF0000", Entries = DefaultFilters.ValueItems },
+            ["Top Ammo"] = new() { Enabled = true, Color = "#FF44A8FF", Entries = DefaultFilters.TopAmmo },
+            ["Valuable Keys"] = new() { Enabled = true, Color = "#FFEF40FF", Entries = DefaultFilters.ValuableKeys },
+            ["Kappa Items"] = new() { Enabled = true, Color = "#FFFF9421", Entries = DefaultFilters.KappaItems },
+            ["Prestige Items"] = new() { Enabled = true, Color = "#FF696C1B", Entries = DefaultFilters.PrestigeItems },
+            ["Quest Items"] = new() { Enabled = true, Color = "#FF16641E", Entries = DefaultFilters.QuestItems },
         };
     }
 
