@@ -1002,6 +1002,12 @@ namespace LoneEftDmaRadar
         public float EspDrawDistance { get; set; } = 100f;
 
         /// <summary>
+        /// Minimum container contents value to display (0 = show all).
+        /// </summary>
+        [JsonPropertyName("minValue")]
+        public int MinValue { get; set; } = 0;
+
+        /// <summary>
         /// Select all containers.
         /// </summary>
         [JsonPropertyName("selectAll")]
@@ -1067,6 +1073,12 @@ namespace LoneEftDmaRadar
         public bool TargetRaider { get; set; } = true;
         public bool TargetSpecialPlayer { get; set; } = true;
         public bool TargetStreamer { get; set; } = true;
+
+        /// <summary>
+        /// When true, automatically switches to next target when current target becomes invalid.
+        /// When false, user must release and re-engage aimbot to switch targets.
+        /// </summary>
+        public bool AutoTargetSwitch { get; set; } = true;
 
         // KMBox NET
         public bool UseKmBoxNet { get; set; } = false;

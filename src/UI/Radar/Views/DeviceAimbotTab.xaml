@@ -184,7 +184,12 @@
                             TickFrequency="50"
                             IsSnapToTickEnabled="True"
                             Margin="8,4,8,8" />
-                    
+
+                    <CheckBox Content="Auto Target Switch"
+                              IsChecked="{Binding AutoTargetSwitch, Mode=TwoWay}"
+                              ToolTip="When enabled, automatically switches to next target when current becomes invalid. When disabled, release and re-engage to switch targets."
+                              Margin="8,4,8,8" />
+
                     <CheckBox Content="Enable Bullet Drop Prediction"
                               IsChecked="{Binding EnablePrediction, Mode=TwoWay}"
                               Margin="8,4,8,8" />

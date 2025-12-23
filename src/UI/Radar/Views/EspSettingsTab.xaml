@@ -242,11 +242,26 @@
                                 Width="150"
                                 Margin="8,0"
                                 Minimum="0"
-                                Maximum="200"
-                                SmallChange="1"
-                                LargeChange="10"
+                                Maximum="1000"
+                                SmallChange="10"
+                                LargeChange="100"
                                 Value="{Binding EspContainerDistance, Mode=TwoWay}" />
                         <TextBlock Text="{Binding Value, ElementName=EspContainerDistanceSlider, StringFormat='{}{0:F0}'}"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0" />
+                     </WrapPanel>
+                     <WrapPanel Margin="0,4,0,0" IsEnabled="{Binding EspContainers}">
+                        <TextBlock Text="Min Value (0=All)"
+                                   VerticalAlignment="Center" />
+                        <Slider x:Name="EspContainerMinValueSlider"
+                                Width="150"
+                                Margin="8,0"
+                                Minimum="0"
+                                Maximum="500000"
+                                SmallChange="10000"
+                                LargeChange="50000"
+                                Value="{Binding EspContainerMinValue, Mode=TwoWay}" />
+                        <TextBlock Text="{Binding Value, ElementName=EspContainerMinValueSlider, StringFormat='{}{0:N0}'}"
                                    VerticalAlignment="Center"
                                    Margin="8,0,0,0" />
                      </WrapPanel>

@@ -552,7 +552,8 @@ namespace LoneEftDmaRadar.UI.ESP
             var selected = App.Config.Containers.Selected;
             bool hideSearched = App.Config.Containers.HideSearched;
             float maxDistance = App.Config.Containers.EspDrawDistance;
-            var color = GetContainerColorForRender();
+            int minValue = App.Config.Containers.MinValue;
+            var defaultColor = GetContainerColorForRender();
 
             foreach (var container in containers)
             {
@@ -563,6 +564,10 @@ namespace LoneEftDmaRadar.UI.ESP
                 if (hideSearched && container.Searched)
                     continue;
 
+                // Filter by min value (important items always pass)
+                if (minValue > 0 && !container.HasImportantContents && container.TotalValue < minValue)
+                    continue;
+
                 float distance = Vector3.Distance(localPlayer.Position, container.Position);
                 if (maxDistance > 0 && distance > maxDistance)
                     continue;
@@ -570,8 +575,24 @@ namespace LoneEftDmaRadar.UI.ESP
                 if (!WorldToScreen2(container.Position, out var screen, screenWidth, screenHeight))
                     continue;
 
+                // Determine color based on container contents
+                // Priority: Important > Valuable > HasValuable > Default
+                DxColor color = defaultColor;
+                if (container.HasImportantContents)
+                    color = ToColor(SKPaints.PaintFilteredLoot);
+                else if (container.IsValuableContainer)
+                    color = ToColor(SKPaints.PaintImportantLoot);
+                else if (container.HasValuableContents)
+                    color = ToColor(SKPaints.PaintLoot);
+
                 ctx.DrawCircle(ToRaw(screen), 3f, color, true);
-                ctx.DrawText(container.Name ?? "Container", screen.X + 4, screen.Y + 4, color, DxTextSize.Small);
+
+                // Build label with value if available
+                string text = container.Name ?? "Container";
+                if (App.Config.UI.EspLootPrice && container.TotalValue > 0)
+                    text = $"{text} ({LoneEftDmaRadar.Misc.Utilities.FormatNumberKM(container.TotalValue)})";
+
+                ctx.DrawText(text, screen.X + 4, screen.Y + 4, color, DxTextSize.Small);
             }
         }
 
@@ -879,19 +900,30 @@ namespace LoneEftDmaRadar.UI.ESP
              if (!App.Config.Containers.Enabled) return;
              var containers = Memory.Game?.Loot?.StaticContainers;
              if (containers is null) return;
-             
+
              bool selectAll = App.Config.Containers.SelectAll;
              var selected = App.Config.Containers.Selected;
              bool hideSearched = App.Config.Containers.HideSearched;
-             var color = ColorFromHex(App.Config.UI.EspColorContainers);
-             
+             int minValue = App.Config.Containers.MinValue;
+             var defaultColor = ColorFromHex(App.Config.UI.EspColorContainers);
+
              foreach (var c in containers)
              {
                   if (c.Position == Vector3.Zero) continue;
                   var id = c.ID ?? "UNKNOWN";
                   if (!(selectAll || selected.ContainsKey(id))) continue;
                   if (hideSearched && c.Searched) continue;
-                  
+
+                  // Filter by min value (important items always pass)
+                  if (minValue > 0 && !c.HasImportantContents && c.TotalValue < minValue)
+                      continue;
+
+                  // Use value-based color - Priority: Important > Valuable > HasValuable > Default
+                  var color = c.HasImportantContents ? SKColors.Turquoise :
+                              c.IsValuableContainer ? SKColors.Gold :
+                              c.HasValuableContents ? SKColors.White :
+                              defaultColor;
+
                   DrawMiniRadarDot(ctx, c.Position, map, color, 1.5f);
              }
         }

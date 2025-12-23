@@ -133,6 +133,12 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             set { App.Config.Device.Enabled = value; OnPropertyChanged(); }
         }
 
+        public bool AutoTargetSwitch
+        {
+            get => App.Config.Device.AutoTargetSwitch;
+            set { App.Config.Device.AutoTargetSwitch = value; OnPropertyChanged(); }
+        }
+
         public List<Bones> AvailableBones { get; } = new List<Bones>
         {
             Bones.HumanHead,

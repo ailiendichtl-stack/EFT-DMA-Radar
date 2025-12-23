@@ -26,7 +26,9 @@ SOFTWARE.
  *
 */
 
+using Collections.Pooled;
 using LoneEftDmaRadar.Misc;
+using LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
 using LoneEftDmaRadar.UI.Radar.Maps;
 using LoneEftDmaRadar.UI.Skia;
@@ -38,6 +40,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
     {
         private static readonly TarkovMarketItem _default = new();
         private readonly ulong _interactiveClass;
+        private List<ContainerItem> _contents;
+        private bool _contentsLoaded = false;
 
         public override string Name { get; }
 
@@ -50,6 +54,43 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// True if the container has been searched by LocalPlayer or another Networked Entity.
         /// </summary>
         public bool Searched { get; private set; }
+
+        /// <summary>
+        /// Items contained within this container (offline PVE only).
+        /// </summary>
+        public IReadOnlyList<ContainerItem> Contents => _contents;
+
+        /// <summary>
+        /// Total value of all items in this container.
+        /// </summary>
+        public int TotalValue => _contents?.Sum(x => x.Price) ?? 0;
+
+        /// <summary>
+        /// True if this container has valuable contents (meets minimum loot value threshold).
+        /// </summary>
+        public bool HasValuableContents => TotalValue >= App.Config.Loot.MinValue;
+
+        /// <summary>
+        /// True if this container has very valuable contents (meets valuable loot threshold).
+        /// </summary>
+        public bool IsValuableContainer => TotalValue >= App.Config.Loot.MinValueValuable;
+
+        /// <summary>
+        /// True if this container has any items marked as Important via custom loot filters.
+        /// </summary>
+        public bool HasImportantContents => _contents?.Any(x => x.IsImportant) ?? false;
+
+        /// <summary>
+        /// Checks if this container should be displayed based on min value filter.
+        /// Containers with important items always pass the filter.
+        /// </summary>
+        private bool PassesMinValueFilter()
+        {
+            var minValue = App.Config.Containers.MinValue;
+            if (minValue <= 0) return true; // No filter
+            if (HasImportantContents) return true; // Important items always show
+            return TotalValue >= minValue;
+        }
 
         public StaticLootContainer(string containerId, Vector3 position)
             : base(_default, position)
@@ -95,6 +136,21 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             }
         }
 
+        /// <summary>
+        /// Refreshes container contents from memory.
+        /// Only works in offline PVE where loot is pre-generated.
+        /// Contents are cached after first successful read.
+        /// </summary>
+        internal void RefreshContents()
+        {
+            if (_contentsLoaded || _interactiveClass == 0)
+                return;
+
+            _contents = ContainerContentsReader.GetContainerContents(_interactiveClass);
+            if (_contents.Count > 0)
+                _contentsLoaded = true;
+        }
+
         public override void Draw(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
         {
             if (!App.Config.Containers.Enabled)
@@ -103,36 +159,92 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             if (App.Config.Containers.HideSearched && Searched)
                 return;
 
+            // Filter by min value (important items always pass)
+            if (!PassesMinValueFilter())
+                return;
+
             if (Position.WithinDistance(localPlayer.Position, App.Config.Containers.DrawDistance))
             {
+                var label = GetContainerLabel();
+                var paints = GetContainerPaints();
                 var heightDiff = Position.Y - localPlayer.ReferenceHeight;
                 var point = Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams);
                 MouseoverPosition = new Vector2(point.X, point.Y);
                 SKPaints.ShapeOutline.StrokeWidth = 2f;
+                var widgetFont = CustomFontManager.GetCurrentRadarWidgetFont();
+
                 if (heightDiff > 1.45) // loot is above player
                 {
-                    using var path = point.GetUpArrow(2.5f);
-                    canvas.DrawPath(path, SKPaints.ShapeOutline);
-                    canvas.DrawPath(path, SKPaints.PaintContainerLoot);
+                    var adjustedPoint = new SKPoint(point.X, point.Y + 3 * App.Config.UI.UIScale);
+                    canvas.DrawText("▲", adjustedPoint, SKTextAlign.Center, widgetFont, SKPaints.TextOutline);
+                    canvas.DrawText("▲", adjustedPoint, SKTextAlign.Center, widgetFont, paints.Item1);
                 }
                 else if (heightDiff < -1.45) // loot is below player
                 {
-                    using var path = point.GetDownArrow(2.5f);
-                    canvas.DrawPath(path, SKPaints.ShapeOutline);
-                    canvas.DrawPath(path, SKPaints.PaintContainerLoot);
+                    var adjustedPoint = new SKPoint(point.X, point.Y + 3 * App.Config.UI.UIScale);
+                    canvas.DrawText("▼", adjustedPoint, SKTextAlign.Center, widgetFont, SKPaints.TextOutline);
+                    canvas.DrawText("▼", adjustedPoint, SKTextAlign.Center, widgetFont, paints.Item1);
                 }
                 else // loot is level with player
                 {
-                    var size = 2.5f * App.Config.UI.UIScale;
-                    canvas.DrawCircle(point, size, SKPaints.ShapeOutline);
-                    canvas.DrawCircle(point, size, SKPaints.PaintContainerLoot);
+                    var adjustedPoint = new SKPoint(point.X, point.Y + 3 * App.Config.UI.UIScale);
+                    canvas.DrawText("●", adjustedPoint, SKTextAlign.Center, widgetFont, SKPaints.TextOutline);
+                    canvas.DrawText("●", adjustedPoint, SKTextAlign.Center, widgetFont, paints.Item1);
                 }
+
+                // Draw label with value
+                point.Offset(7 * App.Config.UI.UIScale, 3 * App.Config.UI.UIScale);
+                canvas.DrawText(label, point, SKTextAlign.Left, widgetFont, SKPaints.TextOutline);
+                canvas.DrawText(label, point, SKTextAlign.Left, widgetFont, paints.Item2);
             }
+        }
+
+        /// <summary>
+        /// Gets the display label for this container (with value if available).
+        /// </summary>
+        private string GetContainerLabel()
+        {
+            if (TotalValue > 0)
+                return $"[{Utilities.FormatNumberKM(TotalValue)}] {Name}";
+            return Name;
+        }
+
+        /// <summary>
+        /// Gets the paint colors for this container based on its contents.
+        /// Priority: Important items > Valuable container > Has valuable contents > Default
+        /// </summary>
+        private (SKPaint, SKPaint) GetContainerPaints()
+        {
+            // Important items have highest priority (cyan/turquoise color)
+            if (HasImportantContents)
+                return (SKPaints.PaintFilteredLoot, SKPaints.TextFilteredLoot);
+            if (IsValuableContainer)
+                return (SKPaints.PaintImportantLoot, SKPaints.TextImportantLoot);
+            if (HasValuableContents)
+                return (SKPaints.PaintLoot, SKPaints.TextLoot);
+            return (SKPaints.PaintContainerLoot, SKPaints.TextLoot);
         }
 
         public override void DrawMouseover(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
         {
-            Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams).DrawMouseoverText(canvas, Name);
+            using var lines = new PooledList<string>();
+            lines.Add(Name);
+
+            if (_contents?.Count > 0)
+            {
+                lines.Add($"Value: {Utilities.FormatNumberKM(TotalValue)}");
+                // Show top items sorted by price (max 8 items)
+                foreach (var item in _contents.OrderByDescending(x => x.Price).Take(8))
+                {
+                    lines.Add($"  [{Utilities.FormatNumberKM(item.Price)}] {item.Name}");
+                }
+            }
+            else
+            {
+                lines.Add("(Empty or unopened)");
+            }
+
+            Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams).DrawMouseoverText(canvas, lines.Span);
         }
     }
 }

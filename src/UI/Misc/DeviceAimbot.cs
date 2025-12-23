@@ -253,14 +253,38 @@ namespace LoneEftDmaRadar.UI.Misc
                     }
 
                     // 6) Target acquisition
-                    if (_lockedTarget == null || !IsTargetValid(_lockedTarget, localPlayer))
+                    if (_lockedTarget == null)
                     {
+                        // No target - always try to acquire one
                         _debugStatus = "Scanning for target...";
                         _lockedTarget = FindBestTarget(game, localPlayer);
 
                         if (_lockedTarget == null)
                         {
                             _debugStatus = "No target in FOV / range";
+                            Thread.Sleep(10);
+                            continue;
+                        }
+                    }
+                    else if (!IsTargetValid(_lockedTarget, localPlayer))
+                    {
+                        if (Config.AutoTargetSwitch)
+                        {
+                            // Auto switch enabled - find new target
+                            _debugStatus = "Target invalid, auto-switching...";
+                            _lockedTarget = FindBestTarget(game, localPlayer);
+
+                            if (_lockedTarget == null)
+                            {
+                                _debugStatus = "No target in FOV / range";
+                                Thread.Sleep(10);
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            // Auto switch disabled - wait for user to release and re-engage
+                            _debugStatus = "Target lost - release and re-engage to switch";
                             Thread.Sleep(10);
                             continue;
                         }

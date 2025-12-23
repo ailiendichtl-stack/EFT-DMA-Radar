@@ -134,6 +134,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 if (item is StaticLootContainer container)
                 {
                     container.UpdateSearchedStatus();
+                    container.RefreshContents(); // Load container contents for offline PVE
                 }
             }
             // Proceed to get new loot

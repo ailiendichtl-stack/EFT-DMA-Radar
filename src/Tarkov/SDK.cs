@@ -335,6 +335,16 @@ namespace SDK
             public const uint Slots = 0x80; // EFT.InventoryLogic.Slot[]
         }
 
+        public readonly partial struct Grid // EFT.InventoryLogic.Grid - Container grid storage
+        {
+            public const uint ItemCollection = 0x48; // GClass??? - ItemCollection/ContainedItems wrapper
+        }
+
+        public readonly partial struct GridItemCollection // Grid's ItemCollection wrapper
+        {
+            public const uint Items = 0x18; // System.Collections.Generic.List<Item> - VERIFIED via debug
+        }
+
         public readonly partial struct ModTemplate //Class: EFT.InventoryLogic.ModTemplate
         {
             public const uint Velocity = 0x188; // Single <Velocity> Velocity

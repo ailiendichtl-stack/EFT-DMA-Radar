@@ -689,6 +689,19 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        public int EspContainerMinValue
+        {
+            get => App.Config.Containers.MinValue;
+            set
+            {
+                if (App.Config.Containers.MinValue != value)
+                {
+                    App.Config.Containers.MinValue = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         #region MiniRadar
         public bool MiniRadarEnabled
         {
