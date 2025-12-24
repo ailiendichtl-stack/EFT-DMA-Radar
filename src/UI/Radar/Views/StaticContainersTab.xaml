@@ -28,6 +28,10 @@
                                   ToolTip="Hides containers that have been searched by local player."
                                   IsChecked="{Binding HideSearchedContainers, Mode=TwoWay}"
                                   Margin="0,0,16,8" />
+                        <CheckBox Content="PVE Content Scan"
+                                  ToolTip="Enable scanning container/corpse contents. OFFLINE PVE MODE ONLY! This feature reads loot from memory which only works in offline raids where loot is pre-generated. Do NOT enable in online raids - it will not work and generates unnecessary memory reads."
+                                  IsChecked="{Binding PveScanEnabled, Mode=TwoWay}"
+                                  Margin="0,0,16,8" />
                     </WrapPanel>
 
                     <TextBlock Text="Tracked Containers"

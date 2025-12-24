@@ -143,6 +143,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// </summary>
         internal void RefreshContents()
         {
+            // Only scan contents if PVE scanning is enabled (offline mode only)
+            if (!App.Config.Containers.PveScanEnabled)
+                return;
+
             if (_contentsLoaded || _interactiveClass == 0)
                 return;
 

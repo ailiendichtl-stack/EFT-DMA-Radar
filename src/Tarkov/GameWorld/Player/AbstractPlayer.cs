@@ -153,16 +153,18 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             else
                 player = new ObservedPlayer(playerBase);
             SpawnDebugLogger.Log($"  Player allocated: Name='{player.Name}', Type={player.Type}, Side={player.PlayerSide}");
-            DebugLogger.LogDebug($"Player '{player.Name}' allocated (Side={player.PlayerSide}).");
+            DebugLogger.LogDebug($"Player '{player.Name}' allocated | 0x{playerBase:X}");
             return player;
         }
+
+        private AbstractPlayer() { }
 
         /// <summary>
         /// Player Constructor.
         /// </summary>
         protected AbstractPlayer(ulong playerBase)
         {
-            ArgumentOutOfRangeException.ThrowIfZero(playerBase, nameof(playerBase));
+            playerBase.ThrowIfInvalidVirtualAddress(nameof(playerBase));
             Base = playerBase;
         }
 

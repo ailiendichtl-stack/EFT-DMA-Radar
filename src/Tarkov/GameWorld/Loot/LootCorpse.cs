@@ -28,6 +28,7 @@ SOFTWARE.
 
 using Collections.Pooled;
 using LoneEftDmaRadar.Misc;
+using LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
 using LoneEftDmaRadar.UI.Radar.Maps;
 using LoneEftDmaRadar.UI.Skia;
@@ -39,10 +40,34 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
     {
         private static readonly TarkovMarketItem _default = new();
         private readonly ulong _corpse;
+        private bool _contentsLoaded;
+        private DateTime _lastContentsRefresh = DateTime.MinValue;
+        private static readonly TimeSpan _contentsRefreshInterval = TimeSpan.FromSeconds(5);
+
         /// <summary>
         /// Corpse container's associated player object (if any).
         /// </summary>
         public AbstractPlayer Player { get; set; }
+
+        /// <summary>
+        /// Items inside the corpse's inventory (backpack, rig, pockets).
+        /// </summary>
+        public List<ContainerItem> Contents { get; private set; } = new();
+
+        /// <summary>
+        /// Total value of items inside the corpse's inventory containers.
+        /// </summary>
+        public int InventoryValue => Contents?.Sum(x => x.Price) ?? 0;
+
+        /// <summary>
+        /// True if any item in the corpse's inventory is marked as Important.
+        /// </summary>
+        public bool HasImportantContents => Contents?.Any(x => x.IsImportant) ?? false;
+
+        /// <summary>
+        /// True if the corpse has valuable inventory contents (above min value threshold).
+        /// </summary>
+        public bool HasValuableContents => InventoryValue >= App.Config.Containers.MinValue;
 
         public override string Name => Player?.Name ?? "Corpse";
 
@@ -63,6 +88,39 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             Player ??= deadPlayers?.FirstOrDefault(x => x.Corpse == _corpse);
             if (Player is not null && Player.LootObject is null)
                 Player.LootObject = this;
+
+            // Refresh inventory contents after syncing player
+            RefreshContents();
+        }
+
+        /// <summary>
+        /// Refreshes the corpse's inventory contents.
+        /// Only works for ObservedPlayer corpses in offline PVE mode.
+        /// </summary>
+        public void RefreshContents()
+        {
+            // Only scan contents if PVE scanning is enabled (offline mode only)
+            if (!App.Config.Containers.PveScanEnabled)
+                return;
+
+            if (Player is not ObservedPlayer obs)
+                return;
+
+            // Throttle refreshes
+            if (DateTime.UtcNow - _lastContentsRefresh < _contentsRefreshInterval && _contentsLoaded)
+                return;
+
+            _lastContentsRefresh = DateTime.UtcNow;
+
+            try
+            {
+                Contents = CorpseContentsReader.GetCorpseContents(obs);
+                _contentsLoaded = true;
+            }
+            catch
+            {
+                // Ignore errors, keep existing contents
+            }
         }
 
         public override void Draw(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
@@ -73,39 +131,69 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             SKPaints.ShapeOutline.StrokeWidth = 2f;
             var widgetFont = CustomFontManager.GetCurrentRadarWidgetFont();
 
+            // Get paint based on contents value - Priority: Important > Valuable > Default
+            var textPaint = GetCorpsePaint();
+
             if (heightDiff > 1.45) // loot is above player
             {
                 var adjustedPoint = new SKPoint(point.X, point.Y + 3 * App.Config.UI.UIScale);
                 canvas.DrawText("▲", adjustedPoint, SKTextAlign.Center, widgetFont, SKPaints.TextOutline);
-                canvas.DrawText("▲", adjustedPoint, SKTextAlign.Center, widgetFont, SKPaints.TextCorpse);
+                canvas.DrawText("▲", adjustedPoint, SKTextAlign.Center, widgetFont, textPaint);
             }
             else if (heightDiff < -1.45) // loot is below player
             {
                 var adjustedPoint = new SKPoint(point.X, point.Y + 3 * App.Config.UI.UIScale);
                 canvas.DrawText("▼", adjustedPoint, SKTextAlign.Center, widgetFont, SKPaints.TextOutline);
-                canvas.DrawText("▼", adjustedPoint, SKTextAlign.Center, widgetFont, SKPaints.TextCorpse);
+                canvas.DrawText("▼", adjustedPoint, SKTextAlign.Center, widgetFont, textPaint);
             }
             else // loot is level with player
             {
                 var adjustedPoint = new SKPoint(point.X, point.Y + 3 * App.Config.UI.UIScale);
                 canvas.DrawText("●", adjustedPoint, SKTextAlign.Center, widgetFont, SKPaints.TextOutline);
-                canvas.DrawText("●", adjustedPoint, SKTextAlign.Center, widgetFont, SKPaints.TextCorpse);
+                canvas.DrawText("●", adjustedPoint, SKTextAlign.Center, widgetFont, textPaint);
             }
 
             point.Offset(7 * App.Config.UI.UIScale, 3 * App.Config.UI.UIScale);
 
+            // Build label with value if contents loaded
+            var label = GetCorpseLabel();
+
             canvas.DrawText(
-                Name,
+                label,
                 point,
                 SKTextAlign.Left,
                 widgetFont,
                 SKPaints.TextOutline); // Draw outline
             canvas.DrawText(
-                Name,
+                label,
                 point,
                 SKTextAlign.Left,
                 widgetFont,
-                SKPaints.TextCorpse);
+                textPaint);
+        }
+
+        /// <summary>
+        /// Gets the appropriate paint for the corpse based on contents.
+        /// Priority: Important > Valuable > Default
+        /// </summary>
+        private SKPaint GetCorpsePaint()
+        {
+            if (HasImportantContents)
+                return SKPaints.TextImportantLoot;
+            if (HasValuableContents)
+                return SKPaints.TextFilteredLoot;
+            return SKPaints.TextCorpse;
+        }
+
+        /// <summary>
+        /// Gets the label for the corpse including value if available.
+        /// </summary>
+        private string GetCorpseLabel()
+        {
+            var totalValue = InventoryValue;
+            if (totalValue > 0)
+                return $"[{Utilities.FormatNumberKM(totalValue)}] {Name}";
+            return Name;
         }
 
         public override void DrawMouseover(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
@@ -121,10 +209,23 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
                 if (Player is ObservedPlayer obs) // show equipment info
                 {
-                    lines.Add($"Value: {Utilities.FormatNumberKM(obs.Equipment.Value)}");
+                    lines.Add($"Gear Value: {Utilities.FormatNumberKM(obs.Equipment.Value)}");
                     foreach (var item in obs.Equipment.Items.OrderBy(e => e.Key))
                     {
                         lines.Add($"{item.Key.Substring(0, 5)}: {item.Value.ShortName}");
+                    }
+
+                    // Show inventory contents if available
+                    if (Contents?.Count > 0)
+                    {
+                        lines.Add($"--- Inventory ({Utilities.FormatNumberKM(InventoryValue)}) ---");
+                        foreach (var item in Contents.OrderByDescending(x => x.Price).Take(10))
+                        {
+                            var prefix = item.IsImportant ? "★ " : "";
+                            lines.Add($"{prefix}{item.Name} ({Utilities.FormatNumberKM(item.Price)})");
+                        }
+                        if (Contents.Count > 10)
+                            lines.Add($"... and {Contents.Count - 10} more");
                     }
                 }
             }

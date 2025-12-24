@@ -272,8 +272,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             bool isAI = Memory.ReadValue<bool>(this + Offsets.ObservedPlayerView.IsAI);
             IsHuman = !isAI;
             Profile = new PlayerProfile(this, GetAccountID());
-            // Get Group ID
-            GroupID = isAI ? -1 : GetGroupNumber();
+            // Get Group ID - temporarily disabled, needs investigation for online players
+            GroupID = -1;
             /// Determine Player Type
             PlayerSide = (Enums.EPlayerSide)Memory.ReadValue<int>(this + Offsets.ObservedPlayerView.Side); // Usec,Bear,Scav,etc.
             if (!Enum.IsDefined(PlayerSide)) // Make sure PlayerSide is valid
@@ -320,7 +320,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             }
             if (IsHuman)
             {
-                long acctIdLong = long.Parse(AccountID);
+                long.TryParse(AccountID, out long acctIdLong);
                 var cache = LocalCache.GetProfileCollection();
                 if (cache.FindById(acctIdLong) is EftProfileDto dto &&
                     dto.IsCachedRecent)

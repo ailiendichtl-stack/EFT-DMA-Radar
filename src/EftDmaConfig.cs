@@ -1020,6 +1020,14 @@ namespace LoneEftDmaRadar
         public bool HideSearched { get; set; } = false;
 
         /// <summary>
+        /// Enable scanning container/corpse contents.
+        /// Only works in offline PVE mode where loot is pre-generated.
+        /// Disabled by default to avoid unnecessary memory reads in online mode.
+        /// </summary>
+        [JsonPropertyName("pveScanEnabled")]
+        public bool PveScanEnabled { get; set; } = false;
+
+        /// <summary>
         /// Selected containers to display.
         /// </summary>
         [JsonPropertyName("selected_v4")]

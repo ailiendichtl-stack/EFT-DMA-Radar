@@ -1525,6 +1525,24 @@ namespace LoneEftDmaRadar.UI.ESP
                 ctx.DrawText(line, x, y, color, DxTextSize.Small);
                 y += lineStep;
             }
+
+            // Add raid mode detection info
+            y += lineStep; // Extra spacing
+            var players = Memory.Players;
+            if (players != null && Memory.InRaid)
+            {
+                // Check if any non-local players are ObservedPlayers (indicates online raid)
+                bool hasObservedPlayers = players.Any(p => !(p is LocalPlayer) && (p is ObservedPlayer));
+                string raidMode = hasObservedPlayers ? "ONLINE" : "OFFLINE/PVE";
+                var modeColor = hasObservedPlayers ? new DxColor(0, 0, 255, 255) : new DxColor(0, 255, 0, 255);
+                ctx.DrawText($"Raid Mode: {raidMode}", x, y, modeColor, DxTextSize.Small);
+                y += lineStep;
+
+                // Show PVE scan status
+                bool pveEnabled = App.Config.Containers.PveScanEnabled;
+                var scanColor = pveEnabled ? new DxColor(0, 255, 0, 255) : new DxColor(0, 0, 255, 255);
+                ctx.DrawText($"PVE Content Scan: {(pveEnabled ? "ON" : "OFF")}", x, y, scanColor, DxTextSize.Small);
+            }
         }
 
         private void DrawFPS(Dx9RenderContext ctx, float width, float height)

@@ -45,6 +45,19 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        public bool PveScanEnabled
+        {
+            get => App.Config.Containers.PveScanEnabled;
+            set
+            {
+                if (App.Config.Containers.PveScanEnabled != value)
+                {
+                    App.Config.Containers.PveScanEnabled = value;
+                    OnPropertyChanged(nameof(PveScanEnabled));
+                }
+            }
+        }
+
         private void InitializeContainers()
         {
             // If SelectAll is true but Selected dictionary is empty, populate it BEFORE creating entries
