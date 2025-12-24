@@ -225,11 +225,10 @@ namespace LoneEftDmaRadar.UI.Misc
                         continue;
                     }
 
-                    // 5) Weapon / Fireport check
-                    _debugStatus = "Updating FirearmManager...";
-                    localPlayer.UpdateFirearmManager();
-
-                    var fireportPosOpt = localPlayer.FirearmManager?.FireportPosition;
+                    // 5) Weapon / Fireport check - read from immutable snapshot (updated by T1 worker)
+                    _debugStatus = "Reading FirearmManager snapshot...";
+                    var snapshot = localPlayer.FirearmManager?.CurrentSnapshot;
+                    var fireportPosOpt = snapshot?.FireportPosition;
                     bool needsFireport = Config.EnablePrediction ||
                         (App.Config.MemWrites.Enabled && App.Config.MemWrites.MemoryAimEnabled);
 
@@ -736,11 +735,11 @@ private void ApplyMemoryAim(LocalPlayer localPlayer, Vector3 targetPosition)
 {
     try
     {
-        var firearmManager = localPlayer.FirearmManager;
-        if (firearmManager == null)
+        var snapshot = localPlayer.FirearmManager?.CurrentSnapshot;
+        if (snapshot == null)
             return;
 
-        var fireportPos = firearmManager.FireportPosition;
+        var fireportPos = snapshot.FireportPosition;
         if (!fireportPos.HasValue || fireportPos.Value == Vector3.Zero)
             return;
 
@@ -878,16 +877,11 @@ private static float RadToDeg(float radians)
         {
             try
             {
-                var firearmManager = localPlayer.FirearmManager;
-                if (firearmManager == null)
+                var snapshot = localPlayer.FirearmManager?.CurrentSnapshot;
+                if (snapshot == null || !snapshot.IsWeapon || snapshot.ItemAddr == 0)
                     return null;
 
-                // Use cached hands info for safer access
-                var handsInfo = firearmManager.CurrentHands;
-                if (handsInfo == null || !handsInfo.IsWeapon || handsInfo.ItemAddr == 0)
-                    return null;
-
-                ulong handsAddr = handsInfo.ItemAddr;
+                ulong handsAddr = snapshot.ItemAddr;
                 long nowTicks = DateTime.UtcNow.Ticks;
 
                 // === BALLISTICS CACHING ===

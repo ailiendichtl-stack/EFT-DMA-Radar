@@ -31,6 +31,7 @@ using LoneEftDmaRadar.Misc.Services;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
+using LoneEftDmaRadar.UI.Misc;
 using LoneEftDmaRadar.UI.Radar.ViewModels;
 using LoneEftDmaRadar.Web.ProfileApi;
 using LoneEftDmaRadar.Web.ProfileApi.Schema;
@@ -278,17 +279,23 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             PlayerSide = (Enums.EPlayerSide)Memory.ReadValue<int>(this + Offsets.ObservedPlayerView.Side); // Usec,Bear,Scav,etc.
             if (!Enum.IsDefined(PlayerSide)) // Make sure PlayerSide is valid
                 throw new ArgumentOutOfRangeException(nameof(PlayerSide));
+
+            // Debug logging for player detection
+            DebugLogger.LogDebug($"[PlayerDetect] ObservedPlayer: Base=0x{(ulong)this:X}, IsAI={isAI}, PlayerSide={PlayerSide} ({(int)PlayerSide}), IsScav={IsScav}, IsPmc={IsPmc}");
+
             if (IsScav)
             {
                 if (isAI)
                 {
                     // Try SpawnType first (works reliably in both online and offline modes)
                     var spawnType = ReadSpawnType();
+                    DebugLogger.LogDebug($"[PlayerDetect] AI Scav SpawnType={spawnType} ({(int)spawnType})");
                     if (spawnType != Enums.ESpawnType.UNKNOWN)
                     {
                         var role = GetAIRoleFromSpawnType(spawnType);
                         Name = role.Name;
                         Type = role.Type;
+                        DebugLogger.LogDebug($"[PlayerDetect] Role from SpawnType: Name='{role.Name}', Type={role.Type}");
                     }
                     else
                     {
@@ -298,21 +305,23 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                         var role = GetAIRoleInfo(voice);
                         Name = role.Name;
                         Type = role.Type;
+                        DebugLogger.LogDebug($"[PlayerDetect] Role from voice '{voice}': Name='{role.Name}', Type={role.Type}");
                     }
                 }
                 else
                 {
-                    int pscavNumber = Interlocked.Increment(ref _lastPscavNumber);
-                    Name = $"PScav{pscavNumber}";
+                    Name = $"PScav{GetPlayerId()}";
                     Type = GroupID != -1 && GroupID == localPlayer.GroupID ?
                         PlayerType.Teammate : PlayerType.PScav;
+                    DebugLogger.LogDebug($"[PlayerDetect] Player Scav: Name='{Name}', Type={Type}");
                 }
             }
             else if (IsPmc)
             {
-                Name = "PMC";
+                Name = $"PMC{GetPlayerId()}";
                 Type = GroupID != -1 && GroupID == localPlayer.GroupID ?
                     PlayerType.Teammate : PlayerType.PMC;
+                DebugLogger.LogDebug($"[PlayerDetect] PMC: Name='{Name}', Type={Type}");
             }
             else
             {
@@ -383,6 +392,22 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         }
 
         /// <summary>
+        /// Gets the player's unique in-memory ID.
+        /// </summary>
+        /// <returns>Player ID or 0 if read fails.</returns>
+        private int GetPlayerId()
+        {
+            try
+            {
+                return Memory.ReadValue<int>(this + Offsets.ObservedPlayerView.Id);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>
         /// Reads the SpawnType enum from memory via AIData -> BotOwner -> SpawnProfileData chain.
         /// Works in both online and offline modes for reliable boss/raider detection.
         /// </summary>
@@ -392,18 +417,22 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             try
             {
                 var aiData = Memory.ReadPtr(this + Offsets.ObservedPlayerView.AIData);
+                DebugLogger.LogDebug($"[PlayerDetect] ReadSpawnType: AIData=0x{aiData:X}");
                 if (aiData == 0)
                     return Enums.ESpawnType.UNKNOWN;
 
                 var botOwner = Memory.ReadPtr(aiData + Offsets.AIData.BotOwner);
+                DebugLogger.LogDebug($"[PlayerDetect] ReadSpawnType: BotOwner=0x{botOwner:X}");
                 if (botOwner == 0)
                     return Enums.ESpawnType.UNKNOWN;
 
                 var spawnProfileData = Memory.ReadPtr(botOwner + Offsets.BotOwner.SpawnProfileData);
+                DebugLogger.LogDebug($"[PlayerDetect] ReadSpawnType: SpawnProfileData=0x{spawnProfileData:X}");
                 if (spawnProfileData == 0)
                     return Enums.ESpawnType.UNKNOWN;
 
                 var spawnTypeValue = Memory.ReadValue<uint>(spawnProfileData + Offsets.SpawnProfileData.SpawnType);
+                DebugLogger.LogDebug($"[PlayerDetect] ReadSpawnType: Raw value={spawnTypeValue}");
 
                 // Validate that it's a known enum value
                 if (Enum.IsDefined(typeof(Enums.ESpawnType), spawnTypeValue))
@@ -411,8 +440,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
 
                 return Enums.ESpawnType.UNKNOWN;
             }
-            catch
+            catch (Exception ex)
             {
+                DebugLogger.LogDebug($"[PlayerDetect] ReadSpawnType exception: {ex.Message}");
                 return Enums.ESpawnType.UNKNOWN;
             }
         }

@@ -382,16 +382,15 @@ namespace LoneEftDmaRadar.UI.ESP
                         // Draw Ammo Counter Widget (always show when enabled, use placeholder if no valid data)
                         if (App.Config.UI.AmmoCounter.Enabled && _ammoWidget != null)
                         {
-                            // Ensure FirearmManager is updated for ammo counter
-                            localPlayer?.UpdateFirearmManager();
+                            // FirearmManager is updated in the T1 realtime worker thread
 
                             // Update hover state for transparent-until-hover behavior
                             _ammoWidget.UpdateHoverState(_mouseX, _mouseY, screenWidth, screenHeight);
 
-                            var mag = localPlayer?.FirearmManager?.Magazine;
-                            int currentAmmo = mag?.HasValidAmmo == true ? mag.CurrentAmmo : -1;
-                            int maxAmmo = mag?.HasValidAmmo == true ? mag.MaxAmmo : -1;
-                            string ammoTypeName = mag?.HasValidAmmo == true ? mag.AmmoTypeName : null;
+                            var snapshot = localPlayer?.FirearmManager?.CurrentSnapshot;
+                            int currentAmmo = snapshot?.HasValidAmmo == true ? snapshot.CurrentAmmo : -1;
+                            int maxAmmo = snapshot?.HasValidAmmo == true ? snapshot.MaxAmmo : -1;
+                            string ammoTypeName = snapshot?.HasValidAmmo == true ? snapshot.AmmoTypeName : null;
                             _ammoWidget.Draw(ctx, currentAmmo, maxAmmo, ammoTypeName);
                         }
 

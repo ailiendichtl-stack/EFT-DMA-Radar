@@ -247,8 +247,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         }
 
         /// <summary>
-        /// Reads the SpawnType enum via AIData -> BotOwner -> SpawnProfileData chain.
-        /// This is the correct path for offline AI bots (same approach as CyNickal).
+        /// Reads the SpawnType enum via AIData -> BotOwner -> SpawnProfileData -> SpawnType.
+        /// This is the correct path for offline AI bots.
         /// </summary>
         private Enums.ESpawnType ReadSpawnType()
         {
@@ -257,36 +257,29 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 // Path: Player + AIData -> BotOwner -> SpawnProfileData -> SpawnType
                 var aiData = Memory.ReadPtr(Base + Offsets.Player.AIData);
                 if (aiData == 0)
-                {
-                    DebugLogger.LogDebug($"[PlayerDetect] AIData is null");
                     return Enums.ESpawnType.UNKNOWN;
-                }
 
                 var botOwner = Memory.ReadPtr(aiData + Offsets.AIData.BotOwner);
                 if (botOwner == 0)
-                {
-                    DebugLogger.LogDebug($"[PlayerDetect] BotOwner is null");
                     return Enums.ESpawnType.UNKNOWN;
-                }
 
                 var spawnProfileData = Memory.ReadPtr(botOwner + Offsets.BotOwner.SpawnProfileData);
                 if (spawnProfileData == 0)
-                {
-                    DebugLogger.LogDebug($"[PlayerDetect] SpawnProfileData is null");
                     return Enums.ESpawnType.UNKNOWN;
-                }
 
                 var spawnTypeValue = Memory.ReadValue<uint>(spawnProfileData + Offsets.SpawnProfileData.SpawnType);
-                DebugLogger.LogDebug($"[PlayerDetect] Raw SpawnType value: {spawnTypeValue}");
 
                 if (Enum.IsDefined(typeof(Enums.ESpawnType), spawnTypeValue))
-                    return (Enums.ESpawnType)spawnTypeValue;
+                {
+                    var spawnType = (Enums.ESpawnType)spawnTypeValue;
+                    DebugLogger.LogDebug($"[PlayerDetect] SpawnType={spawnType} ({spawnTypeValue})");
+                    return spawnType;
+                }
 
                 return Enums.ESpawnType.UNKNOWN;
             }
-            catch (Exception ex)
+            catch
             {
-                DebugLogger.LogDebug($"[PlayerDetect] ReadSpawnType exception: {ex.Message}");
                 return Enums.ESpawnType.UNKNOWN;
             }
         }

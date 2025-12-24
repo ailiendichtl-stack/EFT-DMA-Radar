@@ -147,6 +147,13 @@ namespace LoneEftDmaRadar
         public MemWritesConfig MemWrites { get; private set; } = new();
 
         /// <summary>
+        /// Debug and performance tuning settings.
+        /// </summary>
+        [JsonPropertyName("debug")]
+        [JsonInclude]
+        public DebugConfig Debug { get; private set; } = new();
+
+        /// <summary>
         /// Player Watchlist Collection.
         /// ** ONLY USE FOR BINDING **
         /// </summary>
@@ -1119,6 +1126,42 @@ namespace LoneEftDmaRadar
         public bool InfiniteStaminaEnabled { get; set; }
         public bool MemoryAimEnabled { get; set; }
         public Bones MemoryAimTargetBone { get; set; } = Bones.HumanHead;
+    }
+
+    /// <summary>
+    /// Debug and performance tuning settings.
+    /// </summary>
+    public sealed class DebugConfig
+    {
+        /// <summary>
+        /// Loot scan interval in seconds (how often to rescan loot after initial scan).
+        /// </summary>
+        [JsonPropertyName("lootScanIntervalSeconds")]
+        public int LootScanIntervalSeconds { get; set; } = 30;
+
+        /// <summary>
+        /// Corpse contents scan interval in seconds.
+        /// </summary>
+        [JsonPropertyName("corpseScanIntervalSeconds")]
+        public int CorpseScanIntervalSeconds { get; set; } = 30;
+
+        /// <summary>
+        /// T1 Realtime worker sleep duration in milliseconds.
+        /// </summary>
+        [JsonPropertyName("t1SleepMs")]
+        public int T1SleepMs { get; set; } = 8;
+
+        /// <summary>
+        /// T2 Slow worker sleep duration in milliseconds.
+        /// </summary>
+        [JsonPropertyName("t2SleepMs")]
+        public int T2SleepMs { get; set; } = 50;
+
+        /// <summary>
+        /// T3 Explosives worker sleep duration in milliseconds.
+        /// </summary>
+        [JsonPropertyName("t3SleepMs")]
+        public int T3SleepMs { get; set; } = 30;
     }
 
     /// <summary>

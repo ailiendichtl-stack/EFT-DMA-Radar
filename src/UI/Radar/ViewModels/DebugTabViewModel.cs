@@ -14,6 +14,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         private readonly DispatcherTimer _timer;
         private string _DeviceAimbotDebugText = "DeviceAimbot Aimbot: (no data)";
         private bool _showDeviceAimbotDebug = App.Config.Device.ShowDebug;
+        private string _performanceText = "No data";
 
         public DebugTabViewModel()
         {
@@ -21,14 +22,134 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
 
             _timer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(1)
+                Interval = TimeSpan.FromMilliseconds(500)
             };
-            _timer.Tick += (_, _) => RefreshDeviceAimbotDebug();
+            _timer.Tick += (_, _) =>
+            {
+                RefreshDeviceAimbotDebug();
+                RefreshPerformanceStats();
+            };
             _timer.Start();
             RefreshDeviceAimbotDebug();
+            RefreshPerformanceStats();
         }
 
         public ICommand ToggleDebugConsoleCommand { get; }
+
+        #region Scan Interval Settings
+
+        /// <summary>
+        /// Loot scan interval in seconds (1-120).
+        /// </summary>
+        public int LootScanInterval
+        {
+            get => App.Config.Debug.LootScanIntervalSeconds;
+            set
+            {
+                if (App.Config.Debug.LootScanIntervalSeconds != value)
+                {
+                    App.Config.Debug.LootScanIntervalSeconds = Math.Clamp(value, 1, 120);
+                    OnPropertyChanged(nameof(LootScanInterval));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Corpse scan interval in seconds (1-120).
+        /// </summary>
+        public int CorpseScanInterval
+        {
+            get => App.Config.Debug.CorpseScanIntervalSeconds;
+            set
+            {
+                if (App.Config.Debug.CorpseScanIntervalSeconds != value)
+                {
+                    App.Config.Debug.CorpseScanIntervalSeconds = Math.Clamp(value, 1, 120);
+                    OnPropertyChanged(nameof(CorpseScanInterval));
+                }
+            }
+        }
+
+        /// <summary>
+        /// T1 Realtime worker sleep in ms (1-100).
+        /// </summary>
+        public int T1SleepMs
+        {
+            get => App.Config.Debug.T1SleepMs;
+            set
+            {
+                if (App.Config.Debug.T1SleepMs != value)
+                {
+                    App.Config.Debug.T1SleepMs = Math.Clamp(value, 1, 100);
+                    OnPropertyChanged(nameof(T1SleepMs));
+                }
+            }
+        }
+
+        /// <summary>
+        /// T2 Slow worker sleep in ms (10-500).
+        /// </summary>
+        public int T2SleepMs
+        {
+            get => App.Config.Debug.T2SleepMs;
+            set
+            {
+                if (App.Config.Debug.T2SleepMs != value)
+                {
+                    App.Config.Debug.T2SleepMs = Math.Clamp(value, 10, 500);
+                    OnPropertyChanged(nameof(T2SleepMs));
+                }
+            }
+        }
+
+        /// <summary>
+        /// T3 Explosives worker sleep in ms (10-500).
+        /// </summary>
+        public int T3SleepMs
+        {
+            get => App.Config.Debug.T3SleepMs;
+            set
+            {
+                if (App.Config.Debug.T3SleepMs != value)
+                {
+                    App.Config.Debug.T3SleepMs = Math.Clamp(value, 10, 500);
+                    OnPropertyChanged(nameof(T3SleepMs));
+                }
+            }
+        }
+
+        #endregion
+
+        #region Performance Stats
+
+        public string PerformanceText
+        {
+            get => _performanceText;
+            private set
+            {
+                if (_performanceText != value)
+                {
+                    _performanceText = value;
+                    OnPropertyChanged(nameof(PerformanceText));
+                }
+            }
+        }
+
+        private void RefreshPerformanceStats()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Worker Performance ===");
+            sb.AppendLine($"T1 Realtime:  Last {PerformanceStats.T1LastLoopMs:F2}ms | Avg {PerformanceStats.T1AvgLoopMs:F2}ms");
+            sb.AppendLine($"T2 Slow:      Last {PerformanceStats.T2LastLoopMs:F2}ms | Avg {PerformanceStats.T2AvgLoopMs:F2}ms");
+            sb.AppendLine($"T3 Explosives: Last {PerformanceStats.T3LastLoopMs:F2}ms | Avg {PerformanceStats.T3AvgLoopMs:F2}ms");
+            sb.AppendLine();
+            sb.AppendLine("=== Scan Performance ===");
+            sb.AppendLine($"Last Loot Scan: {PerformanceStats.LastLootScanMs:F0}ms");
+            sb.AppendLine($"Time Since Scan: {PerformanceStats.SecondsSinceLastLootScan:F0}s");
+            PerformanceText = sb.ToString();
+        }
+
+        #endregion
 
         public bool ShowDeviceAimbotDebug
         {

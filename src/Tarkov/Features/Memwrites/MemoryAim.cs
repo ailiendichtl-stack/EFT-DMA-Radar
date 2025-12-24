@@ -108,11 +108,11 @@ namespace LoneEftDmaRadar.Tarkov.Features.MemWrites
                 if (firearmManager == null)
                     return;
 
-                var fireportPos = firearmManager.FireportPosition;
-                if (!fireportPos.HasValue || fireportPos.Value == Vector3.Zero)
+                var snapshot = firearmManager.CurrentSnapshot;
+                if (snapshot == null || !snapshot.FireportPosition.HasValue || snapshot.FireportPosition.Value == Vector3.Zero)
                     return;
 
-                var fpPos = fireportPos.Value;
+                var fpPos = snapshot.FireportPosition.Value;
                 
                 // Update ballistics for drop compensation
                 UpdateBallistics(firearmManager);
@@ -199,21 +199,21 @@ namespace LoneEftDmaRadar.Tarkov.Features.MemWrites
         {
             try
             {
-                var hands = firearmManager.CurrentHands;
-                if (hands == null || !hands.IsWeapon || hands.ItemAddr == 0)
+                var snapshot = firearmManager.CurrentSnapshot;
+                if (snapshot == null || !snapshot.IsWeapon || snapshot.ItemAddr == 0)
                     return;
 
-                bool weaponChanged = hands.ItemAddr != _lastWeaponItemBase;
+                bool weaponChanged = snapshot.ItemAddr != _lastWeaponItemBase;
                 if (weaponChanged)
                 {
                     _lastWeaponVersion = -1;
-                    _lastWeaponItemBase = hands.ItemAddr;
+                    _lastWeaponItemBase = snapshot.ItemAddr;
                 }
 
-                int weaponVersion = Memory.ReadValue<int>(hands.ItemAddr + Offsets.LootItem.Version);
+                int weaponVersion = Memory.ReadValue<int>(snapshot.ItemAddr + Offsets.LootItem.Version);
                 if (weaponVersion != _lastWeaponVersion)
                 {
-                    var ammoTemplate = FirearmManager.MagazineManager.GetAmmoTemplateFromWeapon(hands.ItemAddr);
+                    var ammoTemplate = FirearmManager.MagazineManager.GetAmmoTemplateFromWeapon(snapshot.ItemAddr);
                     if (ammoTemplate != 0 && ammoTemplate != _loadedAmmoTemplate)
                     {
                          _loadedAmmoTemplate = ammoTemplate;
@@ -225,10 +225,10 @@ namespace LoneEftDmaRadar.Tarkov.Features.MemWrites
                         float baseSpeed = Memory.ReadValue<float>(ammoTemplate + Offsets.AmmoTemplate.InitialSpeed);
                         float velMod = 0f;
 
-                        var weaponTemplate = Memory.ReadPtr(hands.ItemAddr + Offsets.LootItem.Template);
+                        var weaponTemplate = Memory.ReadPtr(snapshot.ItemAddr + Offsets.LootItem.Template);
                         velMod += Memory.ReadValue<float>(weaponTemplate + Offsets.WeaponTemplate.Velocity);
-         
-                        RecurseWeaponAttachVelocity(hands.ItemAddr, ref velMod);
+
+                        RecurseWeaponAttachVelocity(snapshot.ItemAddr, ref velMod);
 
                         float modifier = 1f + (velMod / 100f);
                         if (modifier < 0.01f) modifier = 0.01f;

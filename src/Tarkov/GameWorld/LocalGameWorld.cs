@@ -65,6 +65,15 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         private readonly WorkerThread _t4;
         private readonly MemWritesManager _memWritesManager;
 
+        // Loot scan throttling - only scan on raid start, then at configurable interval
+        private bool _initialLootScanComplete = false;
+        private DateTime _lastFullLootScan = DateTime.MinValue;
+
+        /// <summary>
+        /// Gets the loot scan interval from config.
+        /// </summary>
+        private static TimeSpan LootScanInterval => TimeSpan.FromSeconds(App.Config.Debug.LootScanIntervalSeconds);
+
         /// <summary>
         /// Map ID of Current Map.
         /// </summary>
@@ -281,24 +290,36 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         /// </summary>
         private void RealtimeWorker_PerformWork(object sender, WorkerThreadArgs e)
         {
-            var players = _rgtPlayers.Where(x => x.IsActive && x.IsAlive);
-            var localPlayer = LocalPlayer;
-            if (!players.Any()) // No players - Throttle
+            var start = Stopwatch.GetTimestamp();
+            try
             {
-                Thread.Sleep(1);
-                return;
-            }
+                var players = _rgtPlayers.Where(x => x.IsActive && x.IsAlive);
+                var localPlayer = LocalPlayer;
+                if (!players.Any()) // No players - Throttle
+                {
+                    Thread.Sleep(1);
+                    return;
+                }
 
-            using var scatter = Memory.CreateScatter(VmmFlags.NOCACHE);
-            if (MemDMA.CameraManager != null && localPlayer != null)
-            {
-                MemDMA.CameraManager.OnRealtimeLoop(scatter, localPlayer);
+                using var scatter = Memory.CreateScatter(VmmFlags.NOCACHE);
+                if (MemDMA.CameraManager != null && localPlayer != null)
+                {
+                    MemDMA.CameraManager.OnRealtimeLoop(scatter, localPlayer);
+                }
+                foreach (var player in players)
+                {
+                    player.OnRealtimeLoop(scatter);
+                }
+                scatter.Execute();
+
+                // Update local player's firearm manager for ammo counter, etc.
+                // Moved here from ESP render loop to avoid blocking rendering
+                localPlayer?.UpdateFirearmManager();
             }
-            foreach (var player in players)
+            finally
             {
-                player.OnRealtimeLoop(scatter);
+                PerformanceStats.UpdateT1(Stopwatch.GetTimestamp() - start);
             }
-            scatter.Execute();
         }
 
         #endregion
@@ -311,12 +332,30 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         /// </summary>
         private void SlowWorker_PerformWork(object sender, WorkerThreadArgs e)
         {
-            var ct = e.CancellationToken;
-            ValidatePlayerTransforms(); // Check for transform anomalies
-            // Sync FilteredLoot
-            Loot.Refresh(ct);
-             // Refresh player equipment
-            RefreshEquipment();
+            var start = Stopwatch.GetTimestamp();
+            try
+            {
+                var ct = e.CancellationToken;
+                ValidatePlayerTransforms(); // Check for transform anomalies
+
+                // Throttle loot scanning - only on raid start, then at configurable interval
+                if (!_initialLootScanComplete ||
+                    DateTime.UtcNow - _lastFullLootScan > LootScanInterval)
+                {
+                    var lootScanStart = Stopwatch.GetTimestamp();
+                    Loot.Refresh(ct);
+                    _lastFullLootScan = DateTime.UtcNow;
+                    _initialLootScanComplete = true;
+                    PerformanceStats.UpdateLootScan(Stopwatch.GetTimestamp() - lootScanStart);
+                }
+
+                // Refresh player equipment
+                RefreshEquipment();
+            }
+            finally
+            {
+                PerformanceStats.UpdateT2(Stopwatch.GetTimestamp() - start);
+            }
         }
 
         private void RefreshEquipment()
@@ -390,7 +429,15 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         /// </summary>
         private void ExplosivesWorker_PerformWork(object sender, WorkerThreadArgs e)
         {
-            _explosivesManager.Refresh(e.CancellationToken);
+            var start = Stopwatch.GetTimestamp();
+            try
+            {
+                _explosivesManager.Refresh(e.CancellationToken);
+            }
+            finally
+            {
+                PerformanceStats.UpdateT3(Stopwatch.GetTimestamp() - start);
+            }
         }
 
         #endregion

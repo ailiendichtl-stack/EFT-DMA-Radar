@@ -12,34 +12,140 @@
                           IsDesignTimeCreatable="False" />
     </d:UserControl.DataContext>
 
-    <StackPanel Orientation="Vertical"
-                Margin="0,0,0,10"
-                HorizontalAlignment="Left">
-        <TextBlock Text="Debug Utilities"
-                   FontSize="16"
-                   Margin="0,0,0,8" />
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Orientation="Vertical"
+                    Margin="0,0,0,10"
+                    HorizontalAlignment="Left">
+            <TextBlock Text="Debug Utilities"
+                       FontSize="16"
+                       Margin="0,0,0,8" />
 
-        <Button Content="Toggle Debug Console"
-                Width="200"
-                Height="36"
-                Command="{Binding ToggleDebugConsoleCommand}"
-                ToolTip="Shows or hides the console-based DebugLogger output." />
+            <Button Content="Toggle Debug Console"
+                    Width="200"
+                    Height="36"
+                    Command="{Binding ToggleDebugConsoleCommand}"
+                    ToolTip="Shows or hides the console-based DebugLogger output." />
 
-        <GroupBox Header="DeviceAimbot Aimbot Debug"
-                  Margin="0,12,0,0"
-                  Width="380">
-            <StackPanel>
-                <CheckBox Content="Show Debug Overlay (ESP)"
-                          IsChecked="{Binding ShowDeviceAimbotDebug, Mode=TwoWay}"
-                          Margin="6,6,6,2"
-                          ToolTip="Shows detailed debug information on the ESP overlay"/>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Height="200" Margin="0,4,0,0">
-                    <TextBlock Text="{Binding DeviceAimbotDebugText}"
+            <!-- Performance Monitor -->
+            <GroupBox Header="Performance Monitor"
+                      Margin="0,12,0,0"
+                      Width="380">
+                <StackPanel>
+                    <TextBlock Text="{Binding PerformanceText}"
                                FontFamily="Consolas"
                                TextWrapping="Wrap"
                                Margin="6" />
-                </ScrollViewer>
-            </StackPanel>
-        </GroupBox>
-    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Scan Interval Settings -->
+            <GroupBox Header="Scan Intervals (requires raid restart)"
+                      Margin="0,12,0,0"
+                      Width="380">
+                <StackPanel Margin="6">
+                    <!-- Loot Scan Interval -->
+                    <TextBlock Text="Loot Scan Interval (seconds)"
+                               Margin="0,0,0,4" />
+                    <DockPanel>
+                        <TextBlock Text="{Binding LootScanInterval}"
+                                   Width="30"
+                                   DockPanel.Dock="Right"
+                                   TextAlignment="Right"
+                                   Margin="4,0,0,0" />
+                        <Slider Minimum="1"
+                                Maximum="120"
+                                Value="{Binding LootScanInterval, Mode=TwoWay}"
+                                TickFrequency="10"
+                                IsSnapToTickEnabled="False"
+                                ToolTip="How often to rescan loot after initial scan (lower = more CPU)" />
+                    </DockPanel>
+
+                    <!-- Corpse Scan Interval -->
+                    <TextBlock Text="Corpse Scan Interval (seconds)"
+                               Margin="0,8,0,4" />
+                    <DockPanel>
+                        <TextBlock Text="{Binding CorpseScanInterval}"
+                                   Width="30"
+                                   DockPanel.Dock="Right"
+                                   TextAlignment="Right"
+                                   Margin="4,0,0,0" />
+                        <Slider Minimum="1"
+                                Maximum="120"
+                                Value="{Binding CorpseScanInterval, Mode=TwoWay}"
+                                TickFrequency="10"
+                                IsSnapToTickEnabled="False"
+                                ToolTip="How often to rescan corpse contents (lower = more CPU)" />
+                    </DockPanel>
+
+                    <!-- T1 Sleep -->
+                    <TextBlock Text="T1 Realtime Worker Sleep (ms)"
+                               Margin="0,8,0,4" />
+                    <DockPanel>
+                        <TextBlock Text="{Binding T1SleepMs}"
+                                   Width="30"
+                                   DockPanel.Dock="Right"
+                                   TextAlignment="Right"
+                                   Margin="4,0,0,0" />
+                        <Slider Minimum="1"
+                                Maximum="100"
+                                Value="{Binding T1SleepMs, Mode=TwoWay}"
+                                TickFrequency="10"
+                                IsSnapToTickEnabled="False"
+                                ToolTip="Realtime worker loop interval (affects player position updates)" />
+                    </DockPanel>
+
+                    <!-- T2 Sleep -->
+                    <TextBlock Text="T2 Slow Worker Sleep (ms)"
+                               Margin="0,8,0,4" />
+                    <DockPanel>
+                        <TextBlock Text="{Binding T2SleepMs}"
+                                   Width="30"
+                                   DockPanel.Dock="Right"
+                                   TextAlignment="Right"
+                                   Margin="4,0,0,0" />
+                        <Slider Minimum="10"
+                                Maximum="500"
+                                Value="{Binding T2SleepMs, Mode=TwoWay}"
+                                TickFrequency="50"
+                                IsSnapToTickEnabled="False"
+                                ToolTip="Slow worker loop interval (affects loot/equipment refresh)" />
+                    </DockPanel>
+
+                    <!-- T3 Sleep -->
+                    <TextBlock Text="T3 Explosives Worker Sleep (ms)"
+                               Margin="0,8,0,4" />
+                    <DockPanel>
+                        <TextBlock Text="{Binding T3SleepMs}"
+                                   Width="30"
+                                   DockPanel.Dock="Right"
+                                   TextAlignment="Right"
+                                   Margin="4,0,0,0" />
+                        <Slider Minimum="10"
+                                Maximum="500"
+                                Value="{Binding T3SleepMs, Mode=TwoWay}"
+                                TickFrequency="50"
+                                IsSnapToTickEnabled="False"
+                                ToolTip="Explosives worker loop interval (affects grenade tracking)" />
+                    </DockPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="DeviceAimbot Aimbot Debug"
+                      Margin="0,12,0,0"
+                      Width="380">
+                <StackPanel>
+                    <CheckBox Content="Show Debug Overlay (ESP)"
+                              IsChecked="{Binding ShowDeviceAimbotDebug, Mode=TwoWay}"
+                              Margin="6,6,6,2"
+                              ToolTip="Shows detailed debug information on the ESP overlay"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Height="200" Margin="0,4,0,0">
+                        <TextBlock Text="{Binding DeviceAimbotDebugText}"
+                                   FontFamily="Consolas"
+                                   TextWrapping="Wrap"
+                                   Margin="6" />
+                    </ScrollViewer>
+                </StackPanel>
+            </GroupBox>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>

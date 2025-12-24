@@ -55,7 +55,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         public static implicit operator ulong(AbstractPlayer x) => x.Base;
         protected static readonly ConcurrentDictionary<string, int> _groups = new(StringComparer.OrdinalIgnoreCase);
         protected static int _lastGroupNumber;
-        protected static int _lastPscavNumber;
 
         static AbstractPlayer()
         {
@@ -66,7 +65,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         {
             _groups.Clear();
             _lastGroupNumber = default;
-            _lastPscavNumber = default;
         }
 
         #endregion

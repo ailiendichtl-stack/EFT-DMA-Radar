@@ -5,6 +5,7 @@
 
 using System;
 using System.Linq;
+using System.Threading;
 using LoneEftDmaRadar.DMA;
 using LoneEftDmaRadar.Tarkov;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
@@ -14,50 +15,84 @@ using LoneEftDmaRadar.Web.TarkovDev.Data;
 
 namespace LoneEftDmaRadar.UI.Misc
 {
+    /// <summary>
+    /// Immutable snapshot of firearm state. Thread-safe for concurrent readers.
+    /// Consumers (ESP, aimbot) read from this - never see partial/invalid states.
+    /// </summary>
+    public sealed class FirearmSnapshot
+    {
+        public static readonly FirearmSnapshot Empty = new();
+
+        public ulong HandsController { get; }
+        public bool IsWeapon { get; }
+        public ulong ItemAddr { get; }
+        public string ItemId { get; }
+
+        // Magazine info
+        public int CurrentAmmo { get; }
+        public int MaxAmmo { get; }
+        public string AmmoTypeName { get; }
+        public bool HasValidAmmo => MaxAmmo > 0 && CurrentAmmo >= 0;
+
+        // Fireport info
+        public Vector3? FireportPosition { get; }
+        public Quaternion? FireportRotation { get; }
+
+        private FirearmSnapshot()
+        {
+            // Empty snapshot for when no weapon is held
+        }
+
+        public FirearmSnapshot(
+            ulong handsController,
+            bool isWeapon,
+            ulong itemAddr,
+            string itemId,
+            int currentAmmo,
+            int maxAmmo,
+            string ammoTypeName,
+            Vector3? fireportPosition,
+            Quaternion? fireportRotation)
+        {
+            HandsController = handsController;
+            IsWeapon = isWeapon;
+            ItemAddr = itemAddr;
+            ItemId = itemId;
+            CurrentAmmo = currentAmmo;
+            MaxAmmo = maxAmmo;
+            AmmoTypeName = ammoTypeName;
+            FireportPosition = fireportPosition;
+            FireportRotation = fireportRotation;
+        }
+    }
+
     public sealed class FirearmManager
     {
         private readonly LocalPlayer _localPlayer;
-        private CachedHandsInfo _hands;
+        private volatile FirearmSnapshot _snapshot = FirearmSnapshot.Empty;
+        private ulong _lastHandsAddr;
+        private UnityTransform _fireportTransform;
+
+        /// <summary>
+        /// Current immutable snapshot of firearm state.
+        /// Thread-safe - consumers always see complete, valid state.
+        /// </summary>
+        public FirearmSnapshot CurrentSnapshot => _snapshot;
 
         /// <summary>
         /// Returns the Hands Controller Address and if the held item is a weapon.
         /// </summary>
-        public Tuple<ulong, bool> HandsController => new(_hands, _hands?.IsWeapon ?? false);
-
-        /// <summary>
-        /// Cached Hands Information.
-        /// </summary>
-        public CachedHandsInfo CurrentHands => _hands;
-
-        /// <summary>
-        /// Magazine (if any) contained in this firearm.
-        /// </summary>
-        public MagazineManager Magazine { get; private set; }
-
-        /// <summary>
-        /// Current Firearm Fireport Transform.
-        /// </summary>
-        public UnityTransform FireportTransform { get; private set; }
-
-        /// <summary>
-        /// Last known Fireport Position.
-        /// </summary>
-        public Vector3? FireportPosition { get; private set; }
-
-        /// <summary>
-        /// Last known Fireport Rotation.
-        /// </summary>
-        public Quaternion? FireportRotation { get; private set; }
+        public Tuple<ulong, bool> HandsController => new(_snapshot.HandsController, _snapshot.IsWeapon);
 
         public FirearmManager(LocalPlayer localPlayer)
         {
             _localPlayer = localPlayer;
-            Magazine = new(localPlayer);
         }
 
 
         /// <summary>
         /// Update Hands/Firearm/Magazine information for LocalPlayer.
+        /// Builds a complete immutable snapshot and publishes it atomically.
         /// </summary>
         public void Update()
         {
@@ -66,99 +101,195 @@ namespace LoneEftDmaRadar.UI.Misc
                 var hands = _localPlayer.HandsController;
                 if (!MemDMA.IsValidVirtualAddress(hands))
                 {
-                    DebugLogger.LogDebug("[FirearmManager] Invalid HandsController address");
+                    // Keep current snapshot - don't publish empty state on transient read failure
                     return;
                 }
 
-                if (hands != _hands)
+                // Detect weapon change - invalidate cached fireport transform
+                bool weaponJustChanged = false;
+                if (hands != _lastHandsAddr)
                 {
-                    _hands = null;
-                    ResetFireport();
-                    Magazine = new(_localPlayer);
-                    _hands = GetHandsInfo(hands);
-                    DebugLogger.LogDebug($"[FirearmManager] New hands detected. IsWeapon: {_hands?.IsWeapon}");
+                    _fireportTransform = null;
+                    _lastHandsAddr = hands;
+                    weaponJustChanged = true;
+                    DebugLogger.LogDebug("[FirearmManager] Hands changed, will reacquire fireport");
                 }
 
-                if (_hands?.IsWeapon == true)
+                // Get hands info (item ID, is weapon, etc.)
+                var handsInfo = GetHandsInfo(hands);
+
+                // Initialize snapshot values
+                ulong itemAddr = handsInfo.ItemAddr;
+                string itemId = handsInfo.ItemId;
+                bool isWeapon = handsInfo.IsWeapon;
+                int currentAmmo = 0;
+                int maxAmmo = 0;
+                string ammoTypeName = null;
+                Vector3? fireportPos = null;
+                Quaternion? fireportRot = null;
+
+                if (isWeapon)
                 {
-                    if (FireportTransform is UnityTransform fireportTransform) // Validate Fireport Transform
+                    // Update/acquire fireport transform
+                    fireportPos = UpdateFireport(hands, ref fireportRot);
+
+                    // Read ammo info
+                    ReadAmmoInfo(hands, out currentAmmo, out maxAmmo, out ammoTypeName);
+
+                    // If fireport acquisition failed but we have previous valid data from SAME weapon, carry it forward
+                    // This prevents flickering null values during transient DMA read failures
+                    // Don't carry forward if weapon just changed (would be old weapon's fireport)
+                    if (fireportPos == null && !weaponJustChanged && _snapshot.IsWeapon && _snapshot.FireportPosition.HasValue)
                     {
-                        try
-                        {
-                            var v = MemoryInterface.Memory.ReadPtrChain(hands, false, Offsets.FirearmController.To_FirePortVertices);
-                            if (fireportTransform.VerticesAddr != v)
-                                ResetFireport();
-                        }
-                        catch
-                        {
-                            ResetFireport();
-                        }
+                        fireportPos = _snapshot.FireportPosition;
+                        fireportRot = _snapshot.FireportRotation;
                     }
-
-                    if (FireportTransform is null)
-                    {
-                        try
-                        {
-                            var t = MemoryInterface.Memory.ReadPtrChain(hands, false, Offsets.FirearmController.To_FirePortTransformInternal);
-                            FireportTransform = new(t, false);
-
-                            // ✅ Update position AND rotation once to validate
-                            var pos = FireportTransform.UpdatePosition();
-                            var rot = FireportTransform.GetRotation();
-
-                            // If the fireport is implausibly far (common briefly during weapon swaps), drop and reacquire next tick.
-                            if (Vector3.Distance(pos, _localPlayer.Position) > 100f)
-                            {
-                                ResetFireport();
-                                return;
-                            }
-
-                            FireportPosition = pos;
-                            FireportRotation = rot; // ✅ Store rotation
-                        }
-                        catch
-                        {
-                            ResetFireport();
-                        }
-                    }
-                    else
-                    {
-                        // ✅ Update fireport position AND rotation every frame
-                        try
-                        {
-                            FireportPosition = FireportTransform.UpdatePosition();
-                            FireportRotation = FireportTransform.GetRotation();
-
-                            // Sanity: if it jumps far away, reset so we reacquire with the new weapon.
-                            if (Vector3.Distance(FireportPosition.Value, _localPlayer.Position) > 100f)
-                            {
-                                ResetFireport();
-                            }
-                        }
-                        catch
-                        {
-                            ResetFireport();
-                        }
-                    }
-
-                    // Update ammo count for the ammo counter widget
-                    Magazine?.UpdateAmmoCount();
                 }
+
+                // Build and publish immutable snapshot atomically
+                var newSnapshot = new FirearmSnapshot(
+                    handsController: hands,
+                    isWeapon: isWeapon,
+                    itemAddr: itemAddr,
+                    itemId: itemId,
+                    currentAmmo: currentAmmo,
+                    maxAmmo: maxAmmo,
+                    ammoTypeName: ammoTypeName,
+                    fireportPosition: fireportPos,
+                    fireportRotation: fireportRot
+                );
+
+                // Atomic publish - consumers always see complete state
+                _snapshot = newSnapshot;
             }
             catch (Exception ex)
             {
                 DebugLogger.LogDebug($"[FirearmManager] ERROR: {ex}");
+                // Keep current snapshot on error - don't publish invalid state
             }
         }
 
         /// <summary>
-        /// Reset the Fireport Data.
+        /// Updates fireport transform and returns current position/rotation.
         /// </summary>
-        private void ResetFireport()
+        private Vector3? UpdateFireport(ulong hands, ref Quaternion? rotation)
         {
-            FireportTransform = null;
-            FireportPosition = null;
-            FireportRotation = null;
+            try
+            {
+                // Validate existing transform
+                if (_fireportTransform is UnityTransform transform)
+                {
+                    var v = MemoryInterface.Memory.ReadPtrChain(hands, false, Offsets.FirearmController.To_FirePortVertices);
+                    if (transform.VerticesAddr != v)
+                    {
+                        _fireportTransform = null;
+                    }
+                }
+
+                // Acquire new transform if needed
+                if (_fireportTransform is null)
+                {
+                    var t = MemoryInterface.Memory.ReadPtrChain(hands, false, Offsets.FirearmController.To_FirePortTransformInternal);
+                    _fireportTransform = new(t, false);
+                }
+
+                // Read position and rotation
+                var pos = _fireportTransform.UpdatePosition();
+                rotation = _fireportTransform.GetRotation();
+
+                // Sanity check - if too far from player, data is invalid
+                if (Vector3.Distance(pos, _localPlayer.Position) > 100f)
+                {
+                    _fireportTransform = null;
+                    return null;
+                }
+
+                return pos;
+            }
+            catch
+            {
+                _fireportTransform = null;
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Reads current ammo count and type from weapon's magazine.
+        /// </summary>
+        private void ReadAmmoInfo(ulong handsController, out int currentAmmo, out int maxAmmo, out string ammoTypeName)
+        {
+            currentAmmo = 0;
+            maxAmmo = 0;
+            ammoTypeName = null;
+
+            try
+            {
+                // Read the held item (weapon)
+                var itemBase = MemoryInterface.Memory.ReadPtr(handsController + Offsets.ItemHandsController.Item, false);
+                if (!MemDMA.IsValidVirtualAddress(itemBase))
+                    return;
+
+                // Read the magazine slot
+                var magSlot = MemoryInterface.Memory.ReadPtr(itemBase + Offsets.LootItemWeapon._magSlotCache, false);
+                if (!MemDMA.IsValidVirtualAddress(magSlot))
+                    return;
+
+                // Read the magazine item from slot
+                var magItem = MemoryInterface.Memory.ReadPtr(magSlot + Offsets.Slot.ContainedItem, false);
+                if (!MemDMA.IsValidVirtualAddress(magItem))
+                    return;
+
+                // Read cartridges (StackSlot) from magazine
+                var cartridges = MemoryInterface.Memory.ReadPtr(magItem + Offsets.Item.Cartridges, false);
+                if (!MemDMA.IsValidVirtualAddress(cartridges))
+                    return;
+
+                // Read max ammo from StackSlot.Max
+                maxAmmo = MemoryInterface.Memory.ReadValue<int>(cartridges + Offsets.StackSlot.Max, false);
+
+                // Read items list from StackSlot.Items
+                var itemsList = MemoryInterface.Memory.ReadPtr(cartridges + Offsets.StackSlot.Items, false);
+                if (!MemDMA.IsValidVirtualAddress(itemsList))
+                    return;
+
+                // Read the internal array from List<T> (offset 0x10)
+                var listItems = MemoryInterface.Memory.ReadPtr(itemsList + 0x10, false);
+                if (!MemDMA.IsValidVirtualAddress(listItems))
+                    return;
+
+                // Read first ammo item (offset 0x20 from array base)
+                var firstAmmoItem = MemoryInterface.Memory.ReadPtr(listItems + 0x20, false);
+                if (!MemDMA.IsValidVirtualAddress(firstAmmoItem))
+                    return;
+
+                // Read current ammo count from Item.StackCount
+                currentAmmo = MemoryInterface.Memory.ReadValue<int>(firstAmmoItem + Offsets.Item.StackCount, false);
+
+                // Read ammo type name from template
+                try
+                {
+                    var ammoTemplate = MemoryInterface.Memory.ReadPtr(firstAmmoItem + Offsets.LootItem.Template, false);
+                    if (MemDMA.IsValidVirtualAddress(ammoTemplate))
+                    {
+                        var ammoIdPtr = MemoryInterface.Memory.ReadValue<MongoID>(ammoTemplate + Offsets.ItemTemplate._id, false);
+                        var ammoId = ammoIdPtr.ReadString(64, false);
+                        if (ammoId?.Length == 24 && TarkovDataManager.AllItems.TryGetValue(ammoId, out var ammoItem))
+                        {
+                            ammoTypeName = string.IsNullOrWhiteSpace(ammoItem.ShortName) ? ammoItem.Name : ammoItem.ShortName;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Ammo type lookup failed, but we still have count
+                }
+            }
+            catch
+            {
+                currentAmmo = 0;
+                maxAmmo = 0;
+                ammoTypeName = null;
+            }
         }
 
         /// <summary>
@@ -179,124 +310,13 @@ namespace LoneEftDmaRadar.UI.Misc
             return new(handsController, heldItem, itemBase, itemId);
         }
 
-        #region Magazine Info
+        #region Magazine Utilities
 
         /// <summary>
-        /// Helper class to track a Player's Magazine Ammo Count.
+        /// Static utility class for magazine/ammo operations.
         /// </summary>
-        public sealed class MagazineManager
+        public static class MagazineManager
         {
-            private readonly LocalPlayer _localPlayer;
-
-            /// <summary>
-            /// Current ammo count in magazine.
-            /// </summary>
-            public int CurrentAmmo { get; private set; }
-
-            /// <summary>
-            /// Maximum ammo capacity of magazine.
-            /// </summary>
-            public int MaxAmmo { get; private set; }
-
-            /// <summary>
-            /// Short name of the currently loaded ammo type.
-            /// </summary>
-            public string AmmoTypeName { get; private set; }
-
-            /// <summary>
-            /// True if valid ammo data is available.
-            /// </summary>
-            public bool HasValidAmmo => MaxAmmo > 0 && CurrentAmmo >= 0;
-
-            public MagazineManager(LocalPlayer localPlayer)
-            {
-                _localPlayer = localPlayer;
-            }
-
-            /// <summary>
-            /// Updates the current and max ammo count from memory.
-            /// Uses pointer chain: HandsController -> Item -> MagSlot -> Magazine -> Cartridges
-            /// </summary>
-            public void UpdateAmmoCount()
-            {
-                CurrentAmmo = 0;
-                MaxAmmo = 0;
-                AmmoTypeName = null;
-
-                try
-                {
-                    var handsController = _localPlayer.HandsController;
-                    if (!MemDMA.IsValidVirtualAddress(handsController))
-                        return;
-
-                    // Read the held item (weapon)
-                    var itemBase = MemoryInterface.Memory.ReadPtr(handsController + Offsets.ItemHandsController.Item, false);
-                    if (!MemDMA.IsValidVirtualAddress(itemBase))
-                        return;
-
-                    // Read the magazine slot
-                    var magSlot = MemoryInterface.Memory.ReadPtr(itemBase + Offsets.LootItemWeapon._magSlotCache, false);
-                    if (!MemDMA.IsValidVirtualAddress(magSlot))
-                        return;
-
-                    // Read the magazine item from slot
-                    var magItem = MemoryInterface.Memory.ReadPtr(magSlot + Offsets.Slot.ContainedItem, false);
-                    if (!MemDMA.IsValidVirtualAddress(magItem))
-                        return;
-
-                    // Read cartridges (StackSlot) from magazine
-                    var cartridges = MemoryInterface.Memory.ReadPtr(magItem + Offsets.Item.Cartridges, false);
-                    if (!MemDMA.IsValidVirtualAddress(cartridges))
-                        return;
-
-                    // Read max ammo from StackSlot.Max
-                    MaxAmmo = MemoryInterface.Memory.ReadValue<int>(cartridges + Offsets.StackSlot.Max, false);
-
-                    // Read items list from StackSlot.Items
-                    var itemsList = MemoryInterface.Memory.ReadPtr(cartridges + Offsets.StackSlot.Items, false);
-                    if (!MemDMA.IsValidVirtualAddress(itemsList))
-                        return;
-
-                    // Read the internal array from List<T> (offset 0x10)
-                    var listItems = MemoryInterface.Memory.ReadPtr(itemsList + 0x10, false);
-                    if (!MemDMA.IsValidVirtualAddress(listItems))
-                        return;
-
-                    // Read first ammo item (offset 0x20 from array base)
-                    var firstAmmoItem = MemoryInterface.Memory.ReadPtr(listItems + 0x20, false);
-                    if (!MemDMA.IsValidVirtualAddress(firstAmmoItem))
-                        return;
-
-                    // Read current ammo count from Item.StackCount
-                    CurrentAmmo = MemoryInterface.Memory.ReadValue<int>(firstAmmoItem + Offsets.Item.StackCount, false);
-
-                    // Read ammo type name from template
-                    try
-                    {
-                        var ammoTemplate = MemoryInterface.Memory.ReadPtr(firstAmmoItem + Offsets.LootItem.Template, false);
-                        if (MemDMA.IsValidVirtualAddress(ammoTemplate))
-                        {
-                            var ammoIdPtr = MemoryInterface.Memory.ReadValue<MongoID>(ammoTemplate + Offsets.ItemTemplate._id, false);
-                            var ammoId = ammoIdPtr.ReadString(64, false);
-                            if (ammoId?.Length == 24 && TarkovDataManager.AllItems.TryGetValue(ammoId, out var ammoItem))
-                            {
-                                AmmoTypeName = string.IsNullOrWhiteSpace(ammoItem.ShortName) ? ammoItem.Name : ammoItem.ShortName;
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        // Ammo type lookup failed, but we still have count
-                    }
-                }
-                catch
-                {
-                    CurrentAmmo = 0;
-                    MaxAmmo = 0;
-                    AmmoTypeName = null;
-                }
-            }
-
             /// <summary>
             /// Returns the Ammo Template from a Weapon (First loaded round).
             /// </summary>

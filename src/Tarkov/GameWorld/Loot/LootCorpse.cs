@@ -42,7 +42,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         private readonly ulong _corpse;
         private bool _contentsLoaded;
         private DateTime _lastContentsRefresh = DateTime.MinValue;
-        private static readonly TimeSpan _contentsRefreshInterval = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// Gets the corpse contents refresh interval from config.
+        /// </summary>
+        private static TimeSpan ContentsRefreshInterval => TimeSpan.FromSeconds(App.Config.Debug.CorpseScanIntervalSeconds);
 
         /// <summary>
         /// Corpse container's associated player object (if any).
@@ -107,7 +111,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 return;
 
             // Throttle refreshes
-            if (DateTime.UtcNow - _lastContentsRefresh < _contentsRefreshInterval && _contentsLoaded)
+            if (DateTime.UtcNow - _lastContentsRefresh < ContentsRefreshInterval && _contentsLoaded)
                 return;
 
             _lastContentsRefresh = DateTime.UtcNow;
