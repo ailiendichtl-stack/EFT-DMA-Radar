@@ -1589,6 +1589,22 @@ namespace LoneEftDmaRadar.UI.ESP
 
             if (player.IsAI)
             {
+                // Handle offline PMC bots - use faction colors if enabled
+                if (player.Type == PlayerType.PMC)
+                {
+                    if (cfg.EspFactionColors)
+                    {
+                        var factionColor = player.PlayerSide switch
+                        {
+                            Enums.EPlayerSide.Bear => ColorFromHex(cfg.EspColorFactionBear),
+                            Enums.EPlayerSide.Usec => ColorFromHex(cfg.EspColorFactionUsec),
+                            _ => ColorFromHex(cfg.EspColorPlayers)
+                        };
+                        return ToColor(factionColor);
+                    }
+                    return ToColor(ColorFromHex(cfg.EspColorPlayers));
+                }
+
                 var aiHex = player.Type switch
                 {
                     PlayerType.AIBoss => cfg.EspColorBosses,

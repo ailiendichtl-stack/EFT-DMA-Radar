@@ -178,6 +178,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 Type = role.Type;
                 DebugLogger.LogDebug($"[PlayerDetect] Role from SpawnType: Name='{role.Name}', Type={role.Type}");
 
+                // Fix PlayerSide for PMC bots (they have PlayerSide=Savage but are actually Bear/Usec)
+                if (spawnType == Enums.ESpawnType.PmcBEAR)
+                    PlayerSide = Enums.EPlayerSide.Bear;
+                else if (spawnType == Enums.ESpawnType.PmcUSEC)
+                    PlayerSide = Enums.EPlayerSide.Usec;
+
                 // Register boss spawn for guard timing detection
                 if (Type == PlayerType.AIBoss)
                 {
@@ -185,7 +191,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     DebugLogger.LogDebug($"[PlayerDetect] Registered boss spawn: {Name}");
                 }
 
-                DebugLogger.LogDebug($"[PlayerDetect] Final result: Name='{Name}', Type={Type}");
+                DebugLogger.LogDebug($"[PlayerDetect] Final result: Name='{Name}', Type={Type}, PlayerSide={PlayerSide}");
                 return;
             }
 
