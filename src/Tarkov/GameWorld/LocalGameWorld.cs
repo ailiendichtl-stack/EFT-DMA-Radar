@@ -126,7 +126,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 _rgtPlayers = new RegisteredPlayers(rgtPlayersAddr, this);
                 ArgumentOutOfRangeException.ThrowIfLessThan(_rgtPlayers.GetPlayerCount(), 1, nameof(_rgtPlayers));
                 Loot = new(localGameWorld);
-                _exfilManager = new(mapID, _rgtPlayers.LocalPlayer.IsPmc);
+                _exfilManager = new(mapID, _rgtPlayers.LocalPlayer.IsPmc, localGameWorld);
                 _explosivesManager = new(localGameWorld);
                 _memWritesManager = new MemWritesManager();
                 _t4 = new WorkerThread()
@@ -348,6 +348,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                     _initialLootScanComplete = true;
                     PerformanceStats.UpdateLootScan(Stopwatch.GetTimestamp() - lootScanStart);
                 }
+
+                // Refresh exfil statuses from memory (live status updates)
+                _exfilManager.RefreshStatuses();
 
                 // Refresh player equipment
                 RefreshEquipment();

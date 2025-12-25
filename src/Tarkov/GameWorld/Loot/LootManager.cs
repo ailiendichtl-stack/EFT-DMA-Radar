@@ -298,6 +298,21 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                         {
                             _ = _loot.TryAdd(p.ItemBase, new LootItem(entry, pos));
                         }
+                        else
+                        {
+                            // Fallback for unknown items (new event items, etc.)
+                            // Read the short name from memory so they still show up
+                            try
+                            {
+                                var shortNamePtr = Memory.ReadPtr(itemTemplate + Offsets.ItemTemplate.ShortName);
+                                var shortName = Memory.ReadUnicodeString(shortNamePtr, 128);
+                                if (!string.IsNullOrEmpty(shortName))
+                                {
+                                    _ = _loot.TryAdd(p.ItemBase, new LootItem(id, shortName, pos));
+                                }
+                            }
+                            catch { }
+                        }
                     }
                 }
             }

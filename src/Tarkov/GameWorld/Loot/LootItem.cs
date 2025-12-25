@@ -147,6 +147,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
         /// <summary>
         /// Checks if an item exceeds regular loot price threshold.
+        /// Unknown items (price &lt; 0) are always shown since we can't determine their value.
         /// </summary>
         public bool IsRegularLoot
         {
@@ -154,6 +155,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             {
                 if (Blacklisted)
                     return false;
+                // Show unknown items (new event items, etc.) since we don't have price data
+                if (_item.FleaPrice < 0 && _item.TraderPrice < 0)
+                    return true;
                 return Price >= App.Config.Loot.MinValue;
             }
         }

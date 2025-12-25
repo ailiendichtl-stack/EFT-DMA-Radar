@@ -1,7 +1,7 @@
 ﻿/*
  * Lone EFT DMA Radar
  * Brought to you by Lone (Lone DMA)
- * 
+ *
 MIT License
 
 Copyright (c) 2025 Lone DMA
@@ -26,6 +26,11 @@ SOFTWARE.
  *
 */
 
+using LoneEftDmaRadar.DMA;
+using LoneEftDmaRadar.Tarkov.Unity.Collections;
+using LoneEftDmaRadar.UI.Misc;
+using SDK;
+
 namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
 {
     /// <summary>
@@ -34,9 +39,16 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
     public sealed class ExitManager : IReadOnlyCollection<IExitPoint>
     {
         private readonly IReadOnlyList<IExitPoint> _exits;
+        private readonly List<Exfil> _exfils = new();
+        private readonly ulong _localGameWorld;
+        private readonly bool _isPMC;
+        private bool _memoryExfilsLoaded = false;
 
-        public ExitManager(string mapId, bool isPMC)
+        public ExitManager(string mapId, bool isPMC, ulong localGameWorld = 0)
         {
+            _localGameWorld = localGameWorld;
+            _isPMC = isPMC;
+
             var list = new List<IExitPoint>();
             if (TarkovDataManager.MapData.TryGetValue(mapId, out var map))
             {
@@ -45,7 +57,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
                     map.Extracts.Where(x => !x.IsPmc);
                 foreach (var exfil in filteredExfils)
                 {
-                    list.Add(new Exfil(exfil));
+                    var exfilObj = new Exfil(exfil);
+                    list.Add(exfilObj);
+                    _exfils.Add(exfilObj);
                 }
                 foreach (var transit in map.Transits)
                 {
@@ -54,6 +68,99 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
             }
 
             _exits = list;
+
+            // Try to load memory exfil addresses on construction
+            if (localGameWorld != 0)
+            {
+                TryLoadMemoryExfils();
+            }
+        }
+
+        /// <summary>
+        /// Attempts to load exfil point addresses from memory and match them to static data.
+        /// </summary>
+        private void TryLoadMemoryExfils()
+        {
+            if (_memoryExfilsLoaded || _localGameWorld == 0)
+                return;
+
+            try
+            {
+                var exfilController = Memory.ReadPtr(_localGameWorld + Offsets.GameWorld.ExfiltrationController);
+                if (exfilController == 0)
+                    return;
+
+                // Read the appropriate exfil array based on player type
+                var exfilArrayOffset = _isPMC
+                    ? Offsets.ExfiltrationController.ExfiltrationPoints
+                    : Offsets.ExfiltrationController.ScavExfiltrationPoints;
+
+                var exfilArrayAddr = Memory.ReadPtr(exfilController + exfilArrayOffset);
+                if (exfilArrayAddr == 0)
+                    return;
+
+                using var exfilArray = UnityArray<ulong>.Create(exfilArrayAddr, useCache: false);
+
+                foreach (var exfilPointAddr in exfilArray)
+                {
+                    if (exfilPointAddr == 0)
+                        continue;
+
+                    try
+                    {
+                        // Read exfil name from memory
+                        var settingsAddr = Memory.ReadPtr(exfilPointAddr + Offsets.ExfiltrationPoint.Settings);
+                        if (settingsAddr == 0)
+                            continue;
+
+                        var namePtr = Memory.ReadPtr(settingsAddr + Offsets.ExitSettings.Name);
+                        if (namePtr == 0)
+                            continue;
+
+                        var exfilName = Memory.ReadUnicodeString(namePtr, 64);
+                        if (string.IsNullOrEmpty(exfilName))
+                            continue;
+
+                        // Match to static exfil data by name
+                        var matchingExfil = _exfils.FirstOrDefault(e =>
+                            e.Name.Equals(exfilName, StringComparison.OrdinalIgnoreCase));
+
+                        if (matchingExfil != null)
+                        {
+                            matchingExfil.SetMemoryAddress(exfilPointAddr);
+                        }
+                    }
+                    catch
+                    {
+                        // Skip this exfil point on error
+                    }
+                }
+
+                _memoryExfilsLoaded = true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogDebug($"[ExitManager] Failed to load memory exfils: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Refreshes exfil statuses from memory.
+        /// Call this periodically to update live status.
+        /// </summary>
+        public void RefreshStatuses()
+        {
+            // Try to load memory addresses if not done yet
+            if (!_memoryExfilsLoaded)
+            {
+                TryLoadMemoryExfils();
+            }
+
+            // Update status for all exfils that have memory addresses
+            foreach (var exfil in _exfils)
+            {
+                exfil.UpdateStatus();
+            }
         }
 
         #region IReadOnlyCollection

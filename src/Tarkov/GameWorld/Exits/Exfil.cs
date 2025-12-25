@@ -26,22 +26,76 @@ SOFTWARE.
  *
 */
 
+using LoneEftDmaRadar.DMA;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
 using LoneEftDmaRadar.Tarkov.Unity;
 using LoneEftDmaRadar.UI.Radar.Maps;
 using LoneEftDmaRadar.UI.Skia;
+using SDK;
 
 namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
 {
     public class Exfil : IExitPoint, IWorldEntity, IMapEntity, IMouseoverEntity
     {
+        /// <summary>
+        /// Memory address of this exfil point (0 if loaded from static data).
+        /// </summary>
+        private ulong _exfilPointAddr;
+
         public Exfil(TarkovDataManager.ExtractElement extract)
         {
             Name = extract.Name;
             _position = extract.Position.AsVector3();
         }
 
+        /// <summary>
+        /// Constructor for exfil loaded directly from memory.
+        /// </summary>
+        public Exfil(string name, Vector3 position, ulong exfilPointAddr)
+        {
+            Name = name;
+            _position = position;
+            _exfilPointAddr = exfilPointAddr;
+        }
+
         public string Name { get; }
+
+        /// <summary>
+        /// Sets the memory address for this exfil to enable live status updates.
+        /// </summary>
+        public void SetMemoryAddress(ulong addr)
+        {
+            _exfilPointAddr = addr;
+        }
+
+        /// <summary>
+        /// Updates the status from memory if address is known.
+        /// </summary>
+        public void UpdateStatus()
+        {
+            if (_exfilPointAddr == 0)
+                return;
+
+            try
+            {
+                var memStatus = Memory.ReadValue<int>(_exfilPointAddr + Offsets.ExfiltrationPoint.Status);
+                Status = memStatus switch
+                {
+                    (int)Enums.EExfiltrationStatus.NotPresent => EStatus.Closed,
+                    (int)Enums.EExfiltrationStatus.UncompleteRequirements => EStatus.Closed,
+                    (int)Enums.EExfiltrationStatus.Countdown => EStatus.Pending,
+                    (int)Enums.EExfiltrationStatus.RegularMode => EStatus.Open,
+                    (int)Enums.EExfiltrationStatus.Pending => EStatus.Pending,
+                    (int)Enums.EExfiltrationStatus.AwaitsManualActivation => EStatus.Pending,
+                    (int)Enums.EExfiltrationStatus.Hidden => EStatus.Closed,
+                    _ => EStatus.Open
+                };
+            }
+            catch
+            {
+                // Keep existing status on read failure
+            }
+        }
 
         #region Interfaces
 

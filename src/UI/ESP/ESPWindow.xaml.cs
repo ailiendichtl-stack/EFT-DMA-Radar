@@ -330,15 +330,19 @@ namespace LoneEftDmaRadar.UI.ESP
                             {
                                 if (exit is Exfil exfil && (exfil.Status == Exfil.EStatus.Open || exfil.Status == Exfil.EStatus.Pending))
                                 {
-                                     if (WorldToScreen2(exfil.Position, out var screen, screenWidth, screenHeight))
+                                     if (WorldToScreen2WithScale(exfil.Position, out var screen, out var scale, screenWidth, screenHeight))
                                      {
                                          var dotColor = exfil.Status == Exfil.EStatus.Pending
                                              ? ToColor(SKPaints.PaintExfilPending)
                                              : ToColor(SKPaints.PaintExfilOpen);
                                          var textColor = GetExfilColorForRender();
 
-                                         ctx.DrawCircle(ToRaw(screen), 4f, dotColor, true);
-                                         ctx.DrawText(exfil.Name, screen.X + 6, screen.Y + 4, textColor, DxTextSize.Medium);
+                                         // Apply distance-based scaling
+                                         float markerSize = 4f * scale;
+                                         float textOffsetX = 6f * scale;
+                                         float textOffsetY = 4f * scale;
+                                         ctx.DrawCircle(ToRaw(screen), markerSize, dotColor, true);
+                                         ctx.DrawText(exfil.Name, screen.X + textOffsetX, screen.Y + textOffsetY, textColor, DxTextSize.Medium);
                                      }
                                 }
                             }
@@ -438,7 +442,7 @@ namespace LoneEftDmaRadar.UI.ESP
                 if (App.Config.UI.EspLootMaxDistance > 0 && distance > App.Config.UI.EspLootMaxDistance)
                     continue;
 
-                if (WorldToScreen2(item.Position, out var screen, screenWidth, screenHeight))
+                if (WorldToScreen2WithScale(item.Position, out var screen, out var scale, screenWidth, screenHeight))
                 {
                      // Calculate cone filter based on screen position
                      bool coneEnabled = App.Config.UI.EspLootConeEnabled && App.Config.UI.EspLootConeAngle > 0f;
@@ -507,7 +511,9 @@ namespace LoneEftDmaRadar.UI.ESP
                          textColor = circleColor;
                      }
 
-                     ctx.DrawCircle(ToRaw(screen), 2f, circleColor, true);
+                     // Apply distance-based scaling to marker size
+                     float markerSize = 2f * scale;
+                     ctx.DrawCircle(ToRaw(screen), markerSize, circleColor, true);
 
                      if (item.Important || inCone)
                      {
@@ -532,7 +538,8 @@ namespace LoneEftDmaRadar.UI.ESP
                                      : $"{shortName} ({LoneEftDmaRadar.Misc.Utilities.FormatNumberKM(item.Price)})";
                              }
                          }
-                         ctx.DrawText(text, screen.X + 4, screen.Y + 4, textColor, DxTextSize.Small);
+                         float textOffset = 4f * scale;
+                         ctx.DrawText(text, screen.X + textOffset, screen.Y + textOffset, textColor, DxTextSize.Small);
                     }
                 }
             }
@@ -571,7 +578,7 @@ namespace LoneEftDmaRadar.UI.ESP
                 if (maxDistance > 0 && distance > maxDistance)
                     continue;
 
-                if (!WorldToScreen2(container.Position, out var screen, screenWidth, screenHeight))
+                if (!WorldToScreen2WithScale(container.Position, out var screen, out var scale, screenWidth, screenHeight))
                     continue;
 
                 // Determine color based on container contents
@@ -584,14 +591,17 @@ namespace LoneEftDmaRadar.UI.ESP
                 else if (container.HasValuableContents)
                     color = ToColor(SKPaints.PaintLoot);
 
-                ctx.DrawCircle(ToRaw(screen), 3f, color, true);
+                // Apply distance-based scaling
+                float markerSize = 3f * scale;
+                ctx.DrawCircle(ToRaw(screen), markerSize, color, true);
 
                 // Build label with value if available
                 string text = container.Name ?? "Container";
                 if (App.Config.UI.EspLootPrice && container.TotalValue > 0)
                     text = $"{text} ({LoneEftDmaRadar.Misc.Utilities.FormatNumberKM(container.TotalValue)})";
 
-                ctx.DrawText(text, screen.X + 4, screen.Y + 4, color, DxTextSize.Small);
+                float textOffset = 4f * scale;
+                ctx.DrawText(text, screen.X + textOffset, screen.Y + textOffset, color, DxTextSize.Small);
             }
         }
 
@@ -610,12 +620,14 @@ namespace LoneEftDmaRadar.UI.ESP
                     if (tripwire.Position == Vector3.Zero)
                         continue;
 
-                    if (!WorldToScreen2(tripwire.Position, out var screen, screenWidth, screenHeight))
+                    if (!WorldToScreen2WithScale(tripwire.Position, out var screen, out var scale, screenWidth, screenHeight))
                         continue;
 
                     var color = GetTripwireColorForRender();
-                    ctx.DrawCircle(ToRaw(screen), 5f, color, true);
-                    ctx.DrawText("Tripwire", screen.X + 6, screen.Y, color, DxTextSize.Small);
+                    float markerSize = 5f * scale;
+                    float textOffset = 6f * scale;
+                    ctx.DrawCircle(ToRaw(screen), markerSize, color, true);
+                    ctx.DrawText("Tripwire", screen.X + textOffset, screen.Y, color, DxTextSize.Small);
                 }
                 catch
                 {
@@ -640,12 +652,14 @@ namespace LoneEftDmaRadar.UI.ESP
                     if (grenade.Position == Vector3.Zero)
                         continue;
 
-                    if (!WorldToScreen2(grenade.Position, out var screen, screenWidth, screenHeight))
+                    if (!WorldToScreen2WithScale(grenade.Position, out var screen, out var scale, screenWidth, screenHeight))
                         continue;
 
                     var color = GetGrenadeColorForRender();
-                    ctx.DrawCircle(ToRaw(screen), 5f, color, true);
-                    ctx.DrawText("Grenade", screen.X + 6, screen.Y, color, DxTextSize.Small);
+                    float markerSize = 5f * scale;
+                    float textOffset = 6f * scale;
+                    ctx.DrawCircle(ToRaw(screen), markerSize, color, true);
+                    ctx.DrawText("Grenade", screen.X + textOffset, screen.Y, color, DxTextSize.Small);
                 }
                 catch
                 {
@@ -1710,6 +1724,14 @@ namespace LoneEftDmaRadar.UI.ESP
         private bool WorldToScreen2(in Vector3 world, out SKPoint scr, float screenWidth, float screenHeight)
         {
             return CameraManager.WorldToScreen(in world, out scr, true, true);
+        }
+
+        /// <summary>
+        /// Converts world position to screen with distance-based scale factor.
+        /// </summary>
+        private bool WorldToScreen2WithScale(in Vector3 world, out SKPoint scr, out float scale, float screenWidth, float screenHeight)
+        {
+            return CameraManager.WorldToScreenWithScale(in world, out scr, out scale, true, true);
         }
 
         private bool TryProject(in Vector3 world, float w, float h, out SKPoint screen)

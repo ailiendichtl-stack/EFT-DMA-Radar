@@ -115,8 +115,26 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
             }
         }
 
-        public static bool WorldToScreen( ref readonly Vector3 worldPos, out SKPoint scrPos, bool onScreenCheck = false, bool useTolerance = false) 
+        public static bool WorldToScreen( ref readonly Vector3 worldPos, out SKPoint scrPos, bool onScreenCheck = false, bool useTolerance = false)
         {
+            return WorldToScreenWithScale(in worldPos, out scrPos, out _, onScreenCheck, useTolerance);
+        }
+
+        /// <summary>
+        /// Converts a world position to screen coordinates with distance-based scale factor.
+        /// </summary>
+        /// <param name="worldPos">World position to convert</param>
+        /// <param name="scrPos">Resulting screen position</param>
+        /// <param name="scale">Distance-based scale factor (1.0 at reference distance, larger when closer, smaller when farther)</param>
+        /// <param name="onScreenCheck">Check if position is on screen</param>
+        /// <param name="useTolerance">Use tolerance for on-screen check</param>
+        /// <returns>True if conversion succeeded and position is valid</returns>
+        public static bool WorldToScreenWithScale(in Vector3 worldPos, out SKPoint scrPos, out float scale, bool onScreenCheck = false, bool useTolerance = false)
+        {
+            const float REFERENCE_DISTANCE = 50f; // Reference distance for scale = 1.0
+            const float MIN_SCALE = 0.3f;         // Minimum scale factor
+            const float MAX_SCALE = 2.0f;         // Maximum scale factor
+
             try
             {
                 float w = Vector3.Dot(_viewMatrix.Translation, worldPos) + _viewMatrix.M44;
@@ -124,8 +142,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                 if (w < 0.098f)
                 {
                     scrPos = default;
+                    scale = 1f;
                     return false;
                 }
+
+                // Calculate scale based on distance (w is approximately the distance)
+                scale = Math.Clamp(REFERENCE_DISTANCE / w, MIN_SCALE, MAX_SCALE);
 
                 float x = Vector3.Dot(_viewMatrix.Right, worldPos) + _viewMatrix.M14;
                 float y = Vector3.Dot(_viewMatrix.Up, worldPos) + _viewMatrix.M24;
@@ -156,6 +178,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                     if (scrPos.X < left || scrPos.X > right || scrPos.Y < top || scrPos.Y > bottom)
                     {
                         scrPos = default;
+                        scale = 1f;
                         return false;
                     }
                 }
@@ -166,6 +189,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
             {
                 DebugLogger.LogDebug($"ERROR in WorldToScreen: {ex}");
                 scrPos = default;
+                scale = 1f;
                 return false;
             }
         }
