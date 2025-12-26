@@ -135,6 +135,47 @@ namespace SDK
             public const uint Id = 0x10; // String
             public const uint AccountId = 0x18; // String
             public const uint Info = 0x48; // -.\uE9AD
+            public const uint TaskConditionCounters = 0x90; // Dictionary<MongoID, TaskConditionCounter>
+            public const uint QuestsData = 0x98; // System.Collections.Generic.List<QuestStatusData>
+        }
+
+        public readonly partial struct QuestStatusData
+        {
+            public const uint Id = 0x10; // String
+            public const uint StartTime = 0x18; // Int32
+            public const uint Status = 0x1C; // Int32 (EQuestStatus)
+            public const uint StatusStartTimestamps = 0x20; // object
+            public const uint CompletedConditions = 0x28; // HashSet<MongoID>
+            public const uint AvailableAfter = 0x30; // Int32
+        }
+
+        public readonly partial struct TaskConditionCounter
+        {
+            public const uint OnValueChanged = 0x10; // Action
+            public const uint Id = 0x18; // MongoID
+            public const uint Type = 0x30; // String
+            public const uint SourceId = 0x38; // String
+            public const uint Value = 0x40; // Int32 (current count)
+            public const uint Template = 0x48; // Condition (target count)
+            public const uint Conditional = 0x50; // IConditional
+        }
+
+        public readonly partial struct Condition
+        {
+            public const uint Id = 0x10; // MongoID
+            public const uint Value = 0x28; // Single (target count)
+            public const uint CompareMethod = 0x2C; // Int32
+            public const uint VisibilityConditions = 0x30; // Condition[]
+            public const uint Index = 0x38; // Int32
+            public const uint ParentId = 0x40; // Nullable<MongoID>
+            public const uint DynamicLocale = 0x60; // Boolean
+            public const uint IsNecessary = 0x61; // Boolean
+        }
+
+        public readonly partial struct TriggerWithId
+        {
+            public const uint Id = 0x18; // String
+            public const uint Description = 0x20; // String
         }
 
         public readonly partial struct PlayerInfo // EFT, class: ProfileInfo

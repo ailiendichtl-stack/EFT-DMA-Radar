@@ -62,6 +62,9 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
         [JsonPropertyName("warnings")]
         public List<WarningMessage> Warnings { get; set; }
 
+        [JsonPropertyName("errors")]
+        public List<GraphQLError> Errors { get; set; }
+
         [JsonPropertyName("data")]
         public TarkovDevData Data { get; set; }
 
@@ -75,11 +78,23 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
 
             [JsonPropertyName("maps")]
             public List<object> Maps { get; set; }
+
+            [JsonPropertyName("tasks")]
+            public List<object> Tasks { get; set; }
         }
         public class WarningMessage
         {
             [JsonPropertyName("message")]
             public string Message { get; set; }
+        }
+
+        public class GraphQLError
+        {
+            [JsonPropertyName("message")]
+            public string Message { get; set; }
+
+            [JsonPropertyName("path")]
+            public List<string> Path { get; set; }
         }
     }
 

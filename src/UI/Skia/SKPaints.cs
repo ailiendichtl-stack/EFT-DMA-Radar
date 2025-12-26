@@ -528,6 +528,17 @@ namespace LoneEftDmaRadar.UI.Skia
             IsAntialias = true,
         };
 
+        /// <summary>
+        /// Paint for quest objective zones on the map.
+        /// </summary>
+        public static SKPaint PaintQuestZone { get; } = new()
+        {
+            Color = SKColors.Cyan.WithAlpha(180),
+            StrokeWidth = 0.25f,
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true,
+        };
+
         public static SKPaint TextOutline { get; } = new()
         {
             IsAntialias = true,

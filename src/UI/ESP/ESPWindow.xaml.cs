@@ -3,6 +3,7 @@ using LoneEftDmaRadar.Tarkov.GameWorld;
 using LoneEftDmaRadar.Tarkov.GameWorld.Exits;
 using LoneEftDmaRadar.Tarkov.GameWorld.Explosives;
 using LoneEftDmaRadar.Tarkov.GameWorld.Loot;
+using LoneEftDmaRadar.Tarkov.GameWorld.Quests;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
@@ -358,6 +359,12 @@ namespace LoneEftDmaRadar.UI.ESP
                             DrawGrenades(ctx, screenWidth, screenHeight);
                         }
 
+                        // Render quest locations
+                        if (App.Config.UI.EspQuestLocations && App.Config.QuestHelper.Enabled)
+                        {
+                            DrawQuestLocations(ctx, screenWidth, screenHeight);
+                        }
+
                         // Render players
                         foreach (var player in allPlayers)
                         {
@@ -416,6 +423,8 @@ namespace LoneEftDmaRadar.UI.ESP
                 // Filter based on ESP settings
                 bool isCorpse = item is LootCorpse;
                 bool isQuest = item.IsQuestItem;
+                bool isImportant = item.Important; // User's custom filter list
+
                 if (isQuest && !App.Config.UI.EspQuestLoot)
                     continue;
                 if (isCorpse && !App.Config.UI.EspCorpses)
@@ -429,13 +438,16 @@ namespace LoneEftDmaRadar.UI.ESP
                 bool isMeds = item.IsMeds;
                 bool isBackpack = item.IsBackpack;
 
-                // Skip if it's one of these types and the setting is disabled
-                if (isFood && !App.Config.UI.EspFood)
-                    continue;
-                if (isMeds && !App.Config.UI.EspMeds)
-                    continue;
-                if (isBackpack && !App.Config.UI.EspBackpacks)
-                    continue;
+                // Skip category types if disabled, BUT Important items always show
+                if (!isImportant)
+                {
+                    if (isFood && !App.Config.UI.EspFood)
+                        continue;
+                    if (isMeds && !App.Config.UI.EspMeds)
+                        continue;
+                    if (isBackpack && !App.Config.UI.EspBackpacks)
+                        continue;
+                }
 
                 // Check distance to loot
                 float distance = Vector3.Distance(camPos, item.Position);
@@ -466,50 +478,45 @@ namespace LoneEftDmaRadar.UI.ESP
                          inCone = screenAngle <= App.Config.UI.EspLootConeAngle;
                      }
 
-                     // Determine colors based on item type (default to user-selected loot color).
-                     DxColor circleColor = GetLootColorForRender();
-                     DxColor textColor = circleColor;
+                     // Determine colors based on item type (matching radar GetPaints order)
+                     DxColor circleColor;
 
                      if (isQuest)
                      {
                          circleColor = ToColor(SKPaints.PaintQuestItem);
-                         textColor = circleColor;
-                     }
-                     else if (item.Important)
-                     {
-                         circleColor = ToColor(SKPaints.PaintFilteredLoot);
-                         textColor = circleColor;
-                     }
-                     else if (item.IsValuableLoot)
-                     {
-                         circleColor = ToColor(SKPaints.PaintImportantLoot);
-                         textColor = circleColor;
                      }
                      else if (isBackpack)
                      {
                          circleColor = ToColor(SKPaints.PaintBackpacks);
-                         textColor = circleColor;
                      }
                      else if (isMeds)
                      {
                          circleColor = ToColor(SKPaints.PaintMeds);
-                         textColor = circleColor;
                      }
                      else if (isFood)
                      {
                          circleColor = ToColor(SKPaints.PaintFood);
-                         textColor = circleColor;
+                     }
+                     else if (!string.IsNullOrEmpty(item.CustomFilter?.Color))
+                     {
+                         // Custom filter color from loot filter UI
+                         circleColor = ToColor(ColorFromHex(item.CustomFilter.Color));
+                     }
+                     else if (item.IsValuableLoot || item is LootAirdrop)
+                     {
+                         circleColor = ToColor(SKPaints.PaintImportantLoot);
                      }
                      else if (isCorpse)
                      {
                          circleColor = ToColor(SKPaints.PaintCorpse);
-                         textColor = circleColor;
                      }
-                     else if (item is LootAirdrop)
+                     else
                      {
-                         circleColor = ToColor(SKPaints.PaintAirdrop);
-                         textColor = circleColor;
+                         // Default loot color (WhiteSmoke) - matches radar
+                         circleColor = ToColor(SKPaints.PaintLoot);
                      }
+
+                     DxColor textColor = circleColor;
 
                      // Apply distance-based scaling to marker size
                      float markerSize = 2f * scale;
@@ -664,6 +671,46 @@ namespace LoneEftDmaRadar.UI.ESP
                 catch
                 {
                     // Silently skip invalid grenades to prevent ESP from breaking
+                    continue;
+                }
+            }
+        }
+
+        private void DrawQuestLocations(Dx9RenderContext ctx, float screenWidth, float screenHeight)
+        {
+            var locations = Memory.Quests?.LocationConditions;
+            if (locations is null || locations.Count == 0)
+                return;
+
+            foreach (var kvp in locations)
+            {
+                var location = kvp.Value;
+                if (location is null)
+                    continue;
+
+                try
+                {
+                    if (location.Position == Vector3.Zero)
+                        continue;
+
+                    if (!WorldToScreen2WithScale(location.Position, out var screen, out var scale, screenWidth, screenHeight))
+                        continue;
+
+                    var color = ToColor(SKPaints.PaintQuestZone);
+                    float markerSize = 6f * scale;
+                    float textOffset = 8f * scale;
+
+                    // Draw a square marker to differentiate from other markers
+                    float halfSize = markerSize;
+                    ctx.DrawFilledRect(
+                        new RectangleF(screen.X - halfSize, screen.Y - halfSize, halfSize * 2, halfSize * 2),
+                        color);
+
+                    ctx.DrawText("Quest Zone", screen.X + textOffset, screen.Y, color, DxTextSize.Small);
+                }
+                catch
+                {
+                    // Silently skip invalid locations to prevent ESP from breaking
                     continue;
                 }
             }
@@ -951,12 +998,34 @@ namespace LoneEftDmaRadar.UI.ESP
                 // Basic filtering consistent with DrawLoot
                  bool isCorpse = item is LootCorpse;
                  bool isQuest = item.IsQuestItem;
+                 bool isBackpack = item.IsBackpack;
+                 bool isMeds = item.IsMeds;
+                 bool isFood = item.IsFood;
+
                  if (isQuest && !App.Config.UI.EspQuestLoot) continue;
                  if (isCorpse && !App.Config.UI.EspCorpses) continue;
+                 if (isBackpack && !App.Config.UI.EspBackpacks) continue;
+                 if (isMeds && !App.Config.UI.EspMeds) continue;
+                 if (isFood && !App.Config.UI.EspFood) continue;
 
-                 var color = isQuest ? SKColors.YellowGreen :
-                             isCorpse ? SKColors.Gray :
-                             item.Important ? SKColors.Turquoise : SKColors.White;
+                 // Match radar GetPaints color order
+                 SKColor color;
+                 if (isQuest)
+                     color = SKPaints.PaintQuestItem.Color;
+                 else if (isBackpack)
+                     color = SKPaints.PaintBackpacks.Color;
+                 else if (isMeds)
+                     color = SKPaints.PaintMeds.Color;
+                 else if (isFood)
+                     color = SKPaints.PaintFood.Color;
+                 else if (!string.IsNullOrEmpty(item.CustomFilter?.Color) && SKColor.TryParse(item.CustomFilter.Color, out var customColor))
+                     color = customColor;
+                 else if (item.IsValuableLoot || item is LootAirdrop)
+                     color = SKPaints.PaintImportantLoot.Color;
+                 else if (isCorpse)
+                     color = SKPaints.PaintCorpse.Color;
+                 else
+                     color = SKPaints.PaintLoot.Color;
 
                  DrawMiniRadarDot(ctx, item.Position, map, color, 1.5f);
             }

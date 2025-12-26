@@ -38,6 +38,18 @@
                 </StackPanel>
             </GroupBox>
 
+            <!-- Quest Tracker Debug -->
+            <GroupBox Header="Quest Tracker"
+                      Margin="0,12,0,0"
+                      Width="380">
+                <StackPanel>
+                    <TextBlock Text="{Binding QuestTrackerText}"
+                               FontFamily="Consolas"
+                               TextWrapping="Wrap"
+                               Margin="6" />
+                </StackPanel>
+            </GroupBox>
+
             <!-- Scan Interval Settings -->
             <GroupBox Header="Scan Intervals (requires raid restart)"
                       Margin="0,12,0,0"

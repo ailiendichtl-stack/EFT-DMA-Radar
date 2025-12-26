@@ -90,31 +90,145 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
                             position {x,y,z}
                         }
                     }
-                    items { 
-                        id 
-                        name 
-                        shortName 
-                        width 
-                        height 
-                        sellFor { 
-                            vendor { 
-                                name 
-                            } 
-                            priceRUB 
-                        } 
-                        basePrice 
-                        avg24hPrice 
-                        historicalPrices { 
-                            price 
-                        } 
-                        categories { 
-                            name 
-                        } 
+                    items {
+                        id
+                        name
+                        shortName
+                        width
+                        height
+                        sellFor {
+                            vendor {
+                                name
+                            }
+                            priceRUB
+                        }
+                        basePrice
+                        avg24hPrice
+                        historicalPrices {
+                            price
+                        }
+                        categories {
+                            name
+                        }
                     }
-                    lootContainers { 
-                        id 
-                        normalizedName 
-                        name 
+                    lootContainers {
+                        id
+                        normalizedName
+                        name
+                    }
+                    tasks {
+                        id
+                        tarkovDataId
+                        name
+                        kappaRequired
+                        lightkeeperRequired
+                        trader {
+                            name
+                        }
+                        map {
+                            nameId
+                            name
+                        }
+                        objectives {
+                            id
+                            type
+                            description
+                            maps {
+                                nameId
+                                name
+                            }
+                            ... on TaskObjectiveBasic {
+                                zones {
+                                    id
+                                    map {
+                                        nameId
+                                        name
+                                    }
+                                    position {x,y,z}
+                                }
+                            }
+                            ... on TaskObjectiveItem {
+                                count
+                                foundInRaid
+                                item {
+                                    id
+                                    name
+                                    shortName
+                                }
+                                zones {
+                                    id
+                                    map {
+                                        nameId
+                                        name
+                                    }
+                                    position {x,y,z}
+                                }
+                            }
+                            ... on TaskObjectiveQuestItem {
+                                questItem {
+                                    id
+                                    name
+                                    shortName
+                                    normalizedName
+                                    description
+                                }
+                                zones {
+                                    id
+                                    map {
+                                        nameId
+                                        name
+                                    }
+                                    position {x,y,z}
+                                }
+                            }
+                            ... on TaskObjectiveMark {
+                                markerItem {
+                                    id
+                                    name
+                                    shortName
+                                }
+                                zones {
+                                    id
+                                    map {
+                                        nameId
+                                        name
+                                    }
+                                    position {x,y,z}
+                                }
+                            }
+                            ... on TaskObjectiveShoot {
+                                count
+                                zones {
+                                    id
+                                    map {
+                                        nameId
+                                        name
+                                    }
+                                    position {x,y,z}
+                                }
+                            }
+                            ... on TaskObjectiveExtract {
+                                count
+                            }
+                            ... on TaskObjectiveBuildItem {
+                                item {
+                                    id
+                                    name
+                                    shortName
+                                }
+                            }
+                        }
+                        neededKeys {
+                            keys {
+                                id
+                                name
+                                shortName
+                            }
+                            map {
+                                nameId
+                                name
+                            }
+                        }
                     }
                 }
                 """

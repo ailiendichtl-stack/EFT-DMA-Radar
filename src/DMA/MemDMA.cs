@@ -35,6 +35,7 @@ using LoneEftDmaRadar.Tarkov.GameWorld.Exits;
 using LoneEftDmaRadar.Tarkov.GameWorld.Explosives;
 using LoneEftDmaRadar.Tarkov.GameWorld.Loot;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
+using LoneEftDmaRadar.Tarkov.GameWorld.Quests;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
 using LoneEftDmaRadar.UI.Misc;
 using VmmSharpEx;
@@ -98,6 +99,7 @@ namespace LoneEftDmaRadar.DMA
         public IReadOnlyCollection<IExitPoint> Exits => Game?.Exits;
         public LocalPlayer LocalPlayer => Game?.LocalPlayer;
         public LootManager Loot => Game?.Loot;
+        public QuestManager Quests => Game?.Quests;
         public LocalGameWorld Game { get; private set; }
 
         internal MemDMA()

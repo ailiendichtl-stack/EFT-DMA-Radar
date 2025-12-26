@@ -57,6 +57,12 @@ Toggle Fullscreen: F11
                                 MinWidth="100"
                                 Height="35"
                                 Margin="0,0,8,8" />
+                        <Button Content="Refresh Data"
+                                ToolTip="Force refresh item/quest data from tarkov.dev API. Use if quest tracking shows 0 tasks."
+                                Command="{Binding RefreshDataCommand}"
+                                MinWidth="100"
+                                Height="35"
+                                Margin="0,0,8,8" />
                     </WrapPanel>
 
                     <!-- sliders -->
@@ -216,6 +222,29 @@ Toggle Fullscreen: F11
                                    Margin="8,0,0,0" />
                     </StackPanel>
 
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Quest Helper -->
+            <GroupBox Header="Quest Helper"
+                      Margin="0,0,0,12">
+                <StackPanel>
+                    <WrapPanel Margin="0,0,0,8">
+                        <CheckBox Content="Enable Quest Helper"
+                                  ToolTip="Enables quest tracking from game memory. Tracks your active quests and objectives."
+                                  IsChecked="{Binding QuestHelperEnabled, Mode=TwoWay}"
+                                  Margin="0,0,16,8" />
+                        <CheckBox Content="Show Quest Locations"
+                                  ToolTip="Shows quest objective locations on the radar map (cyan markers)."
+                                  IsChecked="{Binding QuestHelperShowLocations, Mode=TwoWay}"
+                                  IsEnabled="{Binding QuestHelperEnabled}"
+                                  Margin="0,0,16,8" />
+                        <CheckBox Content="Highlight Quest Items"
+                                  ToolTip="Highlights loot items that are needed for your active quests."
+                                  IsChecked="{Binding ShowQuestItems, Mode=TwoWay}"
+                                  IsEnabled="{Binding QuestHelperEnabled}"
+                                  Margin="0,0,16,8" />
+                    </WrapPanel>
                 </StackPanel>
             </GroupBox>
 

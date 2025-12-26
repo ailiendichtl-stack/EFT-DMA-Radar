@@ -55,6 +55,8 @@ SOFTWARE.
  *
 */
 
+using LoneEftDmaRadar.UI.Misc;
+
 namespace LoneEftDmaRadar.Web.TarkovDev.Data
 {
     internal static class TarkovDevDataJob
@@ -71,13 +73,68 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
         public static async Task<string> GetUpdatedDataAsync()
         {
             var json = await TarkovDevGraphQLApi.GetTarkovDataAsync();
+
+            // Debug: Log raw JSON length and check for tasks
+            DebugLogger.LogDebug($"[TarkovDevDataJob] Raw JSON length: {json?.Length ?? 0}");
+            if (json != null && json.Contains("\"tasks\""))
+            {
+                var tasksIndex = json.IndexOf("\"tasks\"");
+                var snippet = json.Substring(tasksIndex, Math.Min(500, json.Length - tasksIndex));
+                DebugLogger.LogDebug($"[TarkovDevDataJob] Tasks found in raw JSON! Snippet: {snippet.Substring(0, Math.Min(200, snippet.Length))}...");
+            }
+            else
+            {
+                DebugLogger.LogDebug("[TarkovDevDataJob] WARNING: 'tasks' not found in raw JSON!");
+            }
+
             var data = JsonSerializer.Deserialize<TarkovDevDataQuery>(json, _jsonOptions) ??
                 throw new InvalidOperationException("Failed to deserialize Tarkov data.");
+
+            // Debug: Log counts after deserialization
+            DebugLogger.LogDebug($"[TarkovDevDataJob] Deserialized - Items: {data.Data?.Items?.Count ?? 0}, Tasks: {data.Data?.Tasks?.Count ?? 0}, Maps: {data.Data?.Maps?.Count ?? 0}, LootContainers: {data.Data?.LootContainers?.Count ?? 0}");
+
+            // Check for GraphQL errors
+            if (data.Errors?.Count > 0)
+            {
+                foreach (var error in data.Errors)
+                {
+                    var path = error.Path != null ? string.Join(" -> ", error.Path) : "(no path)";
+                    DebugLogger.LogDebug($"[TarkovDevDataJob] GRAPHQL ERROR: {error.Message} at {path}");
+                }
+            }
+
+            // Check for API warnings
+            if (data.Warnings?.Count > 0)
+            {
+                foreach (var warning in data.Warnings)
+                {
+                    DebugLogger.LogDebug($"[TarkovDevDataJob] API WARNING: {warning.Message}");
+                }
+            }
+
+            // Debug: Check if data.Data is null
+            if (data.Data == null)
+            {
+                DebugLogger.LogDebug("[TarkovDevDataJob] ERROR: data.Data is NULL!");
+            }
+            else if (data.Data.Tasks == null)
+            {
+                DebugLogger.LogDebug("[TarkovDevDataJob] WARNING: data.Data.Tasks is NULL (not just empty)!");
+            }
+            else
+            {
+                DebugLogger.LogDebug($"[TarkovDevDataJob] Tasks count from API: {data.Data.Tasks.Count}");
+            }
+
             var result = new OutgoingTarkovMarketData
             {
                 Items = ParseMarketData(data),
-                Maps = data.Data.Maps
+                Maps = data.Data.Maps,
+                Tasks = data.Data.Tasks
             };
+
+            DebugLogger.LogDebug($"[TarkovDevDataJob] Output - Items: {result.Items?.Count ?? 0}, Tasks: {result.Tasks?.Count ?? 0}");
+
             return JsonSerializer.Serialize(result);
         }
 
@@ -125,6 +182,9 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
 
             [JsonPropertyName("maps")]
             public List<object> Maps { get; set; }
+
+            [JsonPropertyName("tasks")]
+            public List<object> Tasks { get; set; }
         }
 
         private sealed class OutgoingItem

@@ -35,6 +35,7 @@ using LoneEftDmaRadar.Tarkov.GameWorld.Explosives;
 using LoneEftDmaRadar.Tarkov.GameWorld.Loot;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers;
+using LoneEftDmaRadar.Tarkov.GameWorld.Quests;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
 using LoneEftDmaRadar.UI.Misc;
 using VmmSharpEx.Options;
@@ -64,6 +65,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         private readonly WorkerThread _t3;
         private readonly WorkerThread _t4;
         private readonly MemWritesManager _memWritesManager;
+        private readonly QuestManager _questManager;
 
         // Loot scan throttling - only scan on raid start, then at configurable interval
         private bool _initialLootScanComplete = false;
@@ -85,6 +87,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         public IReadOnlyCollection<IExitPoint> Exits => _exfilManager;
         public LocalPlayer LocalPlayer => _rgtPlayers?.LocalPlayer;
         public LootManager Loot { get; }
+        public QuestManager Quests => _questManager;
 
         private LocalGameWorld() { }
 
@@ -129,6 +132,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 _exfilManager = new(mapID, _rgtPlayers.LocalPlayer.IsPmc, localGameWorld);
                 _explosivesManager = new(localGameWorld);
                 _memWritesManager = new MemWritesManager();
+                // Initialize quest manager with local player's profile
+                _questManager = new QuestManager(_rgtPlayers.LocalPlayer.Profile);
                 _t4 = new WorkerThread()
                 {
                     Name = "MemWrites Worker",
@@ -351,6 +356,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
 
                 // Refresh exfil statuses from memory (live status updates)
                 _exfilManager.RefreshStatuses();
+
+                // Refresh quest tracking data
+                _questManager?.Refresh(ct);
 
                 // Refresh player equipment
                 RefreshEquipment();

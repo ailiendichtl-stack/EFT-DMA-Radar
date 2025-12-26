@@ -154,6 +154,13 @@ namespace LoneEftDmaRadar
         public DebugConfig Debug { get; private set; } = new();
 
         /// <summary>
+        /// Quest Helper configuration.
+        /// </summary>
+        [JsonPropertyName("questHelper")]
+        [JsonInclude]
+        public QuestHelperConfig QuestHelper { get; private set; } = new();
+
+        /// <summary>
         /// Player Watchlist Collection.
         /// ** ONLY USE FOR BINDING **
         /// </summary>
@@ -718,6 +725,12 @@ namespace LoneEftDmaRadar
         /// </summary>
         [JsonPropertyName("espQuestLoot")]
         public bool EspQuestLoot { get; set; } = true;
+
+        /// <summary>
+        /// Show quest locations/zones on ESP.
+        /// </summary>
+        [JsonPropertyName("espQuestLocations")]
+        public bool EspQuestLocations { get; set; } = true;
 
         /// <summary>
         /// Show Loot Prices on ESP.
@@ -1402,5 +1415,61 @@ namespace LoneEftDmaRadar
         /// </summary>
         [JsonPropertyName("fontSize")]
         public int FontSize { get; set; } = 24;
+    }
+
+    /// <summary>
+    /// Quest Helper configuration.
+    /// </summary>
+    public sealed class QuestHelperConfig
+    {
+        /// <summary>
+        /// Enable quest helper features.
+        /// </summary>
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// Show quest objective locations on radar.
+        /// </summary>
+        [JsonPropertyName("showLocations")]
+        public bool ShowLocations { get; set; } = true;
+
+        /// <summary>
+        /// Only show actively tracked quests.
+        /// </summary>
+        [JsonPropertyName("activeOnly")]
+        public bool ActiveOnly { get; set; } = false;
+
+        /// <summary>
+        /// Only show Kappa-required quests.
+        /// </summary>
+        [JsonPropertyName("kappaOnly")]
+        public bool KappaOnly { get; set; } = false;
+
+        /// <summary>
+        /// Only show Lightkeeper quests.
+        /// </summary>
+        [JsonPropertyName("lightkeeperOnly")]
+        public bool LightkeeperOnly { get; set; } = false;
+
+        /// <summary>
+        /// Maximum distance to draw quest zones (meters).
+        /// </summary>
+        [JsonPropertyName("zoneDrawDistance")]
+        public float ZoneDrawDistance { get; set; } = 100f;
+
+        /// <summary>
+        /// Tracked quest IDs.
+        /// </summary>
+        [JsonPropertyName("trackedQuests")]
+        [JsonInclude]
+        public HashSet<string> TrackedQuests { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Blacklisted quest IDs (won't show locations).
+        /// </summary>
+        [JsonPropertyName("blacklistedQuests")]
+        [JsonInclude]
+        public ConcurrentDictionary<string, byte> BlacklistedQuests { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
     }
 }

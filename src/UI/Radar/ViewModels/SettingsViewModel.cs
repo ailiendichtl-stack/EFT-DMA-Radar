@@ -56,6 +56,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             OpenColorPickerCommand = new SimpleCommand(OnOpenColorPicker);
             BackupConfigCommand = new SimpleCommand(OnBackupConfig);
             OpenConfigCommand = new SimpleCommand(OnOpenConfig);
+            RefreshDataCommand = new SimpleCommand(OnRefreshData);
             SetScaleValues(UIScale);
         }
 
@@ -125,6 +126,20 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             catch (Exception ex)
             {
                 MessageBox.Show(MainWindow.Instance, $"Error: {ex.Message}", "Save Config", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        public ICommand RefreshDataCommand { get; }
+        private async void OnRefreshData()
+        {
+            try
+            {
+                await TarkovDataManager.ForceRefreshDataAsync();
+                MessageBox.Show(MainWindow.Instance, $"Data refreshed!\nTasks: {TarkovDataManager.TaskData?.Count ?? 0}\nItems: {TarkovDataManager.AllItems?.Count ?? 0}", "Refresh Data");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(MainWindow.Instance, $"Error: {ex.Message}", "Refresh Data", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -384,6 +399,19 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        public bool EspQuestLocations
+        {
+            get => App.Config.UI.EspQuestLocations;
+            set
+            {
+                if (App.Config.UI.EspQuestLocations != value)
+                {
+                    App.Config.UI.EspQuestLocations = value;
+                    OnPropertyChanged(nameof(EspQuestLocations));
+                }
+            }
+        }
+
         public int RadarMaxFPS
         {
             get => App.Config.UI.RadarMaxFPS;
@@ -436,6 +464,49 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 {
                     App.Config.Containers.MinValue = value;
                     OnPropertyChanged(nameof(ContainerMinValue));
+                }
+            }
+        }
+
+        #endregion
+
+        #region Quest Helper
+
+        public bool QuestHelperEnabled
+        {
+            get => App.Config.QuestHelper.Enabled;
+            set
+            {
+                if (App.Config.QuestHelper.Enabled != value)
+                {
+                    App.Config.QuestHelper.Enabled = value;
+                    OnPropertyChanged(nameof(QuestHelperEnabled));
+                }
+            }
+        }
+
+        public bool QuestHelperShowLocations
+        {
+            get => App.Config.QuestHelper.ShowLocations;
+            set
+            {
+                if (App.Config.QuestHelper.ShowLocations != value)
+                {
+                    App.Config.QuestHelper.ShowLocations = value;
+                    OnPropertyChanged(nameof(QuestHelperShowLocations));
+                }
+            }
+        }
+
+        public bool ShowQuestItems
+        {
+            get => App.Config.Loot.ShowQuestItems;
+            set
+            {
+                if (App.Config.Loot.ShowQuestItems != value)
+                {
+                    App.Config.Loot.ShowQuestItems = value;
+                    OnPropertyChanged(nameof(ShowQuestItems));
                 }
             }
         }

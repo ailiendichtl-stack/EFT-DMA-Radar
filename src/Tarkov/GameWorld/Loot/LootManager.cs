@@ -27,6 +27,7 @@ SOFTWARE.
 */
 
 using Collections.Pooled;
+using LoneEftDmaRadar.Tarkov.GameWorld.Quests;
 using LoneEftDmaRadar.Tarkov.Unity;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
@@ -286,17 +287,25 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                     var id = mongoId.ReadString();
                     if (isQuestItem)
                     {
-                         var shortNamePtr = Memory.ReadPtr(itemTemplate + Offsets.ItemTemplate.ShortName);
-                        var shortName = Memory.ReadUnicodeString(shortNamePtr, 128);
-                        DebugLogger.LogDebug(shortName);
-                        _ = _loot.TryAdd(p.ItemBase, new LootItem(id, $"Q_{shortName}", pos, isQuestItem: true));
+                        // Only show quest items if they're needed for an active quest
+                        var isNeededForQuest = Memory.Quests?.IsQuestItem(id) ?? false;
+                        if (isNeededForQuest)
+                        {
+                            var shortNamePtr = Memory.ReadPtr(itemTemplate + Offsets.ItemTemplate.ShortName);
+                            var shortName = Memory.ReadUnicodeString(shortNamePtr, 128);
+                            DebugLogger.LogDebug(shortName);
+                            _ = _loot.TryAdd(p.ItemBase, new LootItem(id, $"Q_{shortName}", pos, isQuestItem: true));
+                        }
+                        // Skip quest items not needed for active quests
                     }
                     else
                     {
-                        //If NOT a quest item. Quest items are like the quest related things you need to find like the pocket watch or Jaeger's Letter etc. We want to ignore these quest items.
+                        // Check if this regular item is needed for an active quest
+                        var isNeededForQuest = Memory.Quests?.IsQuestItem(id) ?? false;
+
                         if (TarkovDataManager.AllItems.TryGetValue(id, out var entry))
                         {
-                            _ = _loot.TryAdd(p.ItemBase, new LootItem(entry, pos));
+                            _ = _loot.TryAdd(p.ItemBase, new LootItem(entry, pos, isQuestItem: isNeededForQuest));
                         }
                         else
                         {
@@ -308,7 +317,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                                 var shortName = Memory.ReadUnicodeString(shortNamePtr, 128);
                                 if (!string.IsNullOrEmpty(shortName))
                                 {
-                                    _ = _loot.TryAdd(p.ItemBase, new LootItem(id, shortName, pos));
+                                    _ = _loot.TryAdd(p.ItemBase, new LootItem(id, shortName, pos, isQuestItem: isNeededForQuest));
                                 }
                             }
                             catch { }

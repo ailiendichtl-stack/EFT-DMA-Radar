@@ -130,9 +130,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         public bool Important => CustomFilter?.Important ?? false;
 
         /// <summary>
-        /// True if this item is marked as a quest item by the game data.
+        /// True if this item is marked as a quest item by game data or needed for an active quest.
         /// </summary>
-        public bool IsQuestItem => _isQuestItem;
+        public bool IsQuestItem => _isQuestItem || (Memory?.Quests?.IsQuestItem(ID) ?? false);
 
         /// <summary>
         /// True if the item is blacklisted via the UI.

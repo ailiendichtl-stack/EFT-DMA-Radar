@@ -32,6 +32,7 @@ using LoneEftDmaRadar.Tarkov.GameWorld.Exits;
 using LoneEftDmaRadar.Tarkov.GameWorld.Explosives;
 using LoneEftDmaRadar.Tarkov.GameWorld.Loot;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
+using LoneEftDmaRadar.Tarkov.GameWorld.Quests;
 using LoneEftDmaRadar.UI.Loot;
 using LoneEftDmaRadar.UI.Misc;
 using LoneEftDmaRadar.UI.Radar.Maps;
@@ -102,6 +103,11 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         /// Contains all 'Exits' in Local Game World, and their status/position(s).
         /// </summary>
         private static IReadOnlyCollection<IExitPoint> Exits => Memory?.Exits;
+
+        /// <summary>
+        /// Contains all quest location markers for current raid.
+        /// </summary>
+        private static IReadOnlyDictionary<string, QuestLocation> QuestLocations => Memory?.Quests?.LocationConditions;
 
         /// <summary>
         /// Item Search Filter has been set/applied.
@@ -396,6 +402,16 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                         foreach (var exit in exits)
                         {
                             exit.Draw(canvas, mapParams, localPlayer);
+                        }
+                    }
+
+                    // Draw quest location markers (if enabled)
+                    if (App.Config.QuestHelper.Enabled && App.Config.QuestHelper.ShowLocations &&
+                        QuestLocations is IReadOnlyDictionary<string, QuestLocation> questLocations)
+                    {
+                        foreach (var questLocation in questLocations.Values)
+                        {
+                            questLocation.Draw(canvas, mapParams, localPlayer);
                         }
                     }
 

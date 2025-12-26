@@ -1,8 +1,10 @@
 using LoneEftDmaRadar;
 using LoneEftDmaRadar.DMA;
+using LoneEftDmaRadar.Tarkov.GameWorld.Quests;
 using LoneEftDmaRadar.UI.Misc;
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Text;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -28,10 +30,12 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             {
                 RefreshDeviceAimbotDebug();
                 RefreshPerformanceStats();
+                RefreshQuestTracker();
             };
             _timer.Start();
             RefreshDeviceAimbotDebug();
             RefreshPerformanceStats();
+            RefreshQuestTracker();
         }
 
         public ICommand ToggleDebugConsoleCommand { get; }
@@ -147,6 +151,86 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             sb.AppendLine($"Last Loot Scan: {PerformanceStats.LastLootScanMs:F0}ms");
             sb.AppendLine($"Time Since Scan: {PerformanceStats.SecondsSinceLastLootScan:F0}s");
             PerformanceText = sb.ToString();
+        }
+
+        #endregion
+
+        #region Quest Tracker
+
+        private string _questTrackerText = "Quest Tracker: (no data)";
+
+        public string QuestTrackerText
+        {
+            get => _questTrackerText;
+            private set
+            {
+                if (_questTrackerText != value)
+                {
+                    _questTrackerText = value;
+                    OnPropertyChanged(nameof(QuestTrackerText));
+                }
+            }
+        }
+
+        private void RefreshQuestTracker()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Quest Tracker ===");
+
+            var enabled = App.Config.QuestHelper.Enabled;
+            sb.AppendLine($"Status: {(enabled ? "ENABLED" : "Disabled")}");
+
+            var inRaid = Memory?.InRaid ?? false;
+            if (!inRaid)
+            {
+                sb.AppendLine("In Raid: No");
+                sb.AppendLine("Quest Manager: Waiting for raid...");
+                QuestTrackerText = sb.ToString();
+                return;
+            }
+
+            // Detect raid type based on player types (same logic as ESP)
+            var players = Memory?.Players;
+            var hasObservedPlayers = players?.Any(p => p is Tarkov.GameWorld.Player.ObservedPlayer) ?? false;
+            var raidType = hasObservedPlayers ? "ONLINE" : "OFFLINE/PVE";
+            sb.AppendLine($"In Raid: Yes | Mode: {raidType}");
+            sb.AppendLine();
+
+            var quests = Memory?.Quests;
+            if (quests == null)
+            {
+                sb.AppendLine("Quest Manager: Not initialized");
+                QuestTrackerText = sb.ToString();
+                return;
+            }
+
+            // Active quests
+            var questCount = quests.Quests?.Count ?? 0;
+            sb.AppendLine($"Active Quests: {questCount}");
+
+            // Items being tracked
+            var itemCount = quests.ItemConditions?.Count ?? 0;
+            sb.AppendLine($"Items Tracked: {itemCount}");
+            if (itemCount > 0 && quests.ItemConditions != null)
+            {
+                var itemList = quests.ItemConditions.Keys.Take(5).ToList();
+                foreach (var itemId in itemList)
+                {
+                    // Try to get item name from TarkovDataManager
+                    var itemName = Tarkov.TarkovDataManager.AllItems.TryGetValue(itemId, out var item)
+                        ? item.ShortName
+                        : itemId[..Math.Min(12, itemId.Length)];
+                    sb.AppendLine($"  • {itemName}");
+                }
+                if (itemCount > 5)
+                    sb.AppendLine($"  ... and {itemCount - 5} more");
+            }
+
+            // Quest locations
+            var locationCount = quests.LocationConditions?.Count ?? 0;
+            sb.AppendLine($"Quest Locations: {locationCount}");
+
+            QuestTrackerText = sb.ToString();
         }
 
         #endregion
