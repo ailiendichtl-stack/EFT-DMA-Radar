@@ -1164,32 +1164,16 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     using var lines = new PooledList<string>();
                     if (!App.Config.UI.HideNames) // show full names & info
                     {
-                        string name = null;
-                        if (IsError)
-                            name = "ERROR"; // In case POS stops updating, let us know!
-                        else
-                        {
-                            var whitelistEntry = App.Config.PlayerWhitelist
-                                .FirstOrDefault(w => w.AcctID == AccountID);
-
-                            if (whitelistEntry != null && !string.IsNullOrEmpty(whitelistEntry.CustomName))
-                                name = whitelistEntry.CustomName;
-                            else
-                                name = Name;
-                        }
-                        string health = null; string level = null;
+                        string name = IsError ? "ERROR" : Name;
+                        string health = null;
                         if (this is ObservedPlayer observed)
                         {
                             health = observed.HealthStatus is Enums.ETagStatus.Healthy
                                 ? null
                                 : $" ({observed.HealthStatus})"; // Only display abnormal health status
-                            if (observed.Profile?.Level is int levelResult)
-                                level = $"{levelResult}:";
                         }
-                        var isWhitelisted = App.Config.PlayerWhitelist
-                            .Any(w => w.AcctID == AccountID && !string.IsNullOrEmpty(w.CustomName));
 
-                        if (IsPmc && !isWhitelisted)
+                        if (IsPmc)
                         {
                             char faction = PlayerSide.ToString()[0]; // Get faction letter (U/B)
                             lines.Add($"[{faction}] {name}{health}");
@@ -1369,14 +1353,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 health = observed.HealthStatus is Enums.ETagStatus.Healthy
                     ? null
                     : $" ({observed.HealthStatus.ToString()})"; // Only display abnormal health status
-            if (this is ObservedPlayer obs && obs.IsStreaming) // Streamer Notice
-                lines.Add("[LIVE TTV - Double Click]");
             string alert = Alerts?.Trim();
             if (!string.IsNullOrEmpty(alert)) // Special Players,etc.
                 lines.Add(alert);
             if (IsHostileActive) // Enemy Players, display information
             {
-                lines.Add($"{name}{health} {AccountID}".Trim());
+                lines.Add($"{name}{health}".Trim());
                 var faction = PlayerSide.ToString();
                 string g = null;
                 if (GroupID != -1)

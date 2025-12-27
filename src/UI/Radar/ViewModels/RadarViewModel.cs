@@ -737,18 +737,6 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             {
                 _lastMousePosition = mouse;
                 _mouseDown = true;
-                if (e.ClickCount >= 2 && _mouseOverItem is ObservedPlayer observed)
-                {
-                    if (InRaid && observed.IsStreaming)
-                    {
-                        Process.Start(new ProcessStartInfo()
-                        {
-                            FileName = observed.TwitchChannelURL,
-                            UseShellExecute = true
-                        });
-                    }
-
-                }
             }
             if (e.RightButton is System.Windows.Input.MouseButtonState.Pressed)
             {

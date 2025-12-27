@@ -46,16 +46,13 @@ global using System.Text.Json;
 global using System.Text.Json.Serialization;
 global using System.Windows;
 using LoneEftDmaRadar.DMA;
-using LoneEftDmaRadar.Misc.Services;
 using LoneEftDmaRadar.Tarkov;
 using LoneEftDmaRadar.UI.ColorPicker;
 using LoneEftDmaRadar.UI.Misc;
 using LoneEftDmaRadar.UI.Radar.Maps;
 using LoneEftDmaRadar.UI.Skia;
 using LoneEftDmaRadar.UI.ESP;
-using LoneEftDmaRadar.Web.EftApiTech;
 using LoneEftDmaRadar.Web.TarkovDev.Data;
-using LoneEftDmaRadar.Web.TarkovDev.Profiles;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http;
 using Velopack;
@@ -212,7 +209,6 @@ namespace LoneEftDmaRadar
                     SKPaints.PaintBitmap.ColorFilter = SKPaints.GetDarkModeColorFilter(0.7f);
                     SKPaints.PaintBitmapAlpha.ColorFilter = SKPaints.GetDarkModeColorFilter(0.7f);
                 }
-                RuntimeHelpers.RunClassConstructor(typeof(LocalCache).TypeHandle);
                 RuntimeHelpers.RunClassConstructor(typeof(ColorPickerViewModel).TypeHandle);
             });
             await Task.WhenAll(tarkovDataManager, eftMapManager, memoryInterface, misc);
@@ -234,8 +230,6 @@ namespace LoneEftDmaRadar
             var services = new ServiceCollection();
             services.AddHttpClient(); // Add default HttpClientFactory
             TarkovDevGraphQLApi.Configure(services);
-            TarkovDevProfileProvider.Configure(services);
-            EftApiTechProvider.Configure(services);
             return services.BuildServiceProvider();
         }
 

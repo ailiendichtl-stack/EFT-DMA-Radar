@@ -148,24 +148,7 @@ namespace LoneEftDmaRadar.UI.Skia
 
                 if (player is ObservedPlayer obs)
                 {
-                    if (!string.IsNullOrEmpty(obs.Profile.Acct))
-                        edition = obs.Profile.Acct;
-
-                    if (obs.Profile.Level is int lvl)
-                        level = lvl.ToString();
-
-                    if (obs.Profile.Overall_KD is float kdVal)
-                        kd = kdVal.ToString("n1");
-
-                    if (obs.Profile.RaidCount is int rc)
-                        raidCount = Utilities.FormatNumberKM(rc);
-
-                    if (obs.Profile.SurvivedRate is float sr)
-                        survivePercent = sr.ToString("n1");
-
-                    if (obs.Profile.Hours is int hrs)
-                        hours = Utilities.FormatNumberKM(hrs);
-
+                    // Profile data no longer available (BSG removed account ID access)
                     value = Utilities.FormatNumberKM(obs.Equipment.Value);
                 }
 
