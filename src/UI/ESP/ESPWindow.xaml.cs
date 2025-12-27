@@ -593,6 +593,25 @@ namespace LoneEftDmaRadar.UI.ESP
                 if (!WorldToScreen2WithScale(container.Position, out var screen, out var scale, screenWidth, screenHeight))
                     continue;
 
+                // Calculate cone filter based on screen position (same as loose loot)
+                bool coneEnabled = App.Config.UI.EspLootConeEnabled && App.Config.UI.EspLootConeAngle > 0f;
+                bool inCone = true;
+
+                if (coneEnabled)
+                {
+                    float centerX = screenWidth / 2f;
+                    float centerY = screenHeight / 2f;
+                    float dx = screen.X - centerX;
+                    float dy = screen.Y - centerY;
+
+                    float fov = App.Config.UI.FOV;
+                    float screenAngleX = MathF.Abs(dx / centerX) * (fov / 2f);
+                    float screenAngleY = MathF.Abs(dy / centerY) * (fov / 2f);
+                    float screenAngle = MathF.Sqrt(screenAngleX * screenAngleX + screenAngleY * screenAngleY);
+
+                    inCone = screenAngle <= App.Config.UI.EspLootConeAngle;
+                }
+
                 // Determine color based on container contents
                 // Priority: Important (with filter color) > Hideout > Valuable > HasValuable > Default
                 DxColor color = defaultColor;
@@ -620,13 +639,17 @@ namespace LoneEftDmaRadar.UI.ESP
                 float markerSize = 3f * scale;
                 ctx.DrawCircle(ToRaw(screen), markerSize, color, true);
 
-                // Build label with value if available
-                string text = container.Name ?? "Container";
-                if (App.Config.UI.EspLootPrice && container.TotalValue > 0)
-                    text = $"{text} ({LoneEftDmaRadar.Misc.Utilities.FormatNumberKM(container.TotalValue)})";
+                // Only show text if important/hideout contents OR within cone (same behavior as loose loot)
+                if (container.HasImportantContents || container.HasHideoutContents || inCone)
+                {
+                    // Build label with value if available
+                    string text = container.Name ?? "Container";
+                    if (App.Config.UI.EspLootPrice && container.TotalValue > 0)
+                        text = $"{text} ({LoneEftDmaRadar.Misc.Utilities.FormatNumberKM(container.TotalValue)})";
 
-                float textOffset = 4f * scale;
-                ctx.DrawText(text, screen.X + textOffset, screen.Y + textOffset, color, DxTextSize.Small);
+                    float textOffset = 4f * scale;
+                    ctx.DrawText(text, screen.X + textOffset, screen.Y + textOffset, color, DxTextSize.Small);
+                }
             }
         }
 
