@@ -122,6 +122,22 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        /// <summary>
+        /// ESP render timer period in ms (1-10). Lower = higher FPS ceiling.
+        /// </summary>
+        public int EspTimerPeriodMs
+        {
+            get => App.Config.Debug.EspTimerPeriodMs;
+            set
+            {
+                if (App.Config.Debug.EspTimerPeriodMs != value)
+                {
+                    App.Config.Debug.EspTimerPeriodMs = Math.Clamp(value, 1, 10);
+                    OnPropertyChanged(nameof(EspTimerPeriodMs));
+                }
+            }
+        }
+
         #endregion
 
         #region Performance Stats

@@ -1000,6 +1000,12 @@ namespace LoneEftDmaRadar
         /// </summary>
         [JsonPropertyName("t3SleepMs")]
         public int T3SleepMs { get; set; } = 30;
+
+        /// <summary>
+        /// ESP render timer period in milliseconds. Lower = higher FPS ceiling.
+        /// </summary>
+        [JsonPropertyName("espTimerPeriodMs")]
+        public int EspTimerPeriodMs { get; set; } = 2;
     }
 
     /// <summary>

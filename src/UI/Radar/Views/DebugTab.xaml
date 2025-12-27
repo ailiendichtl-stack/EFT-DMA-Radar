@@ -139,6 +139,23 @@
                                 IsSnapToTickEnabled="False"
                                 ToolTip="Explosives worker loop interval (affects grenade tracking)" />
                     </DockPanel>
+
+                    <!-- ESP Timer Period -->
+                    <TextBlock Text="ESP Timer Period (ms)"
+                               Margin="0,8,0,4" />
+                    <DockPanel>
+                        <TextBlock Text="{Binding EspTimerPeriodMs}"
+                                   Width="30"
+                                   DockPanel.Dock="Right"
+                                   TextAlignment="Right"
+                                   Margin="4,0,0,0" />
+                        <Slider Minimum="1"
+                                Maximum="10"
+                                Value="{Binding EspTimerPeriodMs, Mode=TwoWay}"
+                                TickFrequency="1"
+                                IsSnapToTickEnabled="True"
+                                ToolTip="ESP render timer period (lower = higher FPS ceiling, requires ESP restart)" />
+                    </DockPanel>
                 </StackPanel>
             </GroupBox>
 

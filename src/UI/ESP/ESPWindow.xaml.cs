@@ -182,7 +182,7 @@ namespace LoneEftDmaRadar.UI.ESP
                 callback: HighFrequencyRenderCallback,
                 state: null,
                 dueTime: 0,
-                period: 4); // 4ms = ~250 FPS max capability, actual FPS controlled by EspMaxFPS setting
+                period: App.Config.Debug.EspTimerPeriodMs); // Default 2ms, configurable in Debug panel
 
             // Initialize ammo counter widget
             _ammoWidget = new AmmoCounterWidget();
