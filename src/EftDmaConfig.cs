@@ -161,6 +161,13 @@ namespace LoneEftDmaRadar
         public QuestHelperConfig QuestHelper { get; private set; } = new();
 
         /// <summary>
+        /// Hideout item tracking configuration.
+        /// </summary>
+        [JsonPropertyName("hideout")]
+        [JsonInclude]
+        public HideoutConfig Hideout { get; private set; } = new();
+
+        /// <summary>
         /// Player Watchlist Collection.
         /// ** ONLY USE FOR BINDING **
         /// </summary>
@@ -1471,5 +1478,39 @@ namespace LoneEftDmaRadar
         [JsonPropertyName("blacklistedQuests")]
         [JsonInclude]
         public ConcurrentDictionary<string, byte> BlacklistedQuests { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Hideout item tracking configuration.
+    /// </summary>
+    public sealed class HideoutConfig
+    {
+        /// <summary>
+        /// Enable hideout item tracking.
+        /// </summary>
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = false;
+
+        /// <summary>
+        /// Show hideout items on map/ESP.
+        /// </summary>
+        [JsonPropertyName("showHideoutItems")]
+        public bool ShowHideoutItems { get; set; } = true;
+
+        /// <summary>
+        /// Selected hideout station/level combinations to track.
+        /// Key format: "stationId:level" (e.g., "5d484fc0654e76006657e0ab:2")
+        /// </summary>
+        [JsonPropertyName("selected")]
+        [JsonInclude]
+        public ConcurrentDictionary<string, byte> Selected { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Items marked as "found" by the user (temporarily excluded from tracking).
+        /// Key: item BSG ID
+        /// </summary>
+        [JsonPropertyName("foundItems")]
+        [JsonInclude]
+        public ConcurrentDictionary<string, byte> FoundItems { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
     }
 }

@@ -42,6 +42,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         private readonly ulong _interactiveClass;
         private List<ContainerItem> _contents;
         private bool _contentsLoaded = false;
+        private string _cachedFilterColor;
 
         public override string Name { get; }
 
@@ -81,14 +82,25 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         public bool HasImportantContents => _contents?.Any(x => x.IsImportant) ?? false;
 
         /// <summary>
+        /// Gets the filter color from the highest value important item (cached on contents load).
+        /// </summary>
+        public string ImportantItemFilterColor => _cachedFilterColor;
+
+        /// <summary>
+        /// True if this container has any items needed for tracked hideout upgrades.
+        /// </summary>
+        public bool HasHideoutContents => _contents?.Any(x => x.IsHideoutItem) ?? false;
+
+        /// <summary>
         /// Checks if this container should be displayed based on min value filter.
-        /// Containers with important items always pass the filter.
+        /// Containers with important or hideout items always pass the filter.
         /// </summary>
         private bool PassesMinValueFilter()
         {
             var minValue = App.Config.Containers.MinValue;
             if (minValue <= 0) return true; // No filter
             if (HasImportantContents) return true; // Important items always show
+            if (HasHideoutContents) return true; // Hideout items always show
             return TotalValue >= minValue;
         }
 
@@ -152,7 +164,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
             _contents = ContainerContentsReader.GetContainerContents(_interactiveClass);
             if (_contents.Count > 0)
+            {
                 _contentsLoaded = true;
+                // Cache filter color from highest value important item
+                _cachedFilterColor = _contents
+                    .Where(x => x.IsImportant && !string.IsNullOrEmpty(x.FilterColor))
+                    .OrderByDescending(x => x.Price)
+                    .FirstOrDefault()?.FilterColor;
+            }
         }
 
         public override void Draw(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
@@ -215,13 +234,24 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
         /// <summary>
         /// Gets the paint colors for this container based on its contents.
-        /// Priority: Important items > Valuable container > Has valuable contents > Default
+        /// Priority: Important items (with filter color) > Hideout items > Valuable container > Has valuable contents > Default
         /// </summary>
         private (SKPaint, SKPaint) GetContainerPaints()
         {
-            // Important items have highest priority (cyan/turquoise color)
+            // Important items have highest priority - use the actual filter color
             if (HasImportantContents)
+            {
+                var filterColor = ImportantItemFilterColor;
+                if (!string.IsNullOrEmpty(filterColor))
+                {
+                    var filterPaints = LootItem.GetFilterPaints(filterColor);
+                    return (filterPaints.Item1, filterPaints.Item2);
+                }
                 return (SKPaints.PaintFilteredLoot, SKPaints.TextFilteredLoot);
+            }
+            // Hideout items (user-selected color)
+            if (HasHideoutContents)
+                return (SKPaints.PaintHideoutItem, SKPaints.TextHideoutItem);
             if (IsValuableContainer)
                 return (SKPaints.PaintImportantLoot, SKPaints.TextImportantLoot);
             if (HasValuableContents)
@@ -238,9 +268,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             {
                 lines.Add($"Value: {Utilities.FormatNumberKM(TotalValue)}");
                 // Show top items sorted by price (max 8 items)
+                // Mark hideout items with [H] prefix
                 foreach (var item in _contents.OrderByDescending(x => x.Price).Take(8))
                 {
-                    lines.Add($"  [{Utilities.FormatNumberKM(item.Price)}] {item.Name}");
+                    var prefix = item.IsHideoutItem ? "[H] " : "";
+                    lines.Add($"  {prefix}[{Utilities.FormatNumberKM(item.Price)}] {item.Name}");
                 }
             }
             else

@@ -40,6 +40,9 @@
                     <TabItem Header="Static Containers">
                         <tabs:StaticContainersTab x:Name="StaticContainers" />
                     </TabItem>
+                    <TabItem Header="Hideout Tracker">
+                        <tabs:HideoutTab x:Name="HideoutTracker" />
+                    </TabItem>
                     <TabItem Header="Hotkeys">
                         <hotkeys:HotkeyManagerTab x:Name="HotkeyManager" />
                     </TabItem>

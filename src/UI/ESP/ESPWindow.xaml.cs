@@ -423,6 +423,7 @@ namespace LoneEftDmaRadar.UI.ESP
                 // Filter based on ESP settings
                 bool isCorpse = item is LootCorpse;
                 bool isQuest = item.IsQuestItem;
+                bool isHideout = item.IsHideoutItem;
                 bool isImportant = item.Important; // User's custom filter list
 
                 if (isQuest && !App.Config.UI.EspQuestLoot)
@@ -438,8 +439,8 @@ namespace LoneEftDmaRadar.UI.ESP
                 bool isMeds = item.IsMeds;
                 bool isBackpack = item.IsBackpack;
 
-                // Skip category types if disabled, BUT Important items always show
-                if (!isImportant)
+                // Skip category types if disabled, BUT Important/Hideout items always show
+                if (!isImportant && !isHideout)
                 {
                     if (isFood && !App.Config.UI.EspFood)
                         continue;
@@ -484,6 +485,10 @@ namespace LoneEftDmaRadar.UI.ESP
                      if (isQuest)
                      {
                          circleColor = ToColor(SKPaints.PaintQuestItem);
+                     }
+                     else if (isHideout)
+                     {
+                         circleColor = ToColor(SKPaints.PaintHideoutItem);
                      }
                      else if (isBackpack)
                      {
@@ -577,8 +582,8 @@ namespace LoneEftDmaRadar.UI.ESP
                 if (hideSearched && container.Searched)
                     continue;
 
-                // Filter by min value (important items always pass)
-                if (minValue > 0 && !container.HasImportantContents && container.TotalValue < minValue)
+                // Filter by min value (important and hideout items always pass)
+                if (minValue > 0 && !container.HasImportantContents && !container.HasHideoutContents && container.TotalValue < minValue)
                     continue;
 
                 float distance = Vector3.Distance(localPlayer.Position, container.Position);
@@ -589,10 +594,23 @@ namespace LoneEftDmaRadar.UI.ESP
                     continue;
 
                 // Determine color based on container contents
-                // Priority: Important > Valuable > HasValuable > Default
+                // Priority: Important (with filter color) > Hideout > Valuable > HasValuable > Default
                 DxColor color = defaultColor;
                 if (container.HasImportantContents)
-                    color = ToColor(SKPaints.PaintFilteredLoot);
+                {
+                    var filterColor = container.ImportantItemFilterColor;
+                    if (!string.IsNullOrEmpty(filterColor))
+                    {
+                        var filterPaints = LootItem.GetFilterPaints(filterColor);
+                        color = ToColor(filterPaints.Item1);
+                    }
+                    else
+                    {
+                        color = ToColor(SKPaints.PaintFilteredLoot);
+                    }
+                }
+                else if (container.HasHideoutContents)
+                    color = ToColor(SKPaints.PaintHideoutItem);
                 else if (container.IsValuableContainer)
                     color = ToColor(SKPaints.PaintImportantLoot);
                 else if (container.HasValuableContents)
@@ -974,15 +992,28 @@ namespace LoneEftDmaRadar.UI.ESP
                   if (!(selectAll || selected.ContainsKey(id))) continue;
                   if (hideSearched && c.Searched) continue;
 
-                  // Filter by min value (important items always pass)
-                  if (minValue > 0 && !c.HasImportantContents && c.TotalValue < minValue)
+                  // Filter by min value (important and hideout items always pass)
+                  if (minValue > 0 && !c.HasImportantContents && !c.HasHideoutContents && c.TotalValue < minValue)
                       continue;
 
-                  // Use value-based color - Priority: Important > Valuable > HasValuable > Default
-                  var color = c.HasImportantContents ? SKColors.Turquoise :
-                              c.IsValuableContainer ? SKColors.Gold :
-                              c.HasValuableContents ? SKColors.White :
-                              defaultColor;
+                  // Use value-based color - Priority: Important (with filter color) > Hideout > Valuable > HasValuable > Default
+                  SKColor color;
+                  if (c.HasImportantContents)
+                  {
+                      var filterColor = c.ImportantItemFilterColor;
+                      if (!string.IsNullOrEmpty(filterColor) && SKColor.TryParse(filterColor, out var parsedColor))
+                          color = parsedColor;
+                      else
+                          color = SKColors.Turquoise;
+                  }
+                  else if (c.HasHideoutContents)
+                      color = SKPaints.PaintHideoutItem.Color;
+                  else if (c.IsValuableContainer)
+                      color = SKColors.Gold;
+                  else if (c.HasValuableContents)
+                      color = SKColors.White;
+                  else
+                      color = defaultColor;
 
                   DrawMiniRadarDot(ctx, c.Position, map, color, 1.5f);
              }
@@ -998,6 +1029,7 @@ namespace LoneEftDmaRadar.UI.ESP
                 // Basic filtering consistent with DrawLoot
                  bool isCorpse = item is LootCorpse;
                  bool isQuest = item.IsQuestItem;
+                 bool isHideout = item.IsHideoutItem;
                  bool isBackpack = item.IsBackpack;
                  bool isMeds = item.IsMeds;
                  bool isFood = item.IsFood;
@@ -1012,6 +1044,8 @@ namespace LoneEftDmaRadar.UI.ESP
                  SKColor color;
                  if (isQuest)
                      color = SKPaints.PaintQuestItem.Color;
+                 else if (isHideout)
+                     color = SKPaints.PaintHideoutItem.Color;
                  else if (isBackpack)
                      color = SKPaints.PaintBackpacks.Color;
                  else if (isMeds)

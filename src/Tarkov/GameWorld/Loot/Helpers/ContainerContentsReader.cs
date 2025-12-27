@@ -6,6 +6,7 @@
  * Online matches generate loot server-side on container open, so this won't work there.
  */
 
+using LoneEftDmaRadar.Tarkov.GameWorld.Hideout;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
 using LoneEftDmaRadar.Web.TarkovDev.Data;
 
@@ -97,5 +98,20 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers
         /// True if this item is marked as Important via custom loot filters.
         /// </summary>
         public bool IsImportant => MarketItem?.Important ?? false;
+
+        /// <summary>
+        /// The color from the custom filter (if any).
+        /// </summary>
+        public string FilterColor => MarketItem?.CustomFilter?.Color;
+
+        /// <summary>
+        /// The name of the custom filter (if any).
+        /// </summary>
+        public string FilterName => MarketItem?.CustomFilter?.Name;
+
+        /// <summary>
+        /// True if this item is needed for a tracked hideout upgrade.
+        /// </summary>
+        public bool IsHideoutItem => HideoutManager.Instance?.IsHideoutItem(Id) ?? false;
     }
 }

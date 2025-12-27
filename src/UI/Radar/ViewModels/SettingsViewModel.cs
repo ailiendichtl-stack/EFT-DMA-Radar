@@ -135,7 +135,10 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             try
             {
                 await TarkovDataManager.ForceRefreshDataAsync();
-                MessageBox.Show(MainWindow.Instance, $"Data refreshed!\nTasks: {TarkovDataManager.TaskData?.Count ?? 0}\nItems: {TarkovDataManager.AllItems?.Count ?? 0}", "Refresh Data");
+                // Refresh hideout manager and UI with new data
+                Tarkov.GameWorld.Hideout.HideoutManager.Instance.RefreshTrackedItems();
+                HideoutViewModel.Instance?.ReloadStations();
+                MessageBox.Show(MainWindow.Instance, $"Data refreshed!\nTasks: {TarkovDataManager.TaskData?.Count ?? 0}\nItems: {TarkovDataManager.AllItems?.Count ?? 0}\nHideout Stations: {TarkovDataManager.HideoutData?.Count ?? 0}", "Refresh Data");
             }
             catch (Exception ex)
             {

@@ -456,6 +456,21 @@ namespace LoneEftDmaRadar.UI.Skia
             IsAntialias = true,
         };
 
+        public static SKPaint PaintHideoutItem { get; } = new()
+        {
+            Color = SKColors.Orange,
+            StrokeWidth = 0.25f,
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true,
+        };
+
+        public static SKPaint TextHideoutItem { get; } = new()
+        {
+            Color = SKColors.Orange,
+            IsStroke = false,
+            IsAntialias = true,
+        };
+
         #endregion
 
         #region Render/Misc Paints

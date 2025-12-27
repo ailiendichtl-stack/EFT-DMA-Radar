@@ -42,6 +42,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         private readonly ulong _corpse;
         private bool _contentsLoaded;
         private DateTime _lastContentsRefresh = DateTime.MinValue;
+        private string _cachedFilterColor;
 
         /// <summary>
         /// Gets the corpse contents refresh interval from config.
@@ -67,6 +68,16 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// True if any item in the corpse's inventory is marked as Important.
         /// </summary>
         public bool HasImportantContents => Contents?.Any(x => x.IsImportant) ?? false;
+
+        /// <summary>
+        /// Gets the filter color from the highest value important item (cached on contents load).
+        /// </summary>
+        private string ImportantItemFilterColor => _cachedFilterColor;
+
+        /// <summary>
+        /// True if any item in the corpse's inventory is needed for tracked hideout upgrades.
+        /// </summary>
+        public bool HasHideoutContents => Contents?.Any(x => x.IsHideoutItem) ?? false;
 
         /// <summary>
         /// True if the corpse has valuable inventory contents (above min value threshold).
@@ -120,6 +131,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             {
                 Contents = CorpseContentsReader.GetCorpseContents(obs);
                 _contentsLoaded = true;
+                // Cache filter color from highest value important item
+                _cachedFilterColor = Contents?
+                    .Where(x => x.IsImportant && !string.IsNullOrEmpty(x.FilterColor))
+                    .OrderByDescending(x => x.Price)
+                    .FirstOrDefault()?.FilterColor;
             }
             catch
             {
@@ -178,12 +194,22 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
         /// <summary>
         /// Gets the appropriate paint for the corpse based on contents.
-        /// Priority: Important > Valuable > Default
+        /// Priority: Important (with filter color) > Hideout > Valuable > Default
         /// </summary>
         private SKPaint GetCorpsePaint()
         {
             if (HasImportantContents)
+            {
+                var filterColor = ImportantItemFilterColor;
+                if (!string.IsNullOrEmpty(filterColor))
+                {
+                    var filterPaints = LootItem.GetFilterPaints(filterColor);
+                    return filterPaints.Item2; // Text paint
+                }
                 return SKPaints.TextImportantLoot;
+            }
+            if (HasHideoutContents)
+                return SKPaints.TextHideoutItem;
             if (HasValuableContents)
                 return SKPaints.TextFilteredLoot;
             return SKPaints.TextCorpse;
@@ -225,7 +251,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                         lines.Add($"--- Inventory ({Utilities.FormatNumberKM(InventoryValue)}) ---");
                         foreach (var item in Contents.OrderByDescending(x => x.Price).Take(10))
                         {
-                            var prefix = item.IsImportant ? "★ " : "";
+                            var prefix = item.IsImportant ? "★ " : (item.IsHideoutItem ? "[H] " : "");
                             lines.Add($"{prefix}{item.Name} ({Utilities.FormatNumberKM(item.Price)})");
                         }
                         if (Contents.Count > 10)

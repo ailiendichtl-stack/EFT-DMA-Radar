@@ -230,6 +230,22 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
                             }
                         }
                     }
+                    hideoutStations {
+                        id
+                        name
+                        normalizedName
+                        levels {
+                            level
+                            itemRequirements {
+                                item {
+                                    id
+                                    name
+                                    shortName
+                                }
+                                count
+                            }
+                        }
+                    }
                 }
                 """
                 }

@@ -130,7 +130,8 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
             {
                 Items = ParseMarketData(data),
                 Maps = data.Data.Maps,
-                Tasks = data.Data.Tasks
+                Tasks = data.Data.Tasks,
+                HideoutStations = data.Data.HideoutStations
             };
 
             DebugLogger.LogDebug($"[TarkovDevDataJob] Output - Items: {result.Items?.Count ?? 0}, Tasks: {result.Tasks?.Count ?? 0}");
@@ -185,6 +186,9 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
 
             [JsonPropertyName("tasks")]
             public List<object> Tasks { get; set; }
+
+            [JsonPropertyName("hideoutStations")]
+            public List<object> HideoutStations { get; set; }
         }
 
         private sealed class OutgoingItem

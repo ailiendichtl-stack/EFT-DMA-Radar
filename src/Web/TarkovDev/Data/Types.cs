@@ -81,6 +81,9 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
 
             [JsonPropertyName("tasks")]
             public List<object> Tasks { get; set; }
+
+            [JsonPropertyName("hideoutStations")]
+            public List<object> HideoutStations { get; set; }
         }
         public class WarningMessage
         {

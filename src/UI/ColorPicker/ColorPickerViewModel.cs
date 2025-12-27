@@ -138,6 +138,7 @@ namespace LoneEftDmaRadar.UI.ColorPicker
                 [ColorPickerOption.ValuableLoot] = SKColors.Turquoise.ToString(),
                 [ColorPickerOption.ContainerLoot] = SKColor.Parse("FFFFCC").ToString(),
                 [ColorPickerOption.QuestLoot] = SKColors.YellowGreen.ToString(),
+                [ColorPickerOption.HideoutLoot] = SKColors.Orange.ToString(),
                 [ColorPickerOption.StaticQuestItemsAndZones] = SKColors.DeepPink.ToString(),
                 [ColorPickerOption.Corpse] = SKColors.Silver.ToString(),
                 [ColorPickerOption.MedsFilterLoot] = SKColors.LightSalmon.ToString(),
@@ -237,6 +238,10 @@ namespace LoneEftDmaRadar.UI.ColorPicker
                         case ColorPickerOption.QuestLoot:
                             SKPaints.PaintQuestItem.Color = skColor;
                             SKPaints.TextQuestItem.Color = skColor;
+                            break;
+                        case ColorPickerOption.HideoutLoot:
+                            SKPaints.PaintHideoutItem.Color = skColor;
+                            SKPaints.TextHideoutItem.Color = skColor;
                             break;
                         case ColorPickerOption.StaticQuestItemsAndZones:
                             SKPaints.QuestHelperPaint.Color = skColor;

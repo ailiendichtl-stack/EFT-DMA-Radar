@@ -72,6 +72,11 @@ namespace LoneEftDmaRadar.Tarkov
         /// </summary>
         public static FrozenDictionary<string, FrozenDictionary<string, Vector3>> TaskZones { get; private set; }
 
+        /// <summary>
+        /// Hideout Stations Data for Tarkov.
+        /// </summary>
+        public static FrozenDictionary<string, HideoutStationElement> HideoutData { get; private set; }
+
         #region Startup
 
         /// <summary>
@@ -174,7 +179,14 @@ namespace LoneEftDmaRadar.Tarkov
                     .ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
             }
 
-            DebugLogger.LogDebug($"[TarkovDataManager] SetData: Items={AllItems.Count}, Tasks={TaskData.Count}, TaskZones maps={TaskZones.Count}");
+            // Process hideout data
+            HideoutData = (data.HideoutStations ?? new List<HideoutStationElement>())
+                .Where(s => s != null && !string.IsNullOrWhiteSpace(s.Id))
+                .DistinctBy(s => s.Id, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(s => s.Id, s => s, StringComparer.OrdinalIgnoreCase)
+                .ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
+            DebugLogger.LogDebug($"[TarkovDataManager] SetData: Items={AllItems.Count}, Tasks={TaskData.Count}, TaskZones maps={TaskZones.Count}, HideoutStations={HideoutData.Count}");
         }
 
         /// <summary>
@@ -325,6 +337,9 @@ namespace LoneEftDmaRadar.Tarkov
 
             [JsonPropertyName("tasks")]
             public List<TaskElement> Tasks { get; set; } = new();
+
+            [JsonPropertyName("hideoutStations")]
+            public List<HideoutStationElement> HideoutStations { get; set; } = new();
         }
 
 
@@ -542,6 +557,63 @@ namespace LoneEftDmaRadar.Tarkov
                     public string Name { get; set; }
                 }
             }
+        }
+
+        /// <summary>
+        /// Hideout station data from tarkov.dev API.
+        /// </summary>
+        public class HideoutStationElement
+        {
+            [JsonPropertyName("id")]
+            public string Id { get; set; }
+
+            [JsonPropertyName("name")]
+            public string Name { get; set; }
+
+            [JsonPropertyName("normalizedName")]
+            public string NormalizedName { get; set; }
+
+            [JsonPropertyName("levels")]
+            public List<HideoutLevelElement> Levels { get; set; } = new();
+        }
+
+        /// <summary>
+        /// Hideout station level data.
+        /// </summary>
+        public class HideoutLevelElement
+        {
+            [JsonPropertyName("level")]
+            public int Level { get; set; }
+
+            [JsonPropertyName("itemRequirements")]
+            public List<HideoutItemRequirement> ItemRequirements { get; set; } = new();
+        }
+
+        /// <summary>
+        /// Item requirement for hideout upgrade.
+        /// </summary>
+        public class HideoutItemRequirement
+        {
+            [JsonPropertyName("item")]
+            public HideoutItemInfo Item { get; set; }
+
+            [JsonPropertyName("count")]
+            public int Count { get; set; }
+        }
+
+        /// <summary>
+        /// Basic item info for hideout requirements.
+        /// </summary>
+        public class HideoutItemInfo
+        {
+            [JsonPropertyName("id")]
+            public string Id { get; set; }
+
+            [JsonPropertyName("name")]
+            public string Name { get; set; }
+
+            [JsonPropertyName("shortName")]
+            public string ShortName { get; set; }
         }
 
         #endregion

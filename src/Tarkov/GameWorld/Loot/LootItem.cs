@@ -135,6 +135,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         public bool IsQuestItem => _isQuestItem || (Memory?.Quests?.IsQuestItem(ID) ?? false);
 
         /// <summary>
+        /// True if this item is needed for a tracked hideout upgrade.
+        /// </summary>
+        public bool IsHideoutItem => Hideout.HideoutManager.Instance?.IsHideoutItem(ID) ?? false;
+
+        /// <summary>
         /// True if the item is blacklisted via the UI.
         /// </summary>
         public bool Blacklisted => CustomFilter?.Blacklisted ?? false;
@@ -286,6 +291,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         {
             if (IsQuestItem)
                 return new(SKPaints.PaintQuestItem, SKPaints.TextQuestItem);
+            if (IsHideoutItem)
+                return new(SKPaints.PaintHideoutItem, SKPaints.TextHideoutItem);
             if (LootFilter.ShowBackpacks && IsBackpack)
                 return new(SKPaints.PaintBackpacks, SKPaints.TextBackpacks);
             if (LootFilter.ShowMeds && IsMeds)
@@ -311,8 +318,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// Returns the Paints for this color value.
         /// </summary>
         /// <param name="color">Color rgba hex string.</param>
-        /// <returns>Tuple of paints. Item1 = Paint, Item2 = Text. Item3 = ESP Paint, Item4 = ESP Text</returns>
-        private static Tuple<SKPaint, SKPaint> GetFilterPaints(string color)
+        /// <returns>Tuple of paints. Item1 = Paint, Item2 = Text.</returns>
+        internal static Tuple<SKPaint, SKPaint> GetFilterPaints(string color)
         {
             if (!SKColor.TryParse(color, out var skColor))
                 return new Tuple<SKPaint, SKPaint>(SKPaints.PaintLoot, SKPaints.TextLoot);

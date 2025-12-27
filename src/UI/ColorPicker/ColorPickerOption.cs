@@ -50,6 +50,7 @@ namespace LoneEftDmaRadar.UI.ColorPicker
         FoodFilterLoot,
         BackpacksFilterLoot,
         QuestLoot,
+        HideoutLoot,
         StaticQuestItemsAndZones,
         Corpse,
         Explosives
