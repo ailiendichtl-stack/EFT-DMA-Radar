@@ -452,10 +452,22 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         /// </summary>
         private static void RefreshLootFilter()
         {
-            /// Remove old filters (if any)
+            // Remove old filters (if any)
             foreach (var item in TarkovDataManager.AllItems.Values)
                 item.SetFilter(null);
-            /// Set new filters
+
+            // Ensure every entry has its ParentFilter populated.
+            // This is required for inheritance (e.g. color) and for any logic that relies on ParentFilter.
+            foreach (var filter in App.Config.LootFilters.Filters.Values)
+            {
+                if (filter?.Entries is null)
+                    continue;
+
+                foreach (var entry in filter.Entries)
+                    entry.ParentFilter = filter;
+            }
+
+            // Set new filters
             var currentFilters = App.Config.LootFilters.Filters
                 .Values
                 .Where(x => x.Enabled)

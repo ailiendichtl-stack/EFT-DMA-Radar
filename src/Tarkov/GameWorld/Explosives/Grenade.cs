@@ -46,6 +46,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Explosives
         private readonly ConcurrentDictionary<ulong, IExplosiveItem> _parent;
         private readonly bool _isSmoke;
         private readonly UnityTransform _transform;
+        private readonly ConcurrentQueue<Vector3> _positionHistory;
+        private readonly int _maxHistoryLength;
 
         /// <summary>
         /// Base Address of Grenade Object.
@@ -74,6 +76,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Explosives
             {
                 throw; // bubble to caller to drop this grenade instance
             }
+
+            _positionHistory = new ConcurrentQueue<Vector3>();
+            _maxHistoryLength = Math.Max(10, App.Config.UI.EspGrenadeTrailLength);
         }
 
         /// <summary>
@@ -103,12 +108,27 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Explosives
                         _ = _transform.UpdatePosition(vertices.Span);
                     }
                 }
+
+                // Track position history for trail rendering
+                if (App.Config.UI.EspGrenadeTrail && Position != Vector3.Zero)
+                {
+                    _positionHistory.Enqueue(Position);
+                    while (_positionHistory.Count > _maxHistoryLength)
+                    {
+                        _ = _positionHistory.TryDequeue(out _);
+                    }
+                }
             };
         }
 
         #region Interfaces
 
         public ref readonly Vector3 Position => ref _transform.Position;
+
+        /// <summary>
+        /// Gets the position history for trail rendering.
+        /// </summary>
+        public IReadOnlyCollection<Vector3> PositionHistory => _positionHistory;
 
         public void Draw(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
         {
@@ -118,7 +138,23 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Explosives
             var size = 5f * App.Config.UI.UIScale;
             SKPaints.ShapeOutline.StrokeWidth = SKPaints.PaintExplosives.StrokeWidth + 2f * App.Config.UI.UIScale;
             canvas.DrawCircle(circlePosition, size, SKPaints.ShapeOutline); // Draw outline
-            canvas.DrawCircle(circlePosition, size, SKPaints.PaintExplosives); // draw LocalPlayer marker
+            canvas.DrawCircle(circlePosition, size, SKPaints.PaintExplosives); // draw grenade marker
+
+            // Draw blast radius on radar
+            if (App.Config.UI.EspGrenadeBlastRadius)
+            {
+                float blastRadiusWorld = 10f; // Hardcoded for now
+                float mapRadius = blastRadiusWorld * mapParams.Map.Scale * mapParams.Map.SvgScale * mapParams.XScale;
+
+                using var blastPaint = new SKPaint
+                {
+                    Color = SKPaints.PaintExplosives.Color.WithAlpha(255),
+                    Style = SKPaintStyle.Stroke,
+                    StrokeWidth = 1.5f * App.Config.UI.UIScale,
+                    IsAntialias = true
+                };
+                canvas.DrawCircle(circlePosition, mapRadius, blastPaint);
+            }
         }
 
         #endregion

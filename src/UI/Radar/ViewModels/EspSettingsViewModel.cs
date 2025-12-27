@@ -435,6 +435,45 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        public bool EspGrenadeTrail
+        {
+            get => App.Config.UI.EspGrenadeTrail;
+            set
+            {
+                if (App.Config.UI.EspGrenadeTrail != value)
+                {
+                    App.Config.UI.EspGrenadeTrail = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public int EspGrenadeTrailLength
+        {
+            get => App.Config.UI.EspGrenadeTrailLength;
+            set
+            {
+                if (App.Config.UI.EspGrenadeTrailLength != value)
+                {
+                    App.Config.UI.EspGrenadeTrailLength = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool EspGrenadeBlastRadius
+        {
+            get => App.Config.UI.EspGrenadeBlastRadius;
+            set
+            {
+                if (App.Config.UI.EspGrenadeBlastRadius != value)
+                {
+                    App.Config.UI.EspGrenadeBlastRadius = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public Array LabelPositions { get; } = Enum.GetValues(typeof(EspLabelPosition));
         public Array BoxStyles { get; } = Enum.GetValues(typeof(EspBoxStyle));
 

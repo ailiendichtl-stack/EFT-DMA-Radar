@@ -227,6 +227,29 @@
                                   IsChecked="{Binding EspLootConeEnabled, Mode=TwoWay}"
                                   Margin="0,0,16,8" />
                      </WrapPanel>
+                     <WrapPanel Margin="0,4,0,0" IsEnabled="{Binding EspGrenades}">
+                        <CheckBox Content="Show Grenade Trail"
+                                  IsChecked="{Binding EspGrenadeTrail, Mode=TwoWay}"
+                                  Margin="0,0,16,0" />
+                        <TextBlock Text="Trail Length:"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+                        <Slider x:Name="EspGrenadeTrailLengthSlider"
+                                Width="120"
+                                Margin="8,0"
+                                Minimum="10"
+                                Maximum="200"
+                                SmallChange="5"
+                                LargeChange="20"
+                                Value="{Binding EspGrenadeTrailLength, Mode=TwoWay}"
+                                IsEnabled="{Binding EspGrenadeTrail}" />
+                        <TextBlock Text="{Binding Value, ElementName=EspGrenadeTrailLengthSlider, StringFormat='{}{0:F0}'}"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0" />
+                        <CheckBox Content="Show Blast Radius"
+                                  IsChecked="{Binding EspGrenadeBlastRadius, Mode=TwoWay}"
+                                  Margin="16,0,0,0" />
+                     </WrapPanel>
                      <WrapPanel Margin="0,4,0,0">
                         <CheckBox Content="Show Food" IsChecked="{Binding EspFood, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Show Meds" IsChecked="{Binding EspMeds, Mode=TwoWay}" Margin="0,0,16,8" />

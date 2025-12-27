@@ -667,6 +667,8 @@ namespace LoneEftDmaRadar.UI.ESP
             if (Explosives is null)
                 return;
 
+            var grenadeColor = GetGrenadeColorForRender();
+
             foreach (var explosive in Explosives)
             {
                 if (explosive is null || explosive is not Grenade grenade)
@@ -680,11 +682,66 @@ namespace LoneEftDmaRadar.UI.ESP
                     if (!WorldToScreen2WithScale(grenade.Position, out var screen, out var scale, screenWidth, screenHeight))
                         continue;
 
-                    var color = GetGrenadeColorForRender();
+                    // Draw blast radius circle
+                    if (App.Config.UI.EspGrenadeBlastRadius)
+                    {
+                        float blastRadiusWorld = 5f; // Hardcoded for now
+                        const int segments = 32;
+                        var blastColor = new DxColor(grenadeColor.R, grenadeColor.G, grenadeColor.B, 255);
+
+                        var circlePoints = new List<SKPoint>();
+                        for (int i = 0; i <= segments; i++)
+                        {
+                            float angle = (i / (float)segments) * MathF.PI * 2;
+                            var offset = new Vector3(
+                                MathF.Cos(angle) * blastRadiusWorld,
+                                0,
+                                MathF.Sin(angle) * blastRadiusWorld);
+                            var worldPos = grenade.Position + offset;
+
+                            if (WorldToScreen2WithScale(worldPos, out var screenPos, out _, screenWidth, screenHeight))
+                            {
+                                circlePoints.Add(screenPos);
+                            }
+                        }
+
+                        // Draw line segments between points
+                        for (int i = 0; i < circlePoints.Count - 1; i++)
+                        {
+                            ctx.DrawLine(ToRaw(circlePoints[i]), ToRaw(circlePoints[i + 1]), blastColor, 2f);
+                        }
+                    }
+
+                    // Draw trail
+                    if (App.Config.UI.EspGrenadeTrail && grenade.PositionHistory.Count > 1)
+                    {
+                        var trailColor = new DxColor(grenadeColor.R, grenadeColor.G, grenadeColor.B, 255);
+
+                        var screenPoints = new List<SKPoint>();
+                        foreach (var pos in grenade.PositionHistory)
+                        {
+                            if (pos == Vector3.Zero)
+                                continue;
+                            if (WorldToScreen2WithScale(pos, out var posScreen, out _, screenWidth, screenHeight))
+                            {
+                                screenPoints.Add(posScreen);
+                            }
+                        }
+
+                        // Draw trail segments with increasing thickness
+                        for (int i = 0; i < screenPoints.Count - 1; i++)
+                        {
+                            float progress = (float)i / (screenPoints.Count - 1);
+                            float thickness = 0.5f + (progress * 3.5f); // 0.5f to 4f
+
+                            ctx.DrawLine(ToRaw(screenPoints[i]), ToRaw(screenPoints[i + 1]), trailColor, thickness);
+                        }
+                    }
+
                     float markerSize = 5f * scale;
                     float textOffset = 6f * scale;
-                    ctx.DrawCircle(ToRaw(screen), markerSize, color, true);
-                    ctx.DrawText("Grenade", screen.X + textOffset, screen.Y, color, DxTextSize.Small);
+                    ctx.DrawCircle(ToRaw(screen), markerSize, grenadeColor, true);
+                    ctx.DrawText("Grenade", screen.X + textOffset, screen.Y, grenadeColor, DxTextSize.Small);
                 }
                 catch
                 {
