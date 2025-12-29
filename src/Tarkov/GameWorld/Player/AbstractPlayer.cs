@@ -268,6 +268,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         public bool IsFocused { get; set; }
 
         /// <summary>
+        /// True if player has been manually marked as teammate via Middle-Click (UI).
+        /// </summary>
+        public bool IsManualTeammate { get; set; }
+
+        /// <summary>
         /// Dead Player's associated loot container object.
         /// </summary>
         public LootCorpse LootObject { get; set; }
@@ -364,7 +369,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// True if Player is Friendly to LocalPlayer.
         /// </summary>
         public bool IsFriendly =>
-            this is LocalPlayer || Type is PlayerType.Teammate;
+            this is LocalPlayer || Type is PlayerType.Teammate || IsManualTeammate;
 
         /// <summary>
         /// True if player is Hostile to LocalPlayer.
@@ -1314,6 +1319,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 return new ValueTuple<SKPaint, SKPaint>(SKPaints.PaintFocused, SKPaints.TextFocused);
             if (this is LocalPlayer)
                 return new ValueTuple<SKPaint, SKPaint>(SKPaints.PaintLocalPlayer, SKPaints.TextLocalPlayer);
+            if (IsManualTeammate)
+                return new ValueTuple<SKPaint, SKPaint>(SKPaints.PaintTeammate, SKPaints.TextTeammate);
+            // Debug: Log type and side for PMC detection issues
+            if (IsPmc && Type != PlayerType.PMC)
+                DebugLogger.LogDebug($"[GetPaints] WARNING: IsPmc=true but Type={Type}, PlayerSide={PlayerSide} ({(int)PlayerSide})");
             switch (Type)
             {
                 case PlayerType.Teammate:

@@ -1509,6 +1509,8 @@ namespace LoneEftDmaRadar.UI.ESP
                 return SKPaints.PaintAimviewWidgetFocused;
             if (player is LocalPlayer)
                 return SKPaints.PaintAimviewWidgetLocalPlayer;
+            if (player.IsManualTeammate)
+                return SKPaints.PaintAimviewWidgetTeammate;
 
             if (player.Type == PlayerType.PMC)
             {
@@ -1761,7 +1763,7 @@ namespace LoneEftDmaRadar.UI.ESP
             var basePaint = GetPlayerColor(player);
 
             // Preserve special colouring (local, focused, watchlist/streamer, teammates).
-            if (player is LocalPlayer || player.IsFocused ||
+            if (player is LocalPlayer || player.IsFocused || player.IsManualTeammate ||
                 player.Type is PlayerType.SpecialPlayer or PlayerType.Streamer or PlayerType.Teammate)
             {
                 return ToColor(basePaint);

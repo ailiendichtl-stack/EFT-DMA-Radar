@@ -745,6 +745,13 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                     player.IsFocused = !player.IsFocused;
                 }
             }
+            if (e.MiddleButton is System.Windows.Input.MouseButtonState.Pressed)
+            {
+                if (_mouseOverItem is AbstractPlayer player && !(player is LocalPlayer))
+                {
+                    player.IsManualTeammate = !player.IsManualTeammate;
+                }
+            }
             if (MainWindow.Instance?.Radar?.Overlay?.ViewModel is RadarOverlayViewModel vm && vm.IsLootOverlayVisible)
             {
                 vm.IsLootOverlayVisible = false; // Hide Loot Overlay on Mouse Down

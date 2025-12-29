@@ -263,7 +263,40 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                         var role = GetAIRoleInfo(voice);
                         Name = role.Name;
                         Type = role.Type;
-                        DebugLogger.LogDebug($"[PlayerDetect] Role from voice '{voice}': Name='{role.Name}', Type={role.Type}");
+
+                        // Fix for PMC bots detected via voice - set correct PlayerSide and Type
+                        if (!string.IsNullOrEmpty(voice))
+                        {
+                            var lowerVoice = voice.ToLowerInvariant();
+                            if (lowerVoice.StartsWith("bear"))
+                            {
+                                PlayerSide = Enums.EPlayerSide.Bear;
+                                Type = PlayerType.PMC;
+                                DebugLogger.LogDebug($"[PlayerDetect] Fixed Bear PMC from voice: PlayerSide={PlayerSide}, Type={Type}");
+                            }
+                            else if (lowerVoice.StartsWith("usec"))
+                            {
+                                PlayerSide = Enums.EPlayerSide.Usec;
+                                Type = PlayerType.PMC;
+                                DebugLogger.LogDebug($"[PlayerDetect] Fixed Usec PMC from voice: PlayerSide={PlayerSide}, Type={Type}");
+                            }
+                        }
+
+                        // Register boss spawn for guard timing detection
+                        if (Type == PlayerType.AIBoss)
+                        {
+                            BossSpawnTracker.RegisterBossSpawn(_cachedPosition, Name);
+                            DebugLogger.LogDebug($"[PlayerDetect] Registered boss spawn: {Name}");
+                        }
+                        // Check if this is a guard via spawn timing (if detected as regular Scav)
+                        else if (Type == PlayerType.AIScav && BossSpawnTracker.TryGetGuardInfo(_cachedPosition, out var bossName))
+                        {
+                            Name = $"{bossName} Guard";
+                            Type = PlayerType.AIRaider;
+                            DebugLogger.LogDebug($"[PlayerDetect] Promoted to Guard via spawn timing for boss: {bossName}");
+                        }
+
+                        DebugLogger.LogDebug($"[PlayerDetect] Role from voice '{voice}': Name='{role.Name}', Type={Type}");
                     }
                 }
                 else
