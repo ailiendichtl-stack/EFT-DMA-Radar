@@ -26,57 +26,109 @@ namespace LoneEftDmaRadar.UI.Misc
     /// </summary>
     public sealed class DeviceAimbot : IDisposable
     {
+        #region Constants
+
+        // Timing constants (in Stopwatch ticks - use Stopwatch.Frequency to convert)
+        private static readonly long BallisticsCacheDurationTicks = Stopwatch.Frequency / 2; // 500ms
+        private static readonly long ClosestBoneCacheDurationTicks = Stopwatch.Frequency / 20; // 50ms
+
+        // Smoothing constants
+        private const float SMOOTHING_REFERENCE_RATE = 60f; // Reference polling rate for smoothing calculations
+        private const float MAX_MOVE_PER_TICK = 127f; // Device hardware limit (-127 to 127)
+
+        // Sanity check constants
+        private const float MAX_SCREEN_DELTA = 2000f; // Max reasonable screen delta before considering data corrupt
+        private const float DEADZONE_PIXELS = 0.5f; // Minimum movement threshold
+        private const int MAX_ATTACHMENT_SLOTS = 100; // Sanity limit for attachment recursion
+
+        #endregion
+
         #region Fields
 
         private static DeviceAimbotConfig Config => App.Config.Device;
         private readonly MemDMA _memory;
         private readonly Thread _worker;
-        private bool _disposed;
-        private BallisticsInfo _lastBallistics;
-        private string _debugStatus = "Initializing...";
-        private AbstractPlayer _lockedTarget;
+        private readonly object _targetLock = new(); // Lock for thread-safe target access
+        private readonly Stopwatch _cacheTimer = Stopwatch.StartNew(); // High-precision timer for caching
 
-        // FOV / target debug fields
-        private int _lastCandidateCount;
-        private float _lastLockedTargetFov = float.NaN;
-        private bool _lastIsTargetValid;
+        // Thread-safe state
+        private volatile bool _disposed;
+        private volatile string _debugStatus = "Initializing...";
+        private AbstractPlayer _lockedTarget; // Protected by _targetLock
+        private BallisticsInfo _lastBallistics; // Protected by _targetLock
+
+        // FOV / target debug fields (read by UI thread, written by worker)
+        private volatile int _lastCandidateCount;
+        private volatile float _lastLockedTargetFov = float.NaN;
+        private volatile bool _lastIsTargetValid;
         private Vector3 _lastFireportPos;
-        private bool _hasLastFireport;
+        private volatile bool _hasLastFireport;
 
         // Per-stage debug counters
-        private int _dbgTotalPlayers;
-        private int _dbgEligibleType;
-        private int _dbgWithinDistance;
-        private int _dbgHaveSkeleton;
-        private int _dbgW2SPassed;
+        private volatile int _dbgTotalPlayers;
+        private volatile int _dbgEligibleType;
+        private volatile int _dbgWithinDistance;
+        private volatile int _dbgHaveSkeleton;
+        private volatile int _dbgW2SPassed;
+
+        // Reserved for future recoil/sway compensation
         private ulong _cachedBreathEffector;
         private ulong _cachedShotEffector;
         private ulong _cachedNewShotRecoil;
         private float _lastRecoilAmount = 1.0f;
         private float _lastSwayAmount = 1.0f;
 
-        // === PERFORMANCE CACHING (Step 1) ===
         // Ballistics cache - weapon/ammo rarely changes, avoid re-reading every frame
         private ulong _cachedBallisticsHandsAddr;
         private long _ballisticsCacheTimeTicks;
-        private const long BALLISTICS_CACHE_DURATION_TICKS = 5_000_000; // 500ms in ticks
 
         // Closest bone cache - avoid recalculating every frame
         private Bones _cachedClosestBone;
         private AbstractPlayer _cachedClosestBoneTarget;
         private long _closestBoneCacheTimeTicks;
-        private const long CLOSEST_BONE_CACHE_DURATION_TICKS = 500_000; // 50ms in ticks
 
-        // === SMOOTHING IMPROVEMENTS (Step 2) ===
-        // Precision timing
+        // Precision timing for main loop
         private readonly Stopwatch _loopTimer = new();
 
         // Fractional accumulators - track sub-pixel movement to prevent rounding loss
         private float _accumX, _accumY;
 
-        // Smoothing constants
-        private const float SMOOTHING_REFERENCE_RATE = 60f; // Reference polling rate for smoothing calculations
-        private const float MAX_MOVE_PER_TICK = 127f; // Device limit
+        // Reusable list to avoid allocations in hot path
+        private readonly List<TargetCandidate> _candidateBuffer = new(32);
+
+        // Cached SKPaints for debug overlay (avoid allocations every frame)
+        private static readonly SKPaint DebugBgPaint = new()
+        {
+            Color = new SKColor(0, 0, 0, 180),
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true
+        };
+        private static readonly SKPaint DebugTextPaint = new()
+        {
+            Color = SKColors.White,
+            TextSize = 14,
+            IsAntialias = true,
+            Typeface = SKTypeface.FromFamilyName("Consolas", SKFontStyle.Normal)
+        };
+        private static readonly SKPaint DebugHeaderPaint = new()
+        {
+            Color = SKColors.Yellow,
+            TextSize = 14,
+            IsAntialias = true,
+            Typeface = SKTypeface.FromFamilyName("Consolas", SKFontStyle.Bold)
+        };
+        private static readonly SKPaint DebugShadowPaint = new()
+        {
+            Color = SKColors.Black,
+            TextSize = 14,
+            IsAntialias = true,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 3,
+            Typeface = SKTypeface.FromFamilyName("Consolas", SKFontStyle.Bold)
+        };
+
+        // Reusable list for debug lines
+        private readonly List<string> _debugLines = new(64);
 
         #endregion
 
@@ -90,25 +142,6 @@ namespace LoneEftDmaRadar.UI.Misc
 
             Device.move(dx, dy);
         }
-		[Flags]
-		public enum EProceduralAnimationMask
-		{
-			Breathing = 1,
-			Walking = 2,
-			MotionReaction = 4,
-			ForceReaction = 8,
-			Shooting = 16,
-			DrawDown = 32,
-			Aiming = 64,
-			HandShake = 128,
-		}        
-        private const int ORIGINAL_PWA_MASK = 
-            (int)(EProceduralAnimationMask.MotionReaction |
-                  EProceduralAnimationMask.ForceReaction |
-                  EProceduralAnimationMask.Shooting |
-                  EProceduralAnimationMask.DrawDown |
-                  EProceduralAnimationMask.Aiming |
-                  EProceduralAnimationMask.Breathing);
         #region Constructor / Disposal
 
         public DeviceAimbot(MemDMA memory)
@@ -118,15 +151,26 @@ namespace LoneEftDmaRadar.UI.Misc
             // Try auto-connect if configured and device isn't ready.
             if (Config.AutoConnect && !Device.connected)
             {
-                try { Device.TryAutoConnect(Config.LastComPort); } catch { /* best-effort */ }
+                try
+                {
+                    Device.TryAutoConnect(Config.LastComPort);
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.LogDebug($"[DeviceAimbot] Auto-connect failed: {ex.Message}");
+                }
             }
+
             if (Config.UseKmBoxNet && !DeviceNetController.Connected)
             {
                 try
                 {
                     DeviceNetController.Connect(Config.KmBoxNetIp, Config.KmBoxNetPort, Config.KmBoxNetMac);
                 }
-                catch { /* best-effort */ }
+                catch (Exception ex)
+                {
+                    DebugLogger.LogDebug($"[DeviceAimbot] KmBoxNet connect failed: {ex.Message}");
+                }
             }
 
             _worker = new Thread(WorkerLoop)
@@ -142,19 +186,30 @@ namespace LoneEftDmaRadar.UI.Misc
 
         public void Dispose()
         {
-            if (!_disposed)
-            {
-                _disposed = true;
+            if (_disposed)
+                return;
 
-                DebugLogger.LogDebug("[DeviceAimbot] Disposed");
+            _disposed = true;
+
+            // Wait for worker thread to exit (with timeout)
+            if (_worker != null && _worker.IsAlive)
+            {
+                if (!_worker.Join(TimeSpan.FromSeconds(2)))
+                {
+                    DebugLogger.LogWarning("[DeviceAimbot] Worker thread did not exit cleanly");
+                }
             }
+
+            DebugLogger.LogDebug("[DeviceAimbot] Disposed");
         }
+
         public void OnRaidEnd()
         {
             _lastRecoilAmount = 1.0f;
             _lastSwayAmount = 1.0f;
             ResetTarget();
         }
+
         #endregion
 
         #region Main Loop
@@ -342,14 +397,15 @@ namespace LoneEftDmaRadar.UI.Misc
 
         private AbstractPlayer FindBestTarget(LocalGameWorld game, LocalPlayer localPlayer)
         {
-            var candidates = new List<TargetCandidate>();
+            // Reuse buffer to avoid allocations
+            _candidateBuffer.Clear();
             _lastCandidateCount = 0;
 
             // Treat zero/negative limits as "unlimited" so users can clear the field without breaking targeting.
             float maxDistance = Config.MaxDistance <= 0 ? float.MaxValue : Config.MaxDistance;
             float maxFov = Config.FOV <= 0 ? float.MaxValue : Config.FOV;
 
-            // reset per-stage counters
+            // Reset per-stage counters
             _dbgTotalPlayers = 0;
             _dbgEligibleType = 0;
             _dbgWithinDistance = 0;
@@ -383,7 +439,7 @@ namespace LoneEftDmaRadar.UI.Misc
 
                 foreach (var bone in player.Skeleton.BoneTransforms.Values)
                 {
-                    // IMPORTANT: use same W2S style as ESP  "in" + default flags
+                    // IMPORTANT: use same W2S style as ESP - "in" + default flags
                     // Disable on-screen check so viewport issues don't discard candidates.
                     if (CameraManager.WorldToScreen(in bone.Position, out var screenPos, false))
                     {
@@ -401,7 +457,7 @@ namespace LoneEftDmaRadar.UI.Misc
 
                 if (bestFovForThisPlayer <= maxFov)
                 {
-                    candidates.Add(new TargetCandidate
+                    _candidateBuffer.Add(new TargetCandidate
                     {
                         Player = player,
                         FOVDistance = bestFovForThisPlayer,
@@ -410,18 +466,28 @@ namespace LoneEftDmaRadar.UI.Misc
                 }
             }
 
-            _lastCandidateCount = candidates.Count;
+            _lastCandidateCount = _candidateBuffer.Count;
 
-            if (candidates.Count == 0)
+            if (_candidateBuffer.Count == 0)
                 return null;
 
-            // Select best target based on mode
-            return Config.Targeting switch
+            // Select best target based on mode - manual loop to avoid LINQ allocation
+            AbstractPlayer bestTarget = null;
+            float bestValue = float.MaxValue;
+
+            bool useDistance = Config.Targeting == DeviceAimbotConfig.TargetingMode.ClosestDistance;
+
+            foreach (var candidate in _candidateBuffer)
             {
-                DeviceAimbotConfig.TargetingMode.ClosestToCrosshair => candidates.MinBy(x => x.FOVDistance).Player,
-                DeviceAimbotConfig.TargetingMode.ClosestDistance => candidates.MinBy(x => x.WorldDistance).Player,
-                _ => candidates.MinBy(x => x.FOVDistance).Player
-            };
+                float value = useDistance ? candidate.WorldDistance : candidate.FOVDistance;
+                if (value < bestValue)
+                {
+                    bestValue = value;
+                    bestTarget = candidate.Player;
+                }
+            }
+
+            return bestTarget;
         }
 
 private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
@@ -562,12 +628,12 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             // Closest-visible bone option - with caching to avoid expensive recalculation every frame
             if (targetBone == Bones.Closest)
             {
-                long nowTicks = DateTime.UtcNow.Ticks;
+                long nowTicks = _cacheTimer.ElapsedTicks;
 
                 // Check if we can use cached closest bone (same target and cache not expired)
                 if (_cachedClosestBone != default &&
                     _cachedClosestBoneTarget == target &&
-                    (nowTicks - _closestBoneCacheTimeTicks) < CLOSEST_BONE_CACHE_DURATION_TICKS)
+                    (nowTicks - _closestBoneCacheTimeTicks) < ClosestBoneCacheDurationTicks)
                 {
                     // Use cached bone selection
                     if (target.Skeleton.BoneTransforms.TryGetValue(_cachedClosestBone, out boneTransform))
@@ -664,7 +730,6 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             if (moveX != 0 || moveY != 0)
             {
                 SendDeviceMove(moveX, moveY);
-                DebugLogger.LogDebug($"[DeviceAimbot] Aiming at target {target.Name}: Move({moveX}, {moveY})");
             }
         }
 
@@ -677,17 +742,16 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
         {
             float distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
 
-            // === SANITY CHECK (Step 4) ===
             // Skip frame if data is corrupted (NaN, Infinity, or impossibly large delta)
-            if (float.IsNaN(distance) || float.IsInfinity(distance) || distance > 2000f)
+            if (float.IsNaN(distance) || float.IsInfinity(distance) || distance > MAX_SCREEN_DELTA)
             {
                 _accumX = 0;
                 _accumY = 0;
                 return (0, 0);
             }
 
-            // Fixed deadzone - 0.5px at all zoom levels
-            if (distance < 0.5f)
+            // Fixed deadzone at all zoom levels
+            if (distance < DEADZONE_PIXELS)
             {
                 _accumX = 0;
                 _accumY = 0;
@@ -731,93 +795,6 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
 
             return (resultX, resultY);
         }
-private void ApplyMemoryAim(LocalPlayer localPlayer, Vector3 targetPosition)
-{
-    try
-    {
-        var snapshot = localPlayer.FirearmManager?.CurrentSnapshot;
-        if (snapshot == null)
-            return;
-
-        var fireportPos = snapshot.FireportPosition;
-        if (!fireportPos.HasValue || fireportPos.Value == Vector3.Zero)
-            return;
-
-        var fpPos = fireportPos.Value;
-
-        // 1) Desired angle (same CalcAngle as old cheat)
-        Vector2 aimAngle = CalcAngle(fpPos, targetPosition);
-
-        // 2) Current view angles from MovementContext._rotation (NEW OFFSET)
-        ulong movementContext = localPlayer.MovementContext;
-        Vector2 viewAngles = Memory.ReadValue<Vector2>(
-            movementContext + Offsets.MovementContext._rotation, // 0xC4 in your dump
-            false
-        );
-
-        // 3) Delta and normalization (same as old)
-        Vector2 delta = aimAngle - viewAngles;
-        NormalizeAngle(ref delta);
-
-        // 4) Gun angle mapping (tighter: no extra damping, clamped to sane limits)
-        var gunAngle = new Vector3(
-            DegToRad(delta.X),
-            0.0f,
-            DegToRad(delta.Y)
-        );
-        const float maxRad = 0.35f; // ~20 degrees
-        gunAngle.X = Math.Clamp(gunAngle.X, -maxRad, maxRad);
-        gunAngle.Z = Math.Clamp(gunAngle.Z, -maxRad, maxRad);
-
-        // 5) Write to _shotDirection (same as old 0x22C)
-        ulong shotDirectionAddr = localPlayer.PWA + Offsets.ProceduralWeaponAnimation._shotDirection;
-        if (!MemDMA.IsValidVirtualAddress(shotDirectionAddr))
-            return;
-
-        // Keep the exact weird mapping you had before
-        Vector3 writeVec = new Vector3(gunAngle.X, -1.0f, gunAngle.Z * -1.0f);
-        Memory.WriteValue(shotDirectionAddr, writeVec);
-
-        DebugLogger.LogDebug($"[MemoryAim] Fireport: {fpPos}");
-        DebugLogger.LogDebug($"[MemoryAim] Target:   {targetPosition}");
-        DebugLogger.LogDebug($"[MemoryAim] AimAngle: {aimAngle}, ViewAngles: {viewAngles}, ={delta}");
-        DebugLogger.LogDebug($"[MemoryAim] WriteVec: {writeVec}");
-    }
-    catch (Exception ex)
-    {
-        DebugLogger.LogDebug($"[MemoryAim] Error: {ex}");
-    }
-}
-
-
-private static Vector2 CalcAngle(Vector3 from, Vector3 to)
-{
-    Vector3 delta = from - to;
-    float length = delta.Length();
-
-    return new Vector2(
-        RadToDeg((float)-Math.Atan2(delta.X, -delta.Z)),
-        RadToDeg((float)Math.Asin(delta.Y / length))
-    );
-}
-
-private static void NormalizeAngle(ref Vector2 angle)
-{
-    NormalizeAngle(ref angle.X);
-    NormalizeAngle(ref angle.Y);
-}
-
-private static void NormalizeAngle(ref float angle)
-{
-    while (angle > 180.0f) angle -= 360.0f;
-    while (angle < -180.0f) angle += 360.0f;
-}
-
-private static float DegToRad(float degrees)
-    => degrees * ((float)Math.PI / 180.0f);
-
-private static float RadToDeg(float radians)
-    => radians * (180.0f / (float)Math.PI);
 
         private Vector3 PredictHitPoint(LocalPlayer localPlayer, AbstractPlayer target, Vector3 fireportPos, Vector3 targetPos)
         {
@@ -882,13 +859,13 @@ private static float RadToDeg(float radians)
                     return null;
 
                 ulong handsAddr = snapshot.ItemAddr;
-                long nowTicks = DateTime.UtcNow.Ticks;
+                long nowTicks = _cacheTimer.ElapsedTicks;
 
                 // === BALLISTICS CACHING ===
                 // Check if we can use cached ballistics (same weapon and cache not expired)
                 if (_lastBallistics != null &&
                     handsAddr == _cachedBallisticsHandsAddr &&
-                    (nowTicks - _ballisticsCacheTimeTicks) < BALLISTICS_CACHE_DURATION_TICKS)
+                    (nowTicks - _ballisticsCacheTimeTicks) < BallisticsCacheDurationTicks)
                 {
                     return _lastBallistics; // Return cached result
                 }
@@ -979,7 +956,7 @@ private static float RadToDeg(float radians)
                 var slotsPtr = _memory.ReadPtr(itemBase + Offsets.LootItemMod.Slots, false);
                 using var slots = UnityArray<ulong>.Create(slotsPtr, true);
 
-                if (slots.Count > 100) // Sanity check
+                if (slots.Count > MAX_ATTACHMENT_SLOTS) // Sanity check
                     return;
 
                 foreach (var slot in slots.Span)
@@ -1056,7 +1033,9 @@ private static float RadToDeg(float radians)
         {
             try
             {
-                var lines = new List<string>();
+                // Reuse list to avoid allocations
+                _debugLines.Clear();
+                var lines = _debugLines;
 
                 // Header
                 lines.Add("=== DeviceAimbot AIMBOT DEBUG ===");
@@ -1166,48 +1145,16 @@ private static float RadToDeg(float radians)
                 float y = 30;
                 float lineHeight = 18;
 
-                using var bgPaint = new SKPaint
-                {
-                    Color = new SKColor(0, 0, 0, 180),
-                    Style = SKPaintStyle.Fill,
-                    IsAntialias = true
-                };
-
-                using var textPaint = new SKPaint
-                {
-                    Color = SKColors.White,
-                    TextSize = 14,
-                    IsAntialias = true,
-                    Typeface = SKTypeface.FromFamilyName("Consolas", SKFontStyle.Normal)
-                };
-
-                using var headerPaint = new SKPaint
-                {
-                    Color = SKColors.Yellow,
-                    TextSize = 14,
-                    IsAntialias = true,
-                    Typeface = SKTypeface.FromFamilyName("Consolas", SKFontStyle.Bold)
-                };
-
-                using var shadowPaint = new SKPaint
-                {
-                    Color = SKColors.Black,
-                    TextSize = 14,
-                    IsAntialias = true,
-                    Style = SKPaintStyle.Stroke,
-                    StrokeWidth = 3,
-                    Typeface = SKTypeface.FromFamilyName("Consolas", SKFontStyle.Bold)
-                };
-
+                // Use cached paints to avoid allocations
                 // Background size
                 float maxWidth = 0;
                 foreach (var line in lines)
                 {
-                    float width = textPaint.MeasureText(line);
+                    float width = DebugTextPaint.MeasureText(line);
                     if (width > maxWidth) maxWidth = width;
                 }
 
-                canvas.DrawRect(x - 5, y - 20, maxWidth + 25, lines.Count * lineHeight + 20, bgPaint);
+                canvas.DrawRect(x - 5, y - 20, maxWidth + 25, lines.Count * lineHeight + 20, DebugBgPaint);
 
                 // Text with shadow (fake bold / shading)
                 foreach (var line in lines)
@@ -1217,10 +1164,10 @@ private static float RadToDeg(float radians)
                                 line == "Settings:" ||
                                 line == "Target Filters:" ||
                                 line == "Players (this scan):"
-                        ? headerPaint
-                        : textPaint;
+                        ? DebugHeaderPaint
+                        : DebugTextPaint;
 
-                    canvas.DrawText(line, x + 1.5f, y + 1.5f, shadowPaint);
+                    canvas.DrawText(line, x + 1.5f, y + 1.5f, DebugShadowPaint);
                     canvas.DrawText(line, x, y, paint);
                     y += lineHeight;
                 }

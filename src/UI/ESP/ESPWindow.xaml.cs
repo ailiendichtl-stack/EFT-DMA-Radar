@@ -26,7 +26,6 @@ using DxColor = SharpDX.Mathematics.Interop.RawColorBGRA;
 using LoneEftDmaRadar.Tarkov.GameWorld.Camera;
 using LoneEftDmaRadar.UI.Radar;
 using LoneEftDmaRadar.UI.Radar.Maps;
-using LoneEftDmaRadar.UI.Skia;
 
 namespace LoneEftDmaRadar.UI.ESP
 {

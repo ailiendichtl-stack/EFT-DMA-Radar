@@ -101,10 +101,8 @@ namespace LoneEftDmaRadar.Tarkov.Features.MemWrites
                     //DebugLogger.LogDebug("[NoRecoil] Enabled (state changed)");
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                //DebugLogger.LogDebug($"[NoRecoil] Error in TryApply: {ex}");
-                //DebugLogger.LogDebug($"[NoRecoil] Stack trace: {ex.StackTrace}");
                 ClearCache();
             }
         }
@@ -215,10 +213,8 @@ private void ApplyNoRecoil(LocalPlayer localPlayer)
 
         //DebugLogger.LogDebug("[NoRecoil] ApplyNoRecoil completed successfully");
     }
-    catch (Exception ex)
+    catch
     {
-        //DebugLogger.LogDebug($"[NoRecoil] Error in ApplyNoRecoil: {ex}");
-        //DebugLogger.LogDebug($"[NoRecoil] Stack trace: {ex.StackTrace}");
         throw;
     }
 }
@@ -260,10 +256,8 @@ private void ApplyNoRecoil(LocalPlayer localPlayer)
                 _lastSwayAmount   = 1.0f;
                 ClearCache();
             }
-            catch (Exception ex)
+            catch
             {
-                //DebugLogger.LogDebug($"[NoRecoil] Reset error: {ex}");
-                //DebugLogger.LogDebug($"[NoRecoil] Stack trace: {ex.StackTrace}");
             }
         }
 
