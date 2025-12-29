@@ -89,6 +89,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         public LootManager Loot { get; }
         public QuestManager Quests => _questManager;
 
+        /// <summary>
+        /// True once the raid has started (player has control).
+        /// </summary>
+        public bool RaidStarted { get; private set; }
+
         private LocalGameWorld() { }
 
         /// <summary>
@@ -342,6 +347,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
             {
                 var ct = e.CancellationToken;
                 ValidatePlayerTransforms(); // Check for transform anomalies
+                PreRaidStartChecks(ct); // Auto Groups detection before raid start
 
                 // Throttle loot scanning - only on raid start, then at configurable interval
                 if (!_initialLootScanComplete ||
@@ -378,6 +384,113 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
             foreach (var player in players)
             {
                 player.Equipment.Refresh();
+            }
+        }
+
+        /// <summary>
+        /// Executes pre-raid start checks to determine if the raid has started, and various child operations.
+        /// </summary>
+        private void PreRaidStartChecks(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (RaidStarted || this.LocalPlayer is not LocalPlayer localPlayer)
+                return;
+            try
+            {
+                if (localPlayer.Hands is ulong hands && hands != 0)
+                {
+                    string handsType = ObjectClass.ReadName(hands);
+                    RaidStarted = !string.IsNullOrWhiteSpace(handsType) && handsType != "ClientEmptyHandsController";
+                    if (!RaidStarted && !localPlayer.IsScav && App.Config.Misc.AutoGroups)
+                    {
+                        RefreshGroups(localPlayer, ct);
+                    }
+                    else if (RaidStarted)
+                    {
+                        DebugLogger.LogDebug("[PreRaidStartChecks] Raid has started!");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogDebug($"[PreRaidStartChecks] ERROR: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// Refreshes Player Groups based on proximity to each other before raid start.
+        /// </summary>
+        private void RefreshGroups(LocalPlayer localPlayer, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            const float groupDistanceThreshold = 10f;
+            int raidId = localPlayer.RaidId;
+            if (!App.Config.Cache.Groups.TryGetValue(raidId, out var groups))
+                App.Config.Cache.Groups[raidId] = groups = new();
+
+            var humanPlayers = _rgtPlayers
+                .Where(p => p.IsPmc && p.Position != Vector3.Zero)
+                .OfType<ObservedPlayer>()
+                .ToList();
+
+            if (humanPlayers.Count == 0)
+                return;
+
+            // Players near LocalPlayer (probable teammates)
+            var nearLocalPlayer = humanPlayers
+                .Where(p => p.Type != PlayerType.Teammate && Vector3.Distance(localPlayer.Position, p.Position) <= groupDistanceThreshold);
+
+            foreach (var player in nearLocalPlayer)
+            {
+                groups[player.PlayerId] = -100; // -100 indicates teammate
+                player.AssignTeammate();
+            }
+
+            var hostilePlayers = humanPlayers
+                .Where(p => p.IsHostile)
+                .ToList();
+
+            // Group hostile players within threshold distance using transitive clustering
+            var ungrouped = new HashSet<ObservedPlayer>(hostilePlayers);
+            int groupId = groups.Values.Where(v => v >= 0).DefaultIfEmpty(-1).Max() + 1; // Start after existing max group ID
+
+            while (ungrouped.Count > 0)
+            {
+                ct.ThrowIfCancellationRequested();
+                var seed = ungrouped.First();
+                ungrouped.Remove(seed);
+
+                // Check if player already has a group assignment
+                if (groups.ContainsKey(seed.PlayerId))
+                    continue;
+
+                var group = new List<ObservedPlayer> { seed };
+
+                // Expand group transitively - find all players connected within threshold
+                IEnumerable<ObservedPlayer> toAdd;
+                do
+                {
+                    toAdd = ungrouped
+                        .Where(p => group.Any(g => Vector3.Distance(g.Position, p.Position) <= groupDistanceThreshold))
+                        .ToList();
+
+                    foreach (var p in toAdd)
+                    {
+                        ungrouped.Remove(p);
+                        group.Add(p);
+                    }
+                } while (toAdd.Any());
+
+                // Assign group ID to all members if group has 2+ players, otherwise leave -1 (solo)
+                if (group.Count > 1)
+                {
+                    foreach (var p in group)
+                    {
+                        groups[p.PlayerId] = groupId;
+                        p.AssignGroup(groupId);
+                    }
+                    groupId++;
+                }
             }
         }
 

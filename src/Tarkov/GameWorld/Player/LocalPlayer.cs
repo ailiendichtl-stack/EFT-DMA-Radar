@@ -76,6 +76,16 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         public string ProfileId { get; }
 
         /// <summary>
+        /// Raid ID the LocalPlayer is currently in.
+        /// </summary>
+        public int RaidId { get; }
+
+        /// <summary>
+        /// Hands item pointer (for raid start detection).
+        /// </summary>
+        public ulong Hands => HandsController;
+
+        /// <summary>
         /// Spawn Point.
         /// </summary>
         public override string Name
@@ -95,6 +105,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 throw new ArgumentOutOfRangeException(nameof(classType));
             IsHuman = true;
             FirearmManager = new FirearmManager(this);
+            RaidId = GetRaidId();
 
             if (IsPmc)
             {
@@ -105,6 +116,22 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             {
                 var profileIdPtr = Memory.ReadPtr(Profile + Offsets.Profile.Id);
                 ProfileId = Memory.ReadUnicodeString(profileIdPtr);
+            }
+        }
+
+        /// <summary>
+        /// Get the Raid ID the LocalPlayer is currently in.
+        /// </summary>
+        /// <returns>Id or -1 if failed.</returns>
+        private int GetRaidId()
+        {
+            try
+            {
+                return Memory.ReadValue<int>(this + Offsets.Player.RaidId);
+            }
+            catch
+            {
+                return -1;
             }
         }
 

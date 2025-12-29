@@ -79,6 +79,7 @@ namespace SDK
             public const uint Physical = 0x918; // -.\uE399 <Physical> Physical
             public const uint Corpse = 0x680; // EFT.Interactive.Corpse
             public const uint Location = 0x870; // String
+            public const uint RaidId = 0x8D8; // int32_t - Raid instance ID
             public const uint Profile = 0x900; // EFT.Profile
             public const uint AIData = 0x940; // Pointer to AIData (for offline AI SpawnType detection)
             public const uint ProceduralWeaponAnimation = 0x338; // EFT.Animations.ProceduralWeaponAnimation

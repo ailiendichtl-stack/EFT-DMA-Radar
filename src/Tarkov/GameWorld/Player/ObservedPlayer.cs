@@ -122,6 +122,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// </summary>
         public Enums.ETagStatus HealthStatus { get; private set; } = Enums.ETagStatus.Healthy;
 
+        /// <summary>
+        /// Player's unique in-memory ID.
+        /// </summary>
+        public int PlayerId { get; private set; }
+
         #region Weapon Detection
 
         private string _cachedWeaponName;
@@ -319,6 +324,69 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 throw new NotImplementedException(nameof(PlayerSide));
             }
             Equipment = new PlayerEquipment(this);
+
+            // Try to get existing group from cache (for Auto Groups feature)
+            PlayerId = GetPlayerId();
+            GroupID = TryGetGroup(PlayerId);
+            if (GroupID == -100)
+            {
+                Type = PlayerType.Teammate;
+            }
+        }
+
+        /// <summary>
+        /// Assign this Player to a Group.
+        /// </summary>
+        /// <param name="groupId">Group ID to assign.</param>
+        public void AssignGroup(int groupId)
+        {
+            GroupID = groupId;
+            DebugLogger.LogDebug($"[AutoGroups] Player '{Name}' assigned to Group {GroupID}.");
+        }
+
+        /// <summary>
+        /// Assign this Player as a Teammate to LocalPlayer.
+        /// </summary>
+        public void AssignTeammate()
+        {
+            Type = PlayerType.Teammate;
+            GroupID = -100;
+            DebugLogger.LogDebug($"[AutoGroups] Player '{Name}' assigned as Teammate.");
+        }
+
+        /// <summary>
+        /// Clear this Player's Teammate status (restore to hostile).
+        /// </summary>
+        public void ClearTeammate()
+        {
+            // Restore to PMC type if they're a PMC
+            if (IsPmc)
+                Type = PlayerType.PMC;
+            else
+                Type = PlayerType.Default;
+            GroupID = -1;
+            DebugLogger.LogDebug($"[AutoGroups] Player '{Name}' cleared Teammate status.");
+        }
+
+        /// <summary>
+        /// Tries to get an existing Group Id from the persistent cache.
+        /// </summary>
+        /// <param name="id">Player ID.</param>
+        /// <returns>Group ID or -1 if not found.</returns>
+        private static int TryGetGroup(int id)
+        {
+            if (!App.Config.Misc.AutoGroups)
+                return -1;
+            if (Memory.LocalPlayer is not LocalPlayer localPlayer)
+                return -1;
+            if (App.Config.Cache.Groups.TryGetValue(localPlayer.RaidId, out var groups))
+            {
+                if (groups.TryGetValue(id, out var group))
+                {
+                    return group;
+                }
+            }
+            return -1;
         }
 
         /// <summary>

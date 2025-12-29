@@ -125,6 +125,10 @@ Toggle Fullscreen: F11
                                   ToolTip="Connects players that are grouped up via semi‑transparent green lines. Does not apply to your own party."
                                   IsChecked="{Binding ConnectGroups, Mode=TwoWay}"
                                   Margin="0,0,16,8" />
+                        <CheckBox Content="Auto Groups"
+                                  ToolTip="Automatically detects player groups during pre‑raid countdown based on spawn proximity. Also detects teammates."
+                                  IsChecked="{Binding AutoGroups, Mode=TwoWay}"
+                                  Margin="0,0,16,8" />
                         <CheckBox Content="Hide Names"
                                   ToolTip="Hides human player names from displaying in the Radar or Player Info Widget. Instead will show the (Height,Distance)."
                                   IsChecked="{Binding HideNames, Mode=TwoWay}"

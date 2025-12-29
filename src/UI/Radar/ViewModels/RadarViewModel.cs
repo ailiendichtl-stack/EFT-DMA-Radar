@@ -750,6 +750,14 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 if (_mouseOverItem is AbstractPlayer player && !(player is LocalPlayer))
                 {
                     player.IsManualTeammate = !player.IsManualTeammate;
+                    // Also update GroupID for ObservedPlayers to integrate with Auto Groups
+                    if (player is ObservedPlayer observed)
+                    {
+                        if (player.IsManualTeammate)
+                            observed.AssignTeammate();
+                        else
+                            observed.ClearTeammate();
+                    }
                 }
             }
             if (MainWindow.Instance?.Radar?.Overlay?.ViewModel is RadarOverlayViewModel vm && vm.IsLootOverlayVisible)

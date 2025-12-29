@@ -290,6 +290,19 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        public bool AutoGroups
+        {
+            get => App.Config.Misc.AutoGroups;
+            set
+            {
+                if (App.Config.Misc.AutoGroups != value)
+                {
+                    App.Config.Misc.AutoGroups = value;
+                    OnPropertyChanged(nameof(AutoGroups));
+                }
+            }
+        }
+
         public bool HideNames
         {
             get => App.Config.UI.HideNames;

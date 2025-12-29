@@ -158,6 +158,19 @@ namespace LoneEftDmaRadar
         [JsonPropertyName("lootFilters")]
         public LootFilterConfig LootFilters { get; private set; } = new();
 
+        /// <summary>
+        /// Misc Config.
+        /// </summary>
+        [JsonPropertyName("misc")]
+        [JsonInclude]
+        public MiscConfig Misc { get; private set; } = new();
+
+        /// <summary>
+        /// Persistent Cache Access (not saved to config, runtime only).
+        /// </summary>
+        [JsonIgnore]
+        public PersistentCache Cache { get; set; } = new();
+
         #region Config Interface
 
         /// <summary>
@@ -1280,5 +1293,46 @@ namespace LoneEftDmaRadar
         [JsonPropertyName("foundItems")]
         [JsonInclude]
         public ConcurrentDictionary<string, byte> FoundItems { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Misc configuration settings.
+    /// </summary>
+    public sealed class MiscConfig
+    {
+        /// <summary>
+        /// Enables the 'Auto Groups' feature that attempts to automatically group players together (best-effort).
+        /// </summary>
+        [JsonPropertyName("autoGroups")]
+        public bool AutoGroups { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Persistent Cache that stores data between sessions for the same Process ID.
+    /// Not serialized to config file - runtime only.
+    /// </summary>
+    public sealed class PersistentCache
+    {
+        /// <summary>
+        /// Process Id this cache is tied to.
+        /// </summary>
+        public uint PID { get; set; }
+
+        /// <summary>
+        /// Key: RaidId | Value: Dictionary: Key: PlayerId | Value: GroupId
+        /// </summary>
+        public ConcurrentDictionary<int, ConcurrentDictionary<int, int>> Groups { get; set; } = new();
+
+        /// <summary>
+        /// Clears the cache if the PID has changed.
+        /// </summary>
+        public void ValidateOrReset(uint currentPid)
+        {
+            if (PID != currentPid)
+            {
+                PID = currentPid;
+                Groups.Clear();
+            }
+        }
     }
 }
