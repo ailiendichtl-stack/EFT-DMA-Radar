@@ -34,6 +34,7 @@ namespace LoneEftDmaRadar.UI.Skia
     {
         private static readonly SKPath _arrowBase = CreateArrowPath();
         private static readonly SKPath _minePath = CreateMineMarkerPath();
+        private static readonly SKPath _hazardPath = CreateHazardMarkerPath();
 
         private static SKPath CreateArrowPath()
         {
@@ -56,6 +57,20 @@ namespace LoneEftDmaRadar.UI.Skia
 
             path.MoveTo(-len, -len);
             path.LineTo(len, len);
+
+            return path;
+        }
+
+        private static SKPath CreateHazardMarkerPath()
+        {
+            // Triangle hazard warning symbol
+            const float size = 5f;
+            var path = new SKPath();
+
+            path.MoveTo(0, -size);           // top point
+            path.LineTo(-size, size * 0.8f); // bottom-left
+            path.LineTo(size, size * 0.8f);  // bottom-right
+            path.Close();
 
             return path;
         }
@@ -223,6 +238,20 @@ namespace LoneEftDmaRadar.UI.Skia
             canvas.Translate(zoomedMapPos.X, zoomedMapPos.Y);
             canvas.Scale(scale, scale);
             canvas.DrawPath(_minePath, SKPaints.PaintExplosives);
+            canvas.Restore();
+        }
+
+        /// <summary>
+        /// Draws a Hazard Marker (radiation/gas zone) on this zoomed location.
+        /// </summary>
+        public static void DrawHazardMarker(this SKPoint zoomedMapPos, SKCanvas canvas)
+        {
+            float scale = App.Config.UI.UIScale;
+
+            canvas.Save();
+            canvas.Translate(zoomedMapPos.X, zoomedMapPos.Y);
+            canvas.Scale(scale, scale);
+            canvas.DrawPath(_hazardPath, SKPaints.PaintHazard);
             canvas.Restore();
         }
 

@@ -370,6 +370,9 @@ namespace LoneEftDmaRadar.Tarkov
 
             [JsonPropertyName("transits")]
             public List<TransitElement> Transits { get; set; } = new();
+
+            [JsonPropertyName("hazards")]
+            public List<GameWorld.Hazards.GenericWorldHazard> Hazards { get; set; } = new();
         }
 
         public partial class ExtractElement

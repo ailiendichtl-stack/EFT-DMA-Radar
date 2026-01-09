@@ -123,13 +123,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// </summary>
         /// <param name="regPlayers">Player Dictionary collection to add the newly allocated player to.</param>
         /// <param name="playerBase">Player base memory address.</param>
-        public static void Allocate(ConcurrentDictionary<ulong, AbstractPlayer> regPlayers, ulong playerBase)
+        /// <param name="gameWorld">GameWorld reference for map context (Labs raider detection).</param>
+        public static void Allocate(ConcurrentDictionary<ulong, AbstractPlayer> regPlayers, ulong playerBase, LocalGameWorld gameWorld)
         {
             try
             {
                 _ = regPlayers.GetOrAdd(
                     playerBase,
-                    addr => AllocateInternal(addr));
+                    addr => AllocateInternal(addr, gameWorld));
             }
             catch (Exception ex)
             {
@@ -137,7 +138,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             }
         }
 
-        private static AbstractPlayer AllocateInternal(ulong playerBase)
+        private static AbstractPlayer AllocateInternal(ulong playerBase, LocalGameWorld gameWorld)
         {
             SpawnDebugLogger.Log($"=== AllocateInternal START: playerBase=0x{playerBase:X} ===");
             AbstractPlayer player;
@@ -149,7 +150,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             if (isClientPlayer)
                 player = new ClientPlayer(playerBase);
             else
-                player = new ObservedPlayer(playerBase);
+                player = new ObservedPlayer(playerBase, gameWorld);
             SpawnDebugLogger.Log($"  Player allocated: Name='{player.Name}', Type={player.Type}, Side={player.PlayerSide}");
             DebugLogger.LogDebug($"Player '{player.Name}' allocated | 0x{playerBase:X}");
             return player;
@@ -227,7 +228,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// </summary>
         public PlayerSkeleton Skeleton { get; protected set; }
         protected int _verticesCount;
-        private bool _skeletonErrorLogged;
         protected Vector3 _cachedPosition; // Fallback position cache
 
         /// <summary>
@@ -252,14 +252,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             {
                 if (PlayerBones.TryGetValue(bone, out var boneTransform))
                 {
-                    DebugLogger.LogDebug($"Resetting transform for bone '{bone}' for Player '{Name ?? "Unknown"}'");
                     PlayerBones[bone] = new UnityTransform(boneTransform.TransformInternal);
                 }
             }
-            catch (Exception ex)
-            {
-                DebugLogger.LogDebug($"Failed to reset bone '{bone}' transform for Player '{Name ?? "Unknown"}': {ex}");
-            }
+            catch { }
         }
 
         /// <summary>
@@ -592,8 +588,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             {
                 try
                 {
-                    DebugLogger.LogDebug($"Invalid vertex count detected for '{Name}': {actualRequired} (skeleton: {vertexCount}, bones: {maxBoneRequirement})");
-
                     // Resetting all bone transforms
                     foreach (var bone in PlayerBones.Keys.ToList())
                     {
@@ -601,7 +595,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     }
 
                     Skeleton = new PlayerSkeleton(SkeletonRoot, PlayerBones);
-                    DebugLogger.LogDebug($"Fast skeleton recovery for Player '{Name}' - vertexCount was {actualRequired}");
 
                     vertexCount = SkeletonRoot.Count;
                     maxBoneRequirement = 0;
@@ -612,10 +605,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     }
                     actualRequired = Math.Max(vertexCount, maxBoneRequirement);
                 }
-                catch (Exception ex)
-                {
-                    DebugLogger.LogDebug($"ERROR in fast skeleton recovery for '{Name}': {ex}");
-                }
+                catch { }
 
                 // If still bad after recovery attempt, skip this frame
                 if (actualRequired <= 0 || actualRequired > 10000)
@@ -648,9 +638,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                                     _ = SkeletonRoot.UpdatePosition(vertices.Span);
                                     successPos = true;
                                 }
-                                catch (Exception ex)
+                                catch
                                 {
-                                    DebugLogger.LogDebug($"ERROR updating skeleton root for '{Name}': {ex}");
                                     successPos = false;
                                     return;
                                 }
@@ -665,35 +654,25 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                                         }
                                         else
                                         {
-                                            DebugLogger.LogDebug($"Bone '{bonePair.Key}' needs {bonePair.Value.Count} vertices but only {vertices.Span.Length} available for '{Name}'");
                                             ResetBoneTransform(bonePair.Key);
                                         }
                                     }
-                                    catch (Exception ex)
+                                    catch
                                     {
-                                        DebugLogger.LogDebug($"ERROR updating bone '{bonePair.Key}' for '{Name}': {ex}");
                                         ResetBoneTransform(bonePair.Key);
                                     }
                                 }
 
                                 _cachedPosition = SkeletonRoot.Position;
-
-                                if (_skeletonErrorLogged)
-                                {
-                                    DebugLogger.LogDebug($"Skeleton update successful for Player '{Name}'");
-                                    _skeletonErrorLogged = false;
-                                }
                             }
                             else
                             {
-                                DebugLogger.LogDebug($"Insufficient vertices for '{Name}': got {vertices.Span.Length}, expected {requestedVertices}");
                                 _verticesCount = 0;
                                 successPos = false;
                             }
                         }
-                        catch (Exception ex)
+                        catch
                         {
-                            DebugLogger.LogDebug($"ERROR updating skeleton position for '{Name}': {ex}");
                             successPos = false;
                         }
                     }
@@ -744,7 +723,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                         {
                             if (SkeletonRoot.VerticesAddr != verticesPtr) // check if any addr changed
                             {
-                                DebugLogger.LogDebug($"WARNING - SkeletonRoot Transform has changed for Player '{Name}'");
                                 var transform = new UnityTransform(SkeletonRoot.TransformInternal);
                                 SkeletonRoot = transform;
                                 _verticesCount = 0; // force fresh vertex count on next read
@@ -758,12 +736,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                                     }
 
                                     Skeleton = new PlayerSkeleton(SkeletonRoot, PlayerBones);
-                                    DebugLogger.LogDebug($"Skeleton rebuilt for Player '{Name}'");
                                 }
-                                catch (Exception ex)
-                                {
-                                    DebugLogger.LogDebug($"ERROR rebuilding skeleton for '{Name}': {ex}");
-                                }
+                                catch { }
                             }
                         }
                     };
@@ -882,8 +856,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// <returns></returns>
         public static AIRole GetAIRoleInfo(string voiceLine)
         {
-            DebugLogger.LogDebug($"[PlayerDetect] GetAIRoleInfo called with: '{voiceLine}'");
-
             switch (voiceLine)
             {
                 case "BossSanitar":
@@ -1012,7 +984,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             if (!string.IsNullOrEmpty(voiceLine))
             {
                 var lowerVoice = voiceLine.ToLowerInvariant();
-                DebugLogger.LogDebug($"[PlayerDetect] Checking nickname match for: '{lowerVoice}'");
 
                 AIRole? nicknameMatch = lowerVoice switch
                 {
@@ -1038,7 +1009,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 };
                 if (nicknameMatch.HasValue)
                 {
-                    DebugLogger.LogDebug($"[PlayerDetect] Nickname matched: '{nicknameMatch.Value.Name}'");
                     return nicknameMatch.Value;
                 }
             }
@@ -1047,8 +1017,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             if (voiceLine.StartsWith("bot_", StringComparison.OrdinalIgnoreCase) ||
                 voiceLine.StartsWith("bo", StringComparison.OrdinalIgnoreCase))
             {
-                DebugLogger.LogDebug($"[PlayerDetect] Parsing bot prefix format: '{voiceLine}'");
-
                 // Try to extract the boss/AI name from the voice string
                 string namePart = voiceLine;
                 if (voiceLine.StartsWith("bot_", StringComparison.OrdinalIgnoreCase))
@@ -1066,7 +1034,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 }
 
                 var lowerName = namePart.ToLowerInvariant();
-                DebugLogger.LogDebug($"[PlayerDetect] Extracted name part: '{lowerName}'");
 
                 return lowerName switch
                 {
@@ -1087,11 +1054,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 };
             }
 
-            DebugLogger.LogDebug($"[PlayerDetect] Checking keyword fallbacks for: '{voiceLine}'");
-
             if (voiceLine.Contains("scav", StringComparison.OrdinalIgnoreCase))
             {
-                DebugLogger.LogDebug($"[PlayerDetect] Matched 'scav' keyword");
                 return new AIRole
                 {
                     Name = "Scav",
@@ -1100,7 +1064,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             }
             if (voiceLine.Contains("boss", StringComparison.OrdinalIgnoreCase))
             {
-                DebugLogger.LogDebug($"[PlayerDetect] Matched 'boss' keyword");
                 return new AIRole
                 {
                     Name = "Boss",
@@ -1109,7 +1072,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             }
             if (voiceLine.Contains("usec", StringComparison.OrdinalIgnoreCase))
             {
-                DebugLogger.LogDebug($"[PlayerDetect] Matched 'usec' keyword");
                 return new AIRole
                 {
                     Name = "Usec",
@@ -1118,7 +1080,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             }
             if (voiceLine.Contains("bear", StringComparison.OrdinalIgnoreCase))
             {
-                DebugLogger.LogDebug($"[PlayerDetect] Matched 'bear' keyword");
                 return new AIRole
                 {
                     Name = "Bear",
@@ -1126,7 +1087,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 };
             }
 
-            DebugLogger.LogDebug($"[PlayerDetect] No match found, defaulting to Scav. Voice line: '{voiceLine}'");
             return new AIRole
             {
                 Name = "Scav",

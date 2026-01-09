@@ -165,18 +165,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// </summary>
         private void SetupOfflineAI()
         {
-            DebugLogger.LogDebug($"[PlayerDetect] SetupOfflineAI: Base=0x{Base:X}, PlayerSide={PlayerSide}, IsScav={IsScav}, IsPmc={IsPmc}");
-
             // First try SpawnType detection (works for PMC bots which have PlayerSide=Savage)
             var spawnType = ReadSpawnType();
-            DebugLogger.LogDebug($"[PlayerDetect] SpawnType={spawnType} ({(int)spawnType})");
 
             if (spawnType != Enums.ESpawnType.UNKNOWN)
             {
                 var role = GetAIRoleFromSpawnType(spawnType);
                 Name = role.Name;
                 Type = role.Type;
-                DebugLogger.LogDebug($"[PlayerDetect] Role from SpawnType: Name='{role.Name}', Type={role.Type}");
 
                 // Fix PlayerSide for PMC bots (they have PlayerSide=Savage but are actually Bear/Usec)
                 if (spawnType == Enums.ESpawnType.PmcBEAR)
@@ -186,12 +182,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
 
                 // Register boss spawn for guard timing detection
                 if (Type == PlayerType.AIBoss)
-                {
                     BossSpawnTracker.RegisterBossSpawn(_cachedPosition, Name);
-                    DebugLogger.LogDebug($"[PlayerDetect] Registered boss spawn: {Name}");
-                }
 
-                DebugLogger.LogDebug($"[PlayerDetect] Final result: Name='{Name}', Type={Type}, PlayerSide={PlayerSide}");
                 return;
             }
 
@@ -204,35 +196,26 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     var nicknamePtr = Memory.ReadPtr(Info + Offsets.PlayerInfo.Nickname);
                     string nickname = nicknamePtr != 0 ? Memory.ReadUnicodeString(nicknamePtr) : "";
 
-                    DebugLogger.LogDebug($"[PlayerDetect] Scav detected, nickname='{nickname}', nicknamePtr=0x{nicknamePtr:X}");
-
                     // Use nickname for role detection
                     var role = GetAIRoleInfo(nickname);
                     Name = role.Name;
                     Type = role.Type;
 
-                    DebugLogger.LogDebug($"[PlayerDetect] Role from GetAIRoleInfo: Name='{role.Name}', Type={role.Type}");
-
                     // Register boss spawn for guard timing detection
                     if (Type == PlayerType.AIBoss)
-                    {
                         BossSpawnTracker.RegisterBossSpawn(_cachedPosition, Name);
-                        DebugLogger.LogDebug($"[PlayerDetect] Registered boss spawn: {Name}");
-                    }
                     // Check if this is a guard via spawn timing (if detected as regular Scav)
                     else if (Type == PlayerType.AIScav && BossSpawnTracker.TryGetGuardInfo(_cachedPosition, out _))
                     {
                         Name = "Guard";
                         Type = PlayerType.AIRaider;
-                        DebugLogger.LogDebug($"[PlayerDetect] Promoted to Guard via spawn timing");
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
                     // Default to Scav if detection fails
                     Name = "Scav";
                     Type = PlayerType.AIScav;
-                    DebugLogger.LogDebug($"[PlayerDetect] Exception in Scav detection: {ex.Message}");
                 }
             }
             else if (IsPmc)
@@ -240,16 +223,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 // PMC bots in offline mode (fallback if SpawnType didn't work)
                 Name = PlayerSide == Enums.EPlayerSide.Bear ? "Bear" : "Usec";
                 Type = PlayerType.PMC;
-                DebugLogger.LogDebug($"[PlayerDetect] PMC detected via PlayerSide: Name='{Name}', Type={Type}");
             }
             else
             {
                 Name = "Unknown";
                 Type = PlayerType.Default;
-                DebugLogger.LogDebug($"[PlayerDetect] Unknown player type: PlayerSide={PlayerSide}");
             }
-
-            DebugLogger.LogDebug($"[PlayerDetect] Final result: Name='{Name}', Type={Type}");
         }
 
         /// <summary>
@@ -277,9 +256,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
 
                 if (Enum.IsDefined(typeof(Enums.ESpawnType), spawnTypeValue))
                 {
-                    var spawnType = (Enums.ESpawnType)spawnTypeValue;
-                    DebugLogger.LogDebug($"[PlayerDetect] SpawnType={spawnType} ({spawnTypeValue})");
-                    return spawnType;
+                    return (Enums.ESpawnType)spawnTypeValue;
                 }
 
                 return Enums.ESpawnType.UNKNOWN;

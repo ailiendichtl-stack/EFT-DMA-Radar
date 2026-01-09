@@ -7,6 +7,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
 {
     public static class GameWorldExtensions
     {
+        // Tracks if we've already logged certain messages to avoid spam
+        private static bool _loggedSearchingForGameWorld = false;
+        private static string _lastInvalidGameWorldError = null;
+        private static bool _loggedGameWorldFound = false;
+
         /// <summary>
         /// Get the GameWorld instance from the GameObjectManager.
         /// </summary>
@@ -18,7 +23,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         public static ulong GetGameWorld(this GameObjectManager gom, CancellationToken ct, out string map)
         {
             ct.ThrowIfCancellationRequested();
-            DebugLogger.LogDebug("Searching for GameWorld...");
+            if (!_loggedSearchingForGameWorld)
+            {
+                DebugLogger.LogDebug("Searching for GameWorld...");
+                _loggedSearchingForGameWorld = true;
+            }
             var firstObject = Memory.ReadValue<LinkedListObject>(gom.ActiveNodes);
             var lastObject = Memory.ReadValue<LinkedListObject>(gom.LastActiveNode);
             firstObject.ThisObject.ThrowIfInvalidVirtualAddress(nameof(firstObject));
@@ -50,6 +59,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 }
                 if (winner is null)
                     throw new InvalidOperationException("GameWorld not found.");
+
+                // Reset log state for next search session (after game ends)
+                _loggedSearchingForGameWorld = false;
+                _lastInvalidGameWorldError = null;
+                _loggedGameWorldFound = false;
+
                 map = winner.Result.Map;
                 return winner.Result.GameWorld;
             }
@@ -80,7 +95,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                             break;
                         if (ParseGameWorld(ref currentObject) is GameWorldResult result)
                         {
-                            DebugLogger.LogDebug("GameWorld Found! (Shallow)");
                             return result;
                         }
 
@@ -100,7 +114,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 ct2.ThrowIfCancellationRequested();
                 if (ParseGameWorld(ref currentObject) is GameWorldResult result)
                 {
-                    DebugLogger.LogDebug("GameWorld Found! (Forward)");
                     return result;
                 }
 
@@ -117,7 +130,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 ct2.ThrowIfCancellationRequested();
                 if (ParseGameWorld(ref currentObject) is GameWorldResult result)
                 {
-                    DebugLogger.LogDebug("GameWorld Found! (Backward)");
                     return result;
                 }
 
@@ -157,7 +169,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                             throw new ArgumentException("Invalid Map ID!");
                         }
 
-                        DebugLogger.LogDebug("Detected Map " + map);
+                        // Only log once even if multiple parallel tasks find it
+                        if (!_loggedGameWorldFound)
+                        {
+                            _loggedGameWorldFound = true;
+                            DebugLogger.LogDebug($"GameWorld Found! Map: {map}");
+                        }
                         return new GameWorldResult()
                         {
                             GameWorld = localGameWorld,
@@ -170,7 +187,13 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                         {
                             return null;
                         }
-                        DebugLogger.LogDebug($"Invalid GameWorld Instance: {ex}");
+                        // Only log if this is a new/different error to avoid spam
+                        var errorKey = ex.GetType().Name;
+                        if (_lastInvalidGameWorldError != errorKey)
+                        {
+                            _lastInvalidGameWorldError = errorKey;
+                            DebugLogger.LogDebug($"Invalid GameWorld Instance: {ex.Message}");
+                        }
                     }
                 }
             }

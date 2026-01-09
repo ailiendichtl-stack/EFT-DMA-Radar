@@ -85,14 +85,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                             // Remove the broken player first to allow re-allocation
                             _ = _players.TryRemove(playerBase, out _);
                             // Try to allocate fresh - if this fails, Allocate() catches it and logs
-                            AbstractPlayer.Allocate(_players, playerBase);
+                            AbstractPlayer.Allocate(_players, playerBase, _game);
                             // If allocation failed, player won't be in dictionary - keep trying next refresh
                             continue;
                         }
                     }
 
                     // Add new player (or keep existing if no errors)
-                    AbstractPlayer.Allocate(_players, playerBase);
+                    AbstractPlayer.Allocate(_players, playerBase, _game);
                 }
                 /// Update Existing Players incl LocalPlayer
                 UpdateExistingPlayers(registered);
@@ -141,7 +141,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         {
             if (_players.TryGetValue(btrPlayerBase, out var existing) && existing is not BtrPlayer)
             {
-                var btr = new BtrPlayer(btrView, btrPlayerBase);
+                var btr = new BtrPlayer(btrView, btrPlayerBase, _game);
                 _players[btrPlayerBase] = btr;
                 DebugLogger.LogDebug("BTR Allocated!");
             }

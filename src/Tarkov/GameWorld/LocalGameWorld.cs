@@ -88,6 +88,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         public LocalPlayer LocalPlayer => _rgtPlayers?.LocalPlayer;
         public LootManager Loot { get; }
         public QuestManager Quests => _questManager;
+        public IReadOnlyList<Hazards.IWorldHazard> Hazards { get; }
 
         /// <summary>
         /// True once the raid has started (player has control).
@@ -136,6 +137,15 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 Loot = new(localGameWorld);
                 _exfilManager = new(mapID, _rgtPlayers.LocalPlayer.IsPmc, localGameWorld);
                 _explosivesManager = new(localGameWorld);
+                // Load hazards from map data
+                if (TarkovDataManager.MapData.TryGetValue(MapID, out var mapData) && mapData.Hazards?.Count > 0)
+                {
+                    Hazards = mapData.Hazards.Cast<Hazards.IWorldHazard>().ToList();
+                }
+                else
+                {
+                    Hazards = Array.Empty<Hazards.IWorldHazard>();
+                }
                 _memWritesManager = new MemWritesManager();
                 // Initialize quest manager with local player's profile
                 _questManager = new QuestManager(_rgtPlayers.LocalPlayer.Profile);
@@ -166,6 +176,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
             _t4.Start();
         }
 
+        // Track last error type to avoid spam logging the same error repeatedly
+        private static string _lastInstantiationError = null;
+
         /// <summary>
         /// Blocks until a LocalGameWorld Singleton Instance can be instantiated.
         /// </summary>
@@ -179,6 +192,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 try
                 {
                     var instance = GetLocalGameWorld(ct);
+                    _lastInstantiationError = null; // Reset on success
                     DebugLogger.LogDebug("Raid has started!");
                     return instance;
                 }
@@ -192,7 +206,13 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 }
                 catch (Exception ex)
                 {
-                    DebugLogger.LogDebug($"ERROR Instantiating Game Instance: {ex}");
+                    // Only log if this is a new/different error type to avoid spam
+                    var errorKey = ex.InnerException?.GetType().Name ?? ex.GetType().Name;
+                    if (_lastInstantiationError != errorKey)
+                    {
+                        _lastInstantiationError = errorKey;
+                        DebugLogger.LogDebug($"ERROR Instantiating Game Instance: {ex.InnerException?.Message ?? ex.Message}");
+                    }
                 }
                 finally
                 {

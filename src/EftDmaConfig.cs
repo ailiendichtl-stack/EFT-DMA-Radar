@@ -376,6 +376,12 @@ namespace LoneEftDmaRadar
         public bool ShowMines { get; set; } = true;
 
         /// <summary>
+        /// Show World Hazards (radiation zones, gas, etc.) in the Radar UI.
+        /// </summary>
+        [JsonPropertyName("showHazards")]
+        public bool ShowHazards { get; set; } = true;
+
+        /// <summary>
         /// Hides player names & extended player info in Radar GUI.
         /// </summary>
         [JsonPropertyName("hideNames")]

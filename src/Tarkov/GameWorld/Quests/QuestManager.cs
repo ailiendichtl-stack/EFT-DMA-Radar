@@ -27,6 +27,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
         private readonly ConcurrentDictionary<string, QuestLocation> _locations = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
+        /// Tracks unknown quest IDs to avoid log spam (only log once per session).
+        /// </summary>
+        private readonly ConcurrentDictionary<string, byte> _unknownQuests = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
         /// Cached condition counters from Profile.TaskConditionCounters
         /// </summary>
         private IReadOnlyDictionary<string, (int CurrentCount, int TargetCount)> _conditionCounters =
@@ -89,8 +94,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
                 // Read quest data
                 var questsData = Memory.ReadPtr(_profile + Offsets.Profile.QuestsData);
                 using var questsDataList = UnityList<ulong>.Create(questsData, false);
-
-                DebugLogger.LogDebug($"[QuestManager] Profile=0x{_profile:X}, QuestsData=0x{questsData:X}, Count={questsDataList.Count}, TaskData={TarkovDataManager.TaskData?.Count ?? 0}");
 
                 foreach (var qDataEntry in questsDataList)
                 {
@@ -162,7 +165,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
 
                 if (!TarkovDataManager.TaskData.TryGetValue(qId, out var task))
                 {
-                    DebugLogger.LogDebug($"[QuestManager] Quest '{qId}' not found in TaskData (Status={qStatus})");
+                    // Only log unknown quests once per session to avoid spam
+                    if (_unknownQuests.TryAdd(qId, 0))
+                        DebugLogger.LogDebug($"[QuestManager] Quest '{qId}' not found in TaskData (likely new/daily quest)");
                     return;
                 }
 

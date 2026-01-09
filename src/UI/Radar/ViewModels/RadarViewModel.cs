@@ -30,6 +30,7 @@ using Collections.Pooled;
 using LoneEftDmaRadar.Tarkov;
 using LoneEftDmaRadar.Tarkov.GameWorld.Exits;
 using LoneEftDmaRadar.Tarkov.GameWorld.Explosives;
+using LoneEftDmaRadar.Tarkov.GameWorld.Hazards;
 using LoneEftDmaRadar.Tarkov.GameWorld.Loot;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
 using LoneEftDmaRadar.Tarkov.GameWorld.Quests;
@@ -110,6 +111,11 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         private static IReadOnlyDictionary<string, QuestLocation> QuestLocations => Memory?.Quests?.LocationConditions;
 
         /// <summary>
+        /// Contains all world hazards (radiation zones, gas, etc.) in Local Game World.
+        /// </summary>
+        private static IReadOnlyList<IWorldHazard> Hazards => Memory?.Hazards;
+
+        /// <summary>
         /// Item Search Filter has been set/applied.
         /// </summary>
         private static bool FilterIsSet =>
@@ -135,12 +141,13 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 var loot = Loot ?? Enumerable.Empty<IMouseoverEntity>();
                 var containers = Containers ?? Enumerable.Empty<IMouseoverEntity>();
                 var exits = Exits ?? Enumerable.Empty<IMouseoverEntity>();
+                var hazards = (App.Config.UI.ShowHazards ? Hazards : null) ?? Enumerable.Empty<IMouseoverEntity>();
 
                 if (FilterIsSet && !(MainWindow.Instance?.Radar?.Overlay?.ViewModel?.HideCorpses ?? false)) // Item Search
                     players = players.Where(x =>
                         x.LootObject is null || !loot.Contains(x.LootObject)); // Don't show both corpse objects
 
-                var result = loot.Concat(containers).Concat(players).Concat(exits);
+                var result = loot.Concat(containers).Concat(players).Concat(exits).Concat(hazards);
                 return result.Any() ? result : null;
             }
         }
@@ -386,6 +393,15 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                         {
                             var mineZoomedPos = mine.ToMapPos(map.Config).ToZoomedPos(mapParams);
                             mineZoomedPos.DrawMineMarker(canvas);
+                        }
+                    }
+
+                    if (App.Config.UI.ShowHazards &&
+                        Hazards is IReadOnlyList<IWorldHazard> hazards) // Draw World Hazards
+                    {
+                        foreach (var hazard in hazards)
+                        {
+                            hazard.Draw(canvas, mapParams, localPlayer);
                         }
                     }
 
@@ -840,6 +856,11 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
 
                     case IExitPoint exit:
                         _mouseOverItem = closest;
+                        MouseoverGroup = null;
+                        break;
+
+                    case IWorldHazard hazard:
+                        _mouseOverItem = hazard;
                         MouseoverGroup = null;
                         break;
 

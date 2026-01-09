@@ -504,6 +504,14 @@ namespace LoneEftDmaRadar.UI.Skia
             IsAntialias = true,
         };
 
+        public static SKPaint PaintHazard { get; } = new()
+        {
+            Color = SKColors.Yellow,
+            StrokeWidth = 2,
+            Style = SKPaintStyle.Stroke,
+            IsAntialias = true,
+        };
+
         public static SKPaint PaintExfilOpen { get; } = new()
         {
             Color = SKColors.LimeGreen,

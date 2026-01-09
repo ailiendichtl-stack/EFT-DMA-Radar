@@ -38,6 +38,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
 {
     public class ObservedPlayer : AbstractPlayer
     {
+        private readonly LocalGameWorld _gameWorld;
         // Inline player data (replaces PlayerProfile)
         private string _name = "Unknown";
         private PlayerType _type = PlayerType.Default;
@@ -213,9 +214,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
 
         #endregion
 
-        internal ObservedPlayer(ulong playerBase) : base(playerBase)
+        internal ObservedPlayer(ulong playerBase, LocalGameWorld gameWorld) : base(playerBase)
         {
-            var localPlayer = Memory.LocalPlayer;
+            _gameWorld = gameWorld;
+            var localPlayer = gameWorld?.LocalPlayer ?? Memory.LocalPlayer;
             ArgumentNullException.ThrowIfNull(localPlayer, nameof(localPlayer));
             ObservedPlayerController = Memory.ReadPtr(this + Offsets.ObservedPlayerView.ObservedPlayerController);
             ArgumentOutOfRangeException.ThrowIfNotEqual(this, Memory.ReadValue<ulong>(ObservedPlayerController + Offsets.ObservedPlayerController.PlayerView), nameof(ObservedPlayerController));
@@ -299,6 +301,13 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                             Name = $"{bossName} Guard";
                             Type = PlayerType.AIRaider;
                             DebugLogger.LogDebug($"[PlayerDetect] Promoted to Guard via spawn timing for boss: {bossName}");
+                        }
+                        // Labs Raider Check - all non-boss AI on Labs are Raiders
+                        else if (_gameWorld?.MapID == "laboratory" && Type != PlayerType.AIBoss)
+                        {
+                            Name = "Raider";
+                            Type = PlayerType.AIRaider;
+                            DebugLogger.LogDebug($"[PlayerDetect] Labs Raider detected");
                         }
 
                         DebugLogger.LogDebug($"[PlayerDetect] Role from voice '{voice}': Name='{role.Name}', Type={Type}");
