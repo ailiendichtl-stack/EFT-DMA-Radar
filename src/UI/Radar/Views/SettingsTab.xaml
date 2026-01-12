@@ -188,6 +188,12 @@ Toggle Fullscreen: F11
                                   ToolTip="Shows static containers on the map/ESP."
                                   IsChecked="{Binding ShowStaticContainers, Mode=TwoWay}"
                                   Margin="0,0,16,8" />
+                        <CheckBox Content="PVE Mode"
+                                  ToolTip="Use PVE flea market prices instead of PVP. Refreshes price data when toggled."
+                                  IsChecked="{Binding PveMode, Mode=TwoWay}"
+                                  Foreground="Orange"
+                                  FontWeight="SemiBold"
+                                  Margin="0,0,16,8" />
                     </WrapPanel>
 
                     <StackPanel Orientation="Horizontal"

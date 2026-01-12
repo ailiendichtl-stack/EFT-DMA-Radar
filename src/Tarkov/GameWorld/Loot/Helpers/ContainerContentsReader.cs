@@ -113,5 +113,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers
         /// True if this item is needed for a tracked hideout upgrade.
         /// </summary>
         public bool IsHideoutItem => HideoutManager.Instance?.IsHideoutItem(Id) ?? false;
+
+        /// <summary>
+        /// True if this item is needed for an active quest objective.
+        /// </summary>
+        public bool IsQuestItem => Memory.Quests?.IsQuestItem(Id) ?? false;
     }
 }

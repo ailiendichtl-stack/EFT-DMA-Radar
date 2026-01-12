@@ -57,6 +57,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             RenameFilterCommand = new SimpleCommand(OnRenameFilter);
             DeleteFilterCommand = new SimpleCommand(OnDeleteFilter);
             RestoreDefaultsCommand = new SimpleCommand(OnRestoreDefaults);
+            ResetItemColorsCommand = new SimpleCommand(OnResetItemColors);
 
             AddEntryCommand = new SimpleCommand(OnAddEntry);
             DeleteEntryCommand = new SimpleCommand(OnDeleteEntry);
@@ -332,6 +333,53 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                     MainWindow.Instance,
                     $"ERROR Restoring Defaults: {ex.Message}",
                     "Loot Filter",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        public ICommand ResetItemColorsCommand { get; }
+        private void OnResetItemColors()
+        {
+            if (string.IsNullOrEmpty(SelectedFilterName) || !App.Config.LootFilters.Filters.TryGetValue(SelectedFilterName, out var filter))
+                return;
+
+            var result = MessageBox.Show(
+                MainWindow.Instance,
+                $"This will reset all item colors in '{SelectedFilterName}' to inherit from the filter's parent color.\n\n" +
+                "Items will use the filter color unless you set a custom color for individual items.\n\n" +
+                "Are you sure you want to continue?",
+                "Reset Item Colors",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                int count = 0;
+                foreach (var entry in filter.Entries)
+                {
+                    if (!string.IsNullOrEmpty(entry.ExplicitColor))
+                    {
+                        entry.ExplicitColor = null;
+                        count++;
+                    }
+                }
+
+                MessageBox.Show(
+                    MainWindow.Instance,
+                    $"Successfully reset {count} item color(s) to inherit from parent filter.",
+                    "Reset Item Colors",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    MainWindow.Instance,
+                    $"ERROR Resetting Colors: {ex.Message}",
+                    "Reset Item Colors",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }

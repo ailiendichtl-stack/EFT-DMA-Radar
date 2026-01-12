@@ -142,12 +142,15 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 var containers = Containers ?? Enumerable.Empty<IMouseoverEntity>();
                 var exits = Exits ?? Enumerable.Empty<IMouseoverEntity>();
                 var hazards = (App.Config.UI.ShowHazards ? Hazards : null) ?? Enumerable.Empty<IMouseoverEntity>();
+                var questLocs = (App.Config.QuestHelper.Enabled && App.Config.QuestHelper.ShowLocations && QuestLocations != null)
+                    ? QuestLocations.Values.Cast<IMouseoverEntity>()
+                    : Enumerable.Empty<IMouseoverEntity>();
 
                 if (FilterIsSet && !(MainWindow.Instance?.Radar?.Overlay?.ViewModel?.HideCorpses ?? false)) // Item Search
                     players = players.Where(x =>
                         x.LootObject is null || !loot.Contains(x.LootObject)); // Don't show both corpse objects
 
-                var result = loot.Concat(containers).Concat(players).Concat(exits).Concat(hazards);
+                var result = loot.Concat(containers).Concat(players).Concat(exits).Concat(hazards).Concat(questLocs);
                 return result.Any() ? result : null;
             }
         }
@@ -861,6 +864,11 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
 
                     case IWorldHazard hazard:
                         _mouseOverItem = hazard;
+                        MouseoverGroup = null;
+                        break;
+
+                    case QuestLocation questLoc:
+                        _mouseOverItem = questLoc;
                         MouseoverGroup = null;
                         break;
 

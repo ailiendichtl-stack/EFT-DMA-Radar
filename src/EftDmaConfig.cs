@@ -843,6 +843,12 @@ namespace LoneEftDmaRadar
         [JsonPropertyName("priceMode")]
         public LootPriceMode PriceMode { get; set; } = LootPriceMode.FleaMarket;
 
+        /// <summary>
+        /// Use PVE flea market prices instead of PVP prices.
+        /// </summary>
+        [JsonPropertyName("pveMode")]
+        public bool PveMode { get; set; } = false;
+
     }
 
     public sealed class ContainersConfig

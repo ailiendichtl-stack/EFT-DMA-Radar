@@ -70,6 +70,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
         public const float QuestMarkerSquareSize = 8f;
         public const float QuestMarkerStrokeWidth = 2f;
         public const float QuestMarkerHeightThreshold = 1.45f;
-        public const int MaxDescriptionLength = 60;
+        public const int MaxDescriptionLength = 50;
     }
 }

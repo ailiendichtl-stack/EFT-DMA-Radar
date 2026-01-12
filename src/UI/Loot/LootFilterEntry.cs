@@ -159,6 +159,14 @@ namespace LoneEftDmaRadar.UI.Loot
         private void OnPropertyChanged([CallerMemberName] string propName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
 
+        /// <summary>
+        /// Called by parent filter when its color changes, to notify this entry to update its inherited color.
+        /// </summary>
+        public void NotifyColorChanged()
+        {
+            OnPropertyChanged(nameof(Color));
+        }
+
         public sealed class EntryType
         {
             public int Id { get; init; }

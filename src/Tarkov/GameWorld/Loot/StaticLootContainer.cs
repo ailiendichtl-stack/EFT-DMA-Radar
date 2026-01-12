@@ -92,8 +92,13 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         public bool HasHideoutContents => _contents?.Any(x => x.IsHideoutItem) ?? false;
 
         /// <summary>
+        /// True if this container has any items needed for active quest objectives.
+        /// </summary>
+        public bool HasQuestContents => _contents?.Any(x => x.IsQuestItem) ?? false;
+
+        /// <summary>
         /// Checks if this container should be displayed based on min value filter.
-        /// Containers with important or hideout items always pass the filter.
+        /// Containers with important, hideout, or quest items always pass the filter.
         /// </summary>
         private bool PassesMinValueFilter()
         {
@@ -101,6 +106,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             if (minValue <= 0) return true; // No filter
             if (HasImportantContents) return true; // Important items always show
             if (HasHideoutContents) return true; // Hideout items always show
+            if (HasQuestContents) return true; // Quest items always show
             return TotalValue >= minValue;
         }
 
@@ -234,7 +240,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
         /// <summary>
         /// Gets the paint colors for this container based on its contents.
-        /// Priority: Important items (with filter color) > Hideout items > Valuable container > Has valuable contents > Default
+        /// Priority: Important items (with filter color) > Quest items > Hideout items > Valuable container > Has valuable contents > Default
         /// </summary>
         private (SKPaint, SKPaint) GetContainerPaints()
         {
@@ -249,6 +255,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 }
                 return (SKPaints.PaintFilteredLoot, SKPaints.TextFilteredLoot);
             }
+            // Quest items (YellowGreen like loose loot quest items)
+            if (HasQuestContents)
+                return (SKPaints.PaintQuestItem, SKPaints.TextQuestItem);
             // Hideout items (user-selected color)
             if (HasHideoutContents)
                 return (SKPaints.PaintHideoutItem, SKPaints.TextHideoutItem);

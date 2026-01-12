@@ -35,29 +35,75 @@
                                Margin="0,0,0,8"
                                FontStyle="Italic" />
 
-                    <TreeView ItemsSource="{Binding Stations}"
-                              Height="350"
-                              IsEnabled="{Binding Enabled}">
-                        <TreeView.ItemTemplate>
-                            <HierarchicalDataTemplate ItemsSource="{Binding Levels}">
-                                <TextBlock Text="{Binding Name}"
-                                           FontWeight="Bold" />
-                                <HierarchicalDataTemplate.ItemTemplate>
-                                    <DataTemplate>
-                                        <CheckBox IsChecked="{Binding IsTracked, Mode=TwoWay}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding LevelDisplay}" />
-                                                <TextBlock Text=" - "
-                                                           Foreground="Gray" />
-                                                <TextBlock Text="{Binding ItemSummary}"
-                                                           Foreground="Gray" />
-                                            </StackPanel>
-                                        </CheckBox>
-                                    </DataTemplate>
-                                </HierarchicalDataTemplate.ItemTemplate>
-                            </HierarchicalDataTemplate>
-                        </TreeView.ItemTemplate>
-                    </TreeView>
+                    <!-- Horizontal station/level layout -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  MaxHeight="350"
+                                  IsEnabled="{Binding Enabled}">
+                        <ItemsControl ItemsSource="{Binding Stations}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="#444"
+                                            BorderThickness="0,0,0,1"
+                                            Padding="0,4"
+                                            Margin="0,0,0,2">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="140" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Station Name -->
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Name}"
+                                                       FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0" />
+
+                                            <!-- Level Toggles -->
+                                            <ItemsControl Grid.Column="1"
+                                                          ItemsSource="{Binding Levels}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <ToggleButton IsChecked="{Binding IsTracked, Mode=TwoWay}"
+                                                                      MinWidth="32"
+                                                                      Height="24"
+                                                                      Margin="0,0,4,0"
+                                                                      Padding="6,2"
+                                                                      ToolTip="{Binding ItemSummary}">
+                                                            <ToggleButton.Style>
+                                                                <Style TargetType="ToggleButton">
+                                                                    <Setter Property="Background" Value="#333" />
+                                                                    <Setter Property="Foreground" Value="White" />
+                                                                    <Setter Property="BorderBrush" Value="#555" />
+                                                                    <Style.Triggers>
+                                                                        <Trigger Property="IsChecked" Value="True">
+                                                                            <Setter Property="Background" Value="#1E6B1E" />
+                                                                            <Setter Property="BorderBrush" Value="#2A8B2A" />
+                                                                        </Trigger>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="BorderBrush" Value="Orange" />
+                                                                        </Trigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </ToggleButton.Style>
+                                                            <TextBlock Text="{Binding Level}"
+                                                                       FontWeight="Bold"
+                                                                       FontSize="11" />
+                                                        </ToggleButton>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </StackPanel>
             </GroupBox>
 

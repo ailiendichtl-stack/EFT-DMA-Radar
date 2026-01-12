@@ -241,6 +241,15 @@ namespace LoneEftDmaRadar.Tarkov
         }
 
         /// <summary>
+        /// Refreshes Game/Loot Data from the web (used when PVE mode is toggled).
+        /// </summary>
+        public static async Task RefreshDataAsync()
+        {
+            DebugLogger.LogDebug($"[TarkovDataManager] Refreshing data (PVE mode: {App.Config.Loot.PveMode})...");
+            await LoadRemoteDataAsync();
+        }
+
+        /// <summary>
         /// Forces a refresh of Game/Loot Data from the web, bypassing the cache.
         /// </summary>
         public static async Task ForceRefreshDataAsync()

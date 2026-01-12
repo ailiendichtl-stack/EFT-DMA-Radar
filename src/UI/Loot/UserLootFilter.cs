@@ -28,17 +28,59 @@ SOFTWARE.
 
 using SkiaSharp;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 
 namespace LoneEftDmaRadar.UI.Loot
 {
-    public sealed class UserLootFilter
+    public sealed class UserLootFilter : INotifyPropertyChanged
     {
-        [JsonPropertyName("enabled")] public bool Enabled { get; set; } = true;
+        public event PropertyChangedEventHandler PropertyChanged;
 
-        [JsonPropertyName("color")] public string Color { get; set; } = SKColors.Turquoise.ToString();
+        private bool _enabled = true;
+        private string _color = SKColors.Turquoise.ToString();
+
+        [JsonPropertyName("enabled")]
+        public bool Enabled
+        {
+            get => _enabled;
+            set
+            {
+                if (_enabled != value)
+                {
+                    _enabled = value;
+                    OnPropertyChanged(nameof(Enabled));
+                }
+            }
+        }
+
+        [JsonPropertyName("color")]
+        public string Color
+        {
+            get => _color;
+            set
+            {
+                if (_color != value)
+                {
+                    _color = value;
+                    OnPropertyChanged(nameof(Color));
+
+                    // Notify all child entries that inherit from this color
+                    foreach (var entry in Entries)
+                    {
+                        if (string.IsNullOrEmpty(entry.ExplicitColor))
+                        {
+                            entry.NotifyColorChanged();
+                        }
+                    }
+                }
+            }
+        }
 
         [JsonInclude]
         [JsonPropertyName("entries")]
         public ObservableCollection<LootFilterEntry> Entries { get; init; } = new();
+
+        private void OnPropertyChanged(string propertyName) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

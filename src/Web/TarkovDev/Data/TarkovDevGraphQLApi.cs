@@ -72,12 +72,14 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
 
         public static async Task<string> GetTarkovDataAsync()
         {
+            // Determine game mode based on config
+            var gameMode = App.Config.Loot.PveMode ? "pve" : "regular";
             var query = new Dictionary<string, string>
             {
                 { "query",
-                """
+                $$"""
                 {
-                    maps {
+                    maps(gameMode: {{gameMode}}) {
                         name
                         nameId
                         extracts {
@@ -90,7 +92,7 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
                             position {x,y,z}
                         }
                     }
-                    items {
+                    items(gameMode: {{gameMode}}) {
                         id
                         name
                         shortName

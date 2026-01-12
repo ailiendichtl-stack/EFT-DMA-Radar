@@ -43,6 +43,9 @@
                     <TabItem Header="Hideout Tracker">
                         <tabs:HideoutTab x:Name="HideoutTracker" />
                     </TabItem>
+                    <TabItem Header="Active Quests">
+                        <tabs:ActiveQuestsTab x:Name="ActiveQuests" />
+                    </TabItem>
                     <TabItem Header="Hotkeys">
                         <hotkeys:HotkeyManagerTab x:Name="HotkeyManager" />
                     </TabItem>

@@ -445,6 +445,33 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
 
         #region Loot
 
+        public bool PveMode
+        {
+            get => App.Config.Loot.PveMode;
+            set
+            {
+                if (App.Config.Loot.PveMode != value)
+                {
+                    App.Config.Loot.PveMode = value;
+                    OnPropertyChanged(nameof(PveMode));
+                    // Trigger data refresh to fetch new prices
+                    _ = RefreshPveModeDataAsync();
+                }
+            }
+        }
+
+        private static async Task RefreshPveModeDataAsync()
+        {
+            try
+            {
+                await TarkovDataManager.RefreshDataAsync();
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogDebug($"[PveMode] Failed to refresh price data: {ex.Message}");
+            }
+        }
+
         public bool ShowStaticContainers
         {
             get => App.Config.Containers.Enabled;
