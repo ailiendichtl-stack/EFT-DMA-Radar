@@ -134,10 +134,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
 
             foreach (var zone in objective.Zones)
             {
-                if (zone?.Id is string zoneId && zonesForMap.TryGetValue(zoneId, out var pos))
+                if (zone?.Id is string zoneId && zonesForMap.TryGetValue(zoneId, out var zoneData))
                 {
                     var locKey = CreateLocationKey(questId, objective.Id, zoneId);
-                    locationsDict.GetOrAdd(locKey, _ => new QuestLocation(questId, objective.Id, pos));
+                    locationsDict.GetOrAdd(locKey, _ => new QuestLocation(
+                        questId,
+                        objective.Id,
+                        zoneData.Position,
+                        zoneData.Outline));
                     masterLocations.Add(locKey);
                 }
             }

@@ -67,7 +67,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers
                                     {
                                         Id = itemId,
                                         Name = marketItem.ShortName ?? marketItem.Name,
-                                        Price = (int)marketItem.FleaPrice,
+                                        Price = (int)(marketItem.FleaPrice > 0 ? marketItem.FleaPrice : marketItem.TraderPrice),
                                         MarketItem = marketItem
                                     });
                                 }

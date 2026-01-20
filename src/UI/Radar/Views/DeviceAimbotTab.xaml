@@ -180,7 +180,7 @@
                                Margin="8,8,8,4" />
                     <Slider Value="{Binding MaxDistance, Mode=TwoWay}"
                             Minimum="50"
-                            Maximum="500"
+                            Maximum="800"
                             TickFrequency="50"
                             IsSnapToTickEnabled="True"
                             Margin="8,4,8,8" />

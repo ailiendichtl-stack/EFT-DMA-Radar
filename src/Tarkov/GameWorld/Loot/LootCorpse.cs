@@ -30,6 +30,7 @@ using Collections.Pooled;
 using LoneEftDmaRadar.Misc;
 using LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
+using LoneEftDmaRadar.UI.Misc;
 using LoneEftDmaRadar.UI.Radar.Maps;
 using LoneEftDmaRadar.UI.Skia;
 using LoneEftDmaRadar.Web.TarkovDev.Data;
@@ -41,6 +42,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         private static readonly TarkovMarketItem _default = new();
         private readonly ulong _corpse;
         private bool _contentsLoaded;
+        private bool _labelLogged; // For one-time debug logging
+        private bool _syncFailLogged; // For one-time sync fail logging
         private DateTime _lastContentsRefresh = DateTime.MinValue;
         private string _cachedFilterColor;
 
@@ -80,6 +83,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         public bool HasHideoutContents => Contents?.Any(x => x.IsHideoutItem) ?? false;
 
         /// <summary>
+        /// True if any item in the corpse's inventory is needed for an active quest objective.
+        /// </summary>
+        public bool HasQuestContents => Contents?.Any(x => x.IsQuestItem) ?? false;
+
+        /// <summary>
         /// True if the corpse has valuable inventory contents (above min value threshold).
         /// </summary>
         public bool HasValuableContents => InventoryValue >= App.Config.Containers.MinValue;
@@ -100,7 +108,33 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// <param name="deadPlayers"></param>
         public void Sync(IReadOnlyList<AbstractPlayer> deadPlayers)
         {
+            var wasNull = Player is null;
             Player ??= deadPlayers?.FirstOrDefault(x => x.Corpse == _corpse);
+
+            // Debug logging for corpse sync
+            if (wasNull && Player is not null)
+            {
+                DebugLogger.LogDebug($"[CorpseSync] Synced corpse 0x{_corpse:X} to player '{Player.Name}' (Type: {Player.Type}, IsObserved: {Player is ObservedPlayer})");
+                if (Player is ObservedPlayer obs)
+                {
+                    DebugLogger.LogDebug($"[CorpseSync] Equipment items: {obs.Equipment.Items.Count}, Value: {obs.Equipment.Value}");
+                }
+            }
+            else if (wasNull && Player is null && !_syncFailLogged)
+            {
+                _syncFailLogged = true;
+                // Log all dead player corpse addresses for comparison (only once per corpse to avoid spam)
+                if (deadPlayers?.Count > 0)
+                {
+                    var deadCorpseAddrs = string.Join(", ", deadPlayers.Select(p => $"0x{p.Corpse:X}"));
+                    DebugLogger.LogDebug($"[CorpseSync] Failed to sync corpse 0x{_corpse:X} - deadPlayers corpse addrs: [{deadCorpseAddrs}]");
+                }
+                else
+                {
+                    DebugLogger.LogDebug($"[CorpseSync] Failed to sync corpse 0x{_corpse:X} - no dead players available");
+                }
+            }
+
             if (Player is not null && Player.LootObject is null)
                 Player.LootObject = this;
 
@@ -110,15 +144,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
         /// <summary>
         /// Refreshes the corpse's inventory contents.
-        /// Only works for ObservedPlayer corpses in offline PVE mode.
+        /// Works for ObservedPlayer, ClientPlayer, and pre-existing/environmental corpses.
         /// </summary>
         public void RefreshContents()
         {
             // Only scan contents if PVE scanning is enabled (offline mode only)
             if (!App.Config.Containers.PveScanEnabled)
-                return;
-
-            if (Player is not ObservedPlayer obs)
                 return;
 
             // Throttle refreshes
@@ -129,17 +160,36 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
             try
             {
-                Contents = CorpseContentsReader.GetCorpseContents(obs);
-                _contentsLoaded = true;
+                // Support both ObservedPlayer (online mode) and ClientPlayer (offline PVE mode)
+                if (Player is ObservedPlayer obs)
+                {
+                    Contents = CorpseContentsReader.GetCorpseContents(obs);
+                    _contentsLoaded = true;
+                }
+                else if (Player is ClientPlayer client)
+                {
+                    Contents = CorpseContentsReader.GetCorpseContents(client);
+                    _contentsLoaded = true;
+                    DebugLogger.LogDebug($"[CorpseContents] Read {Contents.Count} items from ClientPlayer '{Player.Name}'");
+                }
+                else
+                {
+                    // Fallback: Try reading directly from corpse interactiveClass
+                    // This works for pre-existing/environmental corpses that don't have a player sync
+                    Contents = CorpseContentsReader.GetCorpseContentsFromInteractiveClass(_corpse);
+                    _contentsLoaded = true;
+                    DebugLogger.LogDebug($"[CorpseContents] Read {Contents.Count} items directly from corpse 0x{_corpse:X} (no player sync)");
+                }
+
                 // Cache filter color from highest value important item
                 _cachedFilterColor = Contents?
                     .Where(x => x.IsImportant && !string.IsNullOrEmpty(x.FilterColor))
                     .OrderByDescending(x => x.Price)
                     .FirstOrDefault()?.FilterColor;
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore errors, keep existing contents
+                DebugLogger.LogDebug($"[CorpseContents] Error reading contents for '{Player?.Name ?? "UnknownCorpse"}': {ex.Message}");
             }
         }
 
@@ -194,10 +244,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
         /// <summary>
         /// Gets the appropriate paint for the corpse based on contents.
-        /// Priority: Important (with filter color) > Hideout > Valuable > Default
+        /// Priority: Important (with filter color) > Quest > Hideout > Valuable > Equipment > Default
         /// </summary>
         private SKPaint GetCorpsePaint()
         {
+            // Check inventory contents first (when PVE scan enabled)
             if (HasImportantContents)
             {
                 var filterColor = ImportantItemFilterColor;
@@ -208,27 +259,53 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 }
                 return SKPaints.TextImportantLoot;
             }
+            if (HasQuestContents)
+                return SKPaints.TextQuestItem;
             if (HasHideoutContents)
                 return SKPaints.TextHideoutItem;
             if (HasValuableContents)
                 return SKPaints.TextFilteredLoot;
+
+            // Fallback: Show equipment-based coloring when no inventory contents
+            if (Player is ObservedPlayer obs && obs.Equipment.Value >= App.Config.Containers.MinValue)
+                return SKPaints.TextFilteredLoot;
+
             return SKPaints.TextCorpse;
         }
 
         /// <summary>
         /// Gets the label for the corpse including value if available.
+        /// Shows inventory value when PVE scan enabled, equipment value otherwise.
         /// </summary>
         private string GetCorpseLabel()
         {
-            var totalValue = InventoryValue;
-            if (totalValue > 0)
-                return $"[{Utilities.FormatNumberKM(totalValue)}] {Name}";
+            // Debug logging (once per corpse)
+            if (!_labelLogged && Player is not null)
+            {
+                _labelLogged = true;
+                var isObs = Player is ObservedPlayer;
+                var isClient = Player is ClientPlayer;
+                var eqValue = isObs ? ((ObservedPlayer)Player).Equipment.Value : -1;
+                var eqItems = isObs ? ((ObservedPlayer)Player).Equipment.Items.Count : -1;
+                DebugLogger.LogDebug($"[CorpseLabel] '{Name}' - Player={Player.Name}, IsObserved={isObs}, IsClient={isClient}, Equipment.Items={eqItems}, Equipment.Value={eqValue}, InventoryValue={InventoryValue}, ContentsCount={Contents?.Count ?? 0}, PveScan={App.Config.Containers.PveScanEnabled}");
+            }
+
+            // If PVE scanning is enabled and we have inventory contents, show that value
+            if (App.Config.Containers.PveScanEnabled && InventoryValue > 0)
+                return $"[{Utilities.FormatNumberKM(InventoryValue)}] {Name}";
+
+            // Otherwise show equipment value (only for ObservedPlayer)
+            if (Player is ObservedPlayer obs && obs.Equipment.Value > 0)
+                return $"[{Utilities.FormatNumberKM(obs.Equipment.Value)}] {Name}";
+
             return Name;
         }
 
         public override void DrawMouseover(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
         {
             using var lines = new PooledList<string>();
+
+            // Header: Player info if available, otherwise just "Corpse"
             if (Player is AbstractPlayer player)
             {
                 var name = App.Config.UI.HideNames && player.IsHuman ? "<Hidden>" : player.Name;
@@ -237,25 +314,13 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 if (player.GroupID != -1) g = $"G:{player.GroupID} ";
                 if (g is not null) lines.Add(g);
 
-                if (Player is ObservedPlayer obs) // show equipment info
+                // Show equipment info for ObservedPlayer (online mode)
+                if (Player is ObservedPlayer obs)
                 {
                     lines.Add($"Gear Value: {Utilities.FormatNumberKM(obs.Equipment.Value)}");
                     foreach (var item in obs.Equipment.Items.OrderBy(e => e.Key))
                     {
                         lines.Add($"{item.Key.Substring(0, 5)}: {item.Value.ShortName}");
-                    }
-
-                    // Show inventory contents if available
-                    if (Contents?.Count > 0)
-                    {
-                        lines.Add($"--- Inventory ({Utilities.FormatNumberKM(InventoryValue)}) ---");
-                        foreach (var item in Contents.OrderByDescending(x => x.Price).Take(10))
-                        {
-                            var prefix = item.IsImportant ? "★ " : (item.IsHideoutItem ? "[H] " : "");
-                            lines.Add($"{prefix}{item.Name} ({Utilities.FormatNumberKM(item.Price)})");
-                        }
-                        if (Contents.Count > 10)
-                            lines.Add($"... and {Contents.Count - 10} more");
                     }
                 }
             }
@@ -263,6 +328,20 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             {
                 lines.Add(Name);
             }
+
+            // Show inventory contents if available (works for all corpse types, including pre-existing)
+            if (Contents?.Count > 0)
+            {
+                lines.Add($"--- Inventory ({Utilities.FormatNumberKM(InventoryValue)}) ---");
+                foreach (var item in Contents.OrderByDescending(x => x.Price).Take(10))
+                {
+                    var prefix = item.IsImportant ? "★ " : (item.IsQuestItem ? "[Q] " : (item.IsHideoutItem ? "[H] " : ""));
+                    lines.Add($"{prefix}{item.Name} ({Utilities.FormatNumberKM(item.Price)})");
+                }
+                if (Contents.Count > 10)
+                    lines.Add($"... and {Contents.Count - 10} more");
+            }
+
             Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams).DrawMouseoverText(canvas, lines.Span);
         }
     }

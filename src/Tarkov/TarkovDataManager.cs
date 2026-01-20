@@ -68,9 +68,29 @@ namespace LoneEftDmaRadar.Tarkov
         public static FrozenDictionary<string, TaskElement> TaskData { get; private set; }
 
         /// <summary>
-        /// All Task Zones mapped by MapID -> ZoneID -> Position.
+        /// Quest zone data including center position and optional polygon outline.
         /// </summary>
-        public static FrozenDictionary<string, FrozenDictionary<string, Vector3>> TaskZones { get; private set; }
+        public sealed class QuestZoneData
+        {
+            public Vector3 Position { get; init; }
+            public List<Vector3> Outline { get; init; }
+
+            public QuestZoneData(Vector3 position, List<Vector3> outline = null)
+            {
+                Position = position;
+                Outline = outline;
+            }
+
+            /// <summary>
+            /// True if this zone has polygon outline data (3+ vertices).
+            /// </summary>
+            public bool HasOutline => Outline != null && Outline.Count >= 3;
+        }
+
+        /// <summary>
+        /// All Task Zones mapped by MapID -> ZoneID -> ZoneData.
+        /// </summary>
+        public static FrozenDictionary<string, FrozenDictionary<string, QuestZoneData>> TaskZones { get; private set; }
 
         /// <summary>
         /// Hideout Stations Data for Tarkov.
@@ -160,7 +180,10 @@ namespace LoneEftDmaRadar.Tarkov
                     .GroupBy(zone => zone.Map.NameId, zone => new
                     {
                         id = zone.Id,
-                        pos = new Vector3(zone.Position.X, zone.Position.Y, zone.Position.Z)
+                        zoneData = new QuestZoneData(
+                            position: new Vector3(zone.Position.X, zone.Position.Y, zone.Position.Z),
+                            outline: zone.Outline?.Select(p => new Vector3(p.X, p.Y, p.Z)).ToList()
+                        )
                     }, StringComparer.OrdinalIgnoreCase)
                     .DistinctBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(
@@ -168,14 +191,14 @@ namespace LoneEftDmaRadar.Tarkov
                         group => group
                             .Where(x => !string.IsNullOrEmpty(x.id))
                             .DistinctBy(x => x.id, StringComparer.OrdinalIgnoreCase)
-                            .ToDictionary(zone => zone.id, zone => zone.pos, StringComparer.OrdinalIgnoreCase)
+                            .ToDictionary(zone => zone.id, zone => zone.zoneData, StringComparer.OrdinalIgnoreCase)
                             .ToFrozenDictionary(StringComparer.OrdinalIgnoreCase),
                         StringComparer.OrdinalIgnoreCase)
                     .ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
             }
             catch
             {
-                TaskZones = new Dictionary<string, FrozenDictionary<string, Vector3>>()
+                TaskZones = new Dictionary<string, FrozenDictionary<string, QuestZoneData>>()
                     .ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
             }
 
@@ -552,6 +575,9 @@ namespace LoneEftDmaRadar.Tarkov
 
                     [JsonPropertyName("position")]
                     public PositionElement Position { get; set; }
+
+                    [JsonPropertyName("outline")]
+                    public List<PositionElement> Outline { get; set; }
 
                     [JsonPropertyName("map")]
                     public TaskMapElement Map { get; set; }

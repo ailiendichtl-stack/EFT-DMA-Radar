@@ -71,13 +71,6 @@ namespace LoneEftDmaRadar.UI.Misc
         private volatile int _dbgHaveSkeleton;
         private volatile int _dbgW2SPassed;
 
-        // Reserved for future recoil/sway compensation
-        private ulong _cachedBreathEffector;
-        private ulong _cachedShotEffector;
-        private ulong _cachedNewShotRecoil;
-        private float _lastRecoilAmount = 1.0f;
-        private float _lastSwayAmount = 1.0f;
-
         // Ballistics cache - weapon/ammo rarely changes, avoid re-reading every frame
         private ulong _cachedBallisticsHandsAddr;
         private long _ballisticsCacheTimeTicks;
@@ -205,8 +198,6 @@ namespace LoneEftDmaRadar.UI.Misc
 
         public void OnRaidEnd()
         {
-            _lastRecoilAmount = 1.0f;
-            _lastSwayAmount = 1.0f;
             ResetTarget();
         }
 
@@ -821,22 +812,43 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                     }
                 }
 
-                // Run ballistics simulation
-                var sim = BallisticsSimulation.Run(ref fireportPos, ref targetPos, ballistics);
+                // Calculate actual distance to target
+                float actualDistance = Vector3.Distance(fireportPos, targetPos);
+
+                // Default zeroing distance (most weapons are zeroed at 50m)
+                const float zeroingDistance = 50f;
 
                 // Apply prediction
                 Vector3 predictedPos = targetPos;
 
-                // Add drop compensation (scaled by user-configured factor)
-                predictedPos.Y += sim.DropCompensation * Config.DropCompensationFactor;
+                // Only calculate drop for distance beyond zeroing
+                // If target is within zeroing distance, no drop compensation needed
+                if (actualDistance > zeroingDistance)
+                {
+                    // Calculate effective distance (distance beyond zeroing point)
+                    float effectiveDistance = actualDistance - zeroingDistance;
 
-                // Add lead for moving targets
+                    // Create an adjusted target position at the effective distance for simulation
+                    Vector3 directionToTarget = Vector3.Normalize(targetPos - fireportPos);
+                    Vector3 effectiveTargetPos = fireportPos + directionToTarget * effectiveDistance;
+
+                    // Run ballistics simulation for the effective distance only
+                    var sim = BallisticsSimulation.Run(ref fireportPos, ref effectiveTargetPos, ballistics);
+
+                    // Add drop compensation (scaled by user-configured factor)
+                    predictedPos.Y += sim.DropCompensation * Config.DropCompensationFactor;
+                }
+
+                // Get travel time for lead calculation (always use full distance)
+                var fullSim = BallisticsSimulation.Run(ref fireportPos, ref targetPos, ballistics);
+
+                // Add lead for moving targets (use full distance travel time)
                 if (targetVelocity != Vector3.Zero)
                 {
                     float speed = targetVelocity.Length();
                     if (speed > 0.5f) // Only predict if moving faster than 0.5 m/s
                     {
-                        Vector3 lead = targetVelocity * sim.TravelTime;
+                        Vector3 lead = targetVelocity * fullSim.TravelTime;
                         predictedPos += lead;
                     }
                 }

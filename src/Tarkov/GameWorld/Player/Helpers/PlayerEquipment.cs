@@ -21,9 +21,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers
         /// </summary>
         public IReadOnlyDictionary<string, TarkovMarketItem> Items => _items;
         /// <summary>
-        /// Player's total equipment flea price value.
+        /// Player's total equipment value (uses flea price if available, otherwise trader price).
         /// </summary>
-        public int Value => (int)_items.Values.Sum(i => i.FleaPrice);
+        public int Value => (int)_items.Values.Sum(i => i.FleaPrice > 0 ? i.FleaPrice : i.TraderPrice);
 
         public PlayerEquipment(ObservedPlayer player)
         {
@@ -33,15 +33,20 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers
 
         private async Task InitAsnyc()
         {
+            DebugLogger.LogDebug($"[Equipment] Starting init for '{_player.Name}' (InventoryControllerAddr: 0x{_player.InventoryControllerAddr:X})");
             for (int i = 0; i < 3; i++)
             {
                 try
                 {
                     var inventorycontroller = Memory.ReadPtr(_player.InventoryControllerAddr);
+                    DebugLogger.LogDebug($"[Equipment] '{_player.Name}' attempt {i + 1}: inventorycontroller=0x{inventorycontroller:X}");
+
                     var inventory = Memory.ReadPtr(inventorycontroller + Offsets.InventoryController.Inventory);
                     var equipment = Memory.ReadPtr(inventory + Offsets.Inventory.Equipment);
                     var slotsPtr = Memory.ReadPtr(equipment + Offsets.InventoryEquipment._cachedSlots);
                     using var slotsArray = UnityArray<ulong>.Create(slotsPtr, true);
+
+                    DebugLogger.LogDebug($"[Equipment] '{_player.Name}' slotsArray.Count={slotsArray.Count}");
                     ArgumentOutOfRangeException.ThrowIfLessThan(slotsArray.Count, 1);
 
                     foreach (var slotPtr in slotsArray)
@@ -53,25 +58,30 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers
                         _slots.TryAdd(name, slotPtr);
                     }
 
+                    DebugLogger.LogDebug($"[Equipment] '{_player.Name}' found {_slots.Count} equipment slots");
                     Refresh(checkInit: false);
                     _inited = true;
+                    DebugLogger.LogDebug($"[Equipment] '{_player.Name}' init SUCCESS - {_items.Count} items, Value={Value}");
                     return;
                 }
                 catch (Exception ex)
                 {
-                    DebugLogger.LogDebug($"Error initializing Player Equipment for '{_player.Name}': {ex}");
+                    DebugLogger.LogDebug($"[Equipment] Error initializing for '{_player.Name}' attempt {i + 1}: {ex.Message}");
                 }
                 finally
                 {
                     await Task.Delay(TimeSpan.FromSeconds(2));
                 }
             }
+            DebugLogger.LogDebug($"[Equipment] '{_player.Name}' init FAILED after 3 attempts");
         }
 
         public void Refresh(bool checkInit = true)
         {
             if (checkInit && !_inited)
                 return;
+            int successCount = 0;
+            int failCount = 0;
             foreach (var slot in _slots)
             {
                 try
@@ -87,16 +97,25 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers
                     if (TarkovDataManager.AllItems.TryGetValue(id, out var item))
                     {
                         _items[slot.Key] = item;
+                        successCount++;
                     }
                     else
                     {
+                        DebugLogger.LogDebug($"[Equipment] '{_player.Name}' slot '{slot.Key}' item ID '{id}' not found in market data");
                         _items.TryRemove(slot.Key, out _);
+                        failCount++;
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    DebugLogger.LogDebug($"[Equipment] '{_player.Name}' slot '{slot.Key}' read failed: {ex.Message}");
                     _items.TryRemove(slot.Key, out _);
+                    failCount++;
                 }
+            }
+            if (!checkInit) // Only log during init
+            {
+                DebugLogger.LogDebug($"[Equipment] '{_player.Name}' Refresh: {successCount} success, {failCount} failed");
             }
         }
 

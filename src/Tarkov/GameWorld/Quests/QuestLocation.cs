@@ -33,15 +33,26 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
         public ref readonly Vector3 Position => ref _position;
 
         /// <summary>
+        /// Polygon outline vertices for area-based quest zones (null for point locations).
+        /// </summary>
+        public List<Vector3> Outline { get; private set; }
+
+        /// <summary>
+        /// True if this location has polygon outline data.
+        /// </summary>
+        public bool HasOutline => Outline != null && Outline.Count >= 3;
+
+        /// <summary>
         /// Position for mouseover detection.
         /// </summary>
         public Vector2 MouseoverPosition { get; set; }
 
-        public QuestLocation(string questId, string objectiveId, Vector3 position)
+        public QuestLocation(string questId, string objectiveId, Vector3 position, List<Vector3> outline = null)
         {
             QuestId = questId;
             ObjectiveId = objectiveId;
             _position = position;
+            Outline = outline;
         }
 
         /// <summary>
@@ -49,6 +60,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
         /// </summary>
         public void Draw(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
         {
+            // Draw polygon outline if available
+            if (HasOutline)
+            {
+                DrawOutline(canvas, mapParams);
+            }
+
             var heightDiff = Position.Y - localPlayer.ReferenceHeight;
             var point = Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams);
             MouseoverPosition = new Vector2(point.X, point.Y);
@@ -56,24 +73,27 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
             var paint = SKPaints.PaintQuestZone;
             SKPaints.ShapeOutline.StrokeWidth = QuestConstants.QuestMarkerStrokeWidth;
 
+            // Adjust marker size based on whether polygon is shown
+            float markerSize = HasOutline ? QuestConstants.QuestMarkerSquareSize * 0.5f : QuestConstants.QuestMarkerSquareSize;
+
             if (heightDiff > QuestConstants.QuestMarkerHeightThreshold)
             {
                 // Location is above player - draw up arrow
-                using var path = point.GetUpArrow(QuestConstants.QuestMarkerSquareSize);
+                using var path = point.GetUpArrow(markerSize);
                 canvas.DrawPath(path, SKPaints.ShapeOutline);
                 canvas.DrawPath(path, paint);
             }
             else if (heightDiff < -QuestConstants.QuestMarkerHeightThreshold)
             {
                 // Location is below player - draw down arrow
-                using var path = point.GetDownArrow(QuestConstants.QuestMarkerSquareSize);
+                using var path = point.GetDownArrow(markerSize);
                 canvas.DrawPath(path, SKPaints.ShapeOutline);
                 canvas.DrawPath(path, paint);
             }
             else
             {
                 // Location is level with player - draw square
-                float size = QuestConstants.QuestMarkerSquareSize * App.Config.UI.UIScale;
+                float size = markerSize * App.Config.UI.UIScale;
                 var rect = new SKRect(point.X - size, point.Y - size, point.X + size, point.Y + size);
                 canvas.DrawRect(rect, SKPaints.ShapeOutline);
                 canvas.DrawRect(rect, paint);
@@ -87,6 +107,53 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
         {
             string text = GetDisplayText();
             Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams).DrawMouseoverText(canvas, text);
+        }
+
+        /// <summary>
+        /// Draw polygon outline for area-based quest zones.
+        /// </summary>
+        private void DrawOutline(SKCanvas canvas, EftMapParams mapParams)
+        {
+            if (!HasOutline)
+                return;
+
+            using var path = new SKPath();
+            bool first = true;
+
+            foreach (var vertex in Outline)
+            {
+                var point = vertex.ToMapPos(mapParams.Map).ToZoomedPos(mapParams);
+                if (first)
+                {
+                    path.MoveTo(point);
+                    first = false;
+                }
+                else
+                {
+                    path.LineTo(point);
+                }
+            }
+
+            path.Close();
+
+            // Fill with semi-transparent cyan
+            using var fillPaint = new SKPaint
+            {
+                Color = SKColors.Cyan.WithAlpha(40),  // Very transparent fill
+                Style = SKPaintStyle.Fill,
+                IsAntialias = true
+            };
+            canvas.DrawPath(path, fillPaint);
+
+            // Stroke with more opaque cyan
+            using var strokePaint = new SKPaint
+            {
+                Color = SKColors.Cyan.WithAlpha(180),  // Match current point alpha
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 2f * App.Config.UI.UIScale,
+                IsAntialias = true
+            };
+            canvas.DrawPath(path, strokePaint);
         }
 
         private static string GetObjectiveTypeDisplayName(QuestObjectiveType type)
