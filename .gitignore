@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 # Claude Code
 .claude/
+
+# Large dump files
+src/dump.cs
