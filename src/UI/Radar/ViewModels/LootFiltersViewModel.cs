@@ -67,6 +67,22 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             EnsureFirstItemSelected();
             RefreshLootFilter();
             parent.IsVisibleChanged += Parent_IsVisibleChanged;
+
+            // Subscribe to data updates to refresh available items
+            TarkovDataManager.DataUpdated += OnDataUpdated;
+        }
+
+        private void OnDataUpdated(object sender, EventArgs e)
+        {
+            // Refresh available items when data is updated
+            App.Current?.Dispatcher?.BeginInvoke(() =>
+            {
+                AvailableItems.Clear();
+                foreach (var item in TarkovDataManager.AllItems.Values.OrderBy(x => x.Name))
+                {
+                    AvailableItems.Add(item);
+                }
+            });
         }
 
         private void Parent_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)

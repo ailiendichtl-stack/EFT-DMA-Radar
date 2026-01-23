@@ -41,6 +41,11 @@ namespace LoneEftDmaRadar.Tarkov
         private static readonly FileInfo _bakDataFile = new(Path.Combine(App.ConfigPath.FullName, "data.json.bak"));
         private static readonly FileInfo _tempDataFile = new(Path.Combine(App.ConfigPath.FullName, "data.json.tmp"));
         private static readonly FileInfo _dataFile = new(Path.Combine(App.ConfigPath.FullName, "data.json"));
+
+        /// <summary>
+        /// Event raised when data has been updated (loaded or refreshed).
+        /// </summary>
+        public static event EventHandler DataUpdated;
         private static readonly JsonSerializerOptions _jsonOptions = new()
         {
             PropertyNameCaseInsensitive = true,
@@ -210,6 +215,9 @@ namespace LoneEftDmaRadar.Tarkov
                 .ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
             DebugLogger.LogDebug($"[TarkovDataManager] SetData: Items={AllItems.Count}, Tasks={TaskData.Count}, TaskZones maps={TaskZones.Count}, HideoutStations={HideoutData.Count}");
+
+            // Raise event to notify listeners that data has been updated
+            DataUpdated?.Invoke(null, EventArgs.Empty);
         }
 
         /// <summary>

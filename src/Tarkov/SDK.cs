@@ -48,7 +48,7 @@ namespace SDK
         public readonly partial struct TripwireSynchronizableObject
         {
             public const uint _tripwireState = 0xE4; // System.Int32
-            public const uint ToPosition = 0x16C; // UnityEngine.Vector3
+            public const uint ToPosition = 0x158; // UnityEngine.Vector3
         }
 
         public readonly partial struct BtrController
@@ -76,6 +76,7 @@ namespace SDK
         {
             public const uint MovementContext = 0x60; // EFT.MovementContext
             public const uint _playerBody = 0x190; // EFT.PlayerBody
+            public const uint GameWorld = 0x5F8; // EFT.GameWorld (used by IL2CPP interop)
             public const uint Physical = 0x918; // -.\uE399 <Physical> Physical
             public const uint Corpse = 0x680; // EFT.Interactive.Corpse
             public const uint Location = 0x870; // String
@@ -461,6 +462,11 @@ namespace SDK
         public readonly partial struct SpawnProfileData
         {
             public const uint SpawnType = 0x10; // ESpawnType enum
+        }
+
+        public readonly partial struct GamePlayerOwner
+        {
+            public const uint _myPlayer = 0x8; // EFT.Player (static field)
         }
     }
 

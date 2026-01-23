@@ -53,6 +53,83 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         public event Action<string> OnFollowTargetChanged;
         #endregion
 
+        #region Map Ping Feature
+
+        /// <summary>
+        /// Active map pings with expanding circle animation.
+        /// </summary>
+        private static readonly ConcurrentDictionary<IMapEntity, MapPingEffect> _activeMapPings = new();
+
+        /// <summary>
+        /// Ping a map entity with an expanding circle effect.
+        /// Double-click loot items to highlight their location on the radar.
+        /// </summary>
+        /// <param name="entity">Entity to be pinged.</param>
+        public static void PingMapEntity(IMapEntity entity)
+        {
+            _ = _activeMapPings.GetOrAdd(entity, e => new MapPingEffect(e));
+        }
+
+        /// <summary>
+        /// Clear all active map pings.
+        /// </summary>
+        public static void ClearMapPings()
+        {
+            _activeMapPings.Clear();
+        }
+
+        /// <summary>
+        /// Visual ping effect that draws an expanding circle around a map entity.
+        /// </summary>
+        private readonly struct MapPingEffect : IMapEntity
+        {
+            private static readonly long _duration = TimeSpan.FromSeconds(2).Ticks;
+            private readonly IMapEntity _entity;
+            private readonly long _start;
+
+            public MapPingEffect(IMapEntity entity)
+            {
+                _entity = entity;
+                _start = Stopwatch.GetTimestamp();
+            }
+
+            public ref readonly Vector3 Position => ref _entity.Position;
+
+            public void Draw(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
+            {
+                if (_entity is LootItem && !App.Config.Loot.Enabled) // Don't draw ping if loot is disabled
+                    return;
+
+                var now = Stopwatch.GetTimestamp();
+                var elapsedTicks = now - _start;
+
+                if (elapsedTicks >= _duration)
+                {
+                    _activeMapPings.TryRemove(_entity, out _);
+                    return;
+                }
+
+                float progress = (float)elapsedTicks / _duration;
+                float radius = 10 + 50 * progress;
+                float alpha = 1f - progress;
+
+                var center = _entity.Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams);
+
+                using var paint = new SKPaint
+                {
+                    Style = SKPaintStyle.Stroke,
+                    StrokeWidth = 4,
+                    Color = SKColors.Orange.WithAlpha((byte)(alpha * 255)),
+                    IsAntialias = true
+                };
+
+                canvas.DrawCircle(center.X, center.Y, radius, paint);
+                _activeMapPings.TryAdd(_entity, this);
+            }
+        }
+
+        #endregion
+
         #region Static Interface
 
         /// <summary>
@@ -472,6 +549,12 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
 
                     // Draw LocalPlayer over everything else
                     localPlayer.Draw(canvas, mapParams, localPlayer);
+
+                    // Draw Map Pings (expanding circle animations)
+                    foreach (var ping in _activeMapPings.Values)
+                    {
+                        ping.Draw(canvas, mapParams, localPlayer);
+                    }
 
                     if (allPlayers is not null && App.Config.InfoWidget.Enabled) // Players Overlay
                     {

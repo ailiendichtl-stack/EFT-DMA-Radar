@@ -31,14 +31,14 @@ namespace LoneEftDmaRadar.Tarkov.Unity.Structures
                     allCamerasSig.ThrowIfInvalidVirtualAddress(nameof(allCamerasSig));
                     int rva = Memory.ReadValueEnsure<int>(allCamerasSig + 3);
                     var allCamerasPtr = Memory.ReadValueEnsure<VmmPointer>(allCamerasSig.AddRVA(7, rva));
-                    allCamerasPtr.ThrowIfInvalid();
+                    allCamerasPtr.ThrowIfInvalidUserVA();
                     DebugLogger.LogDebug("AllCameras Located via Signature.");
                     return allCamerasPtr;
                 }
                 catch
                 {
                     var allCamerasPtr = Memory.ReadValueEnsure<VmmPointer>(unityBase + UnitySDK.UnityOffsets.AllCameras);
-                    allCamerasPtr.ThrowIfInvalid();
+                    allCamerasPtr.ThrowIfInvalidUserVA();
                     DebugLogger.LogDebug("AllCameras Located via Hardcoded Offset.");
                     return allCamerasPtr;
                 }

@@ -82,7 +82,7 @@
 		<PackageReference Include="Svg.Skia" Version="3.2.1" />
 		<PackageReference Include="Extended.Wpf.Toolkit" Version="5.0.0" />
 		<PackageReference Include="Velopack" Version="0.0.1298" />
-		<PackageReference Include="VmmSharpEx" Version="3.100.1" />
+		<PackageReference Include="VmmSharpEx" Version="3.140.5" />
 		<PackageReference Include="System.IO.Ports" Version="7.0.0" />
 		<PackageReference Include="System.Management" Version="7.0.2" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="10.0.0" />

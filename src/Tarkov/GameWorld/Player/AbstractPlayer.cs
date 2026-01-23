@@ -625,17 +625,18 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 bool successRot = s.ReadValue<Vector2>(RotationAddress, out var rotation) && SetRotation(rotation);
                 bool successPos = false;
 
-                if (s.ReadArray<TrsX>(SkeletonRoot.VerticesAddr, requestedVertices) is PooledMemory<TrsX> vertices)
+                if (s.ReadPooled<TrsX>(SkeletonRoot.VerticesAddr, requestedVertices) is IMemoryOwner<TrsX> vertices)
                 {
                     using (vertices)
                     {
                         try
                         {
-                            if (vertices.Span.Length >= requestedVertices)
+                            var span = vertices.Memory.Span;
+                            if (span.Length >= requestedVertices)
                             {
                                 try
                                 {
-                                    _ = SkeletonRoot.UpdatePosition(vertices.Span);
+                                    _ = SkeletonRoot.UpdatePosition(span);
                                     successPos = true;
                                 }
                                 catch
@@ -648,9 +649,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                                 {
                                     try
                                     {
-                                        if (bonePair.Value.Count <= vertices.Span.Length)
+                                        if (bonePair.Value.Count <= span.Length)
                                         {
-                                            bonePair.Value.UpdatePosition(vertices.Span);
+                                            bonePair.Value.UpdatePosition(span);
                                         }
                                         else
                                         {

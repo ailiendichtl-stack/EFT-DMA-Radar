@@ -26,7 +26,6 @@ SOFTWARE.
  *
 */
 
-using Collections.Pooled;
 using LoneEftDmaRadar.DMA;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
 using LoneEftDmaRadar.Tarkov.Unity;
@@ -101,11 +100,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Explosives
                     _ = _parent.TryRemove(Addr, out _);
                     return;
                 }
-                if (x1.ReadArray<UnityTransform.TrsX>(_transform.VerticesAddr, _transform.Count) is PooledMemory<UnityTransform.TrsX> vertices)
+                if (x1.ReadPooled<UnityTransform.TrsX>(_transform.VerticesAddr, _transform.Count) is IMemoryOwner<UnityTransform.TrsX> vertices)
                 {
                     using (vertices)
                     {
-                        _ = _transform.UpdatePosition(vertices.Span);
+                        _ = _transform.UpdatePosition(vertices.Memory.Span);
                     }
                 }
 

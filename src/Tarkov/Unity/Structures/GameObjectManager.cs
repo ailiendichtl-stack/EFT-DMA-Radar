@@ -17,6 +17,7 @@ namespace LoneEftDmaRadar.Tarkov.Unity.Structures
 
         /// <summary>
         /// Looks up the Address of the Game Object Manager.
+        /// First tries cached address from config, then falls back to signature/hardcoded offset.
         /// </summary>
         /// <param name="unityBase">UnityPlayer.dll module base address.</param>
         /// <returns></returns>
@@ -25,6 +26,16 @@ namespace LoneEftDmaRadar.Tarkov.Unity.Structures
         {
             try
             {
+                // Try cached GOM address first (faster startup)
+                var cachedAddr = App.Config.DMA.CachedGomAddress;
+                if (cachedAddr != 0 && TryValidateGomAddress(cachedAddr))
+                {
+                    DebugLogger.LogDebug($"GOM Located via Cached Address: 0x{cachedAddr:X}");
+                    return cachedAddr;
+                }
+
+                // Fallback to signature scan
+                ulong gomAddr = 0;
                 try
                 {
                     // GameObjectManager = qword_181A208D8
@@ -38,21 +49,48 @@ namespace LoneEftDmaRadar.Tarkov.Unity.Structures
                     gomSig.ThrowIfInvalidVirtualAddress(nameof(gomSig));
                     int rva = Memory.ReadValueEnsure<int>(gomSig + 3);
                     var gomPtr = Memory.ReadValueEnsure<VmmPointer>(gomSig.AddRVA(7, rva));
-                    gomPtr.ThrowIfInvalid();
+                    gomPtr.ThrowIfInvalidUserVA();
+                    gomAddr = gomPtr;
                     DebugLogger.LogDebug("GOM Located via Signature.");
-                    return gomPtr;
                 }
                 catch
                 {
                     var gomPtr = Memory.ReadValueEnsure<VmmPointer>(unityBase + UnitySDK.UnityOffsets.GameObjectManager);
-                    gomPtr.ThrowIfInvalid();
+                    gomPtr.ThrowIfInvalidUserVA();
+                    gomAddr = gomPtr;
                     DebugLogger.LogDebug("GOM Located via Hardcoded Offset.");
-                    return gomPtr;
                 }
+
+                // Cache the address for faster startup next time
+                if (gomAddr != cachedAddr)
+                {
+                    App.Config.DMA.CachedGomAddress = gomAddr;
+                    _ = Task.Run(() => App.Config.Save()); // Save async in background
+                    DebugLogger.LogDebug($"GOM Address cached: 0x{gomAddr:X}");
+                }
+
+                return gomAddr;
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException("ERROR Locating Game Object Manager Address", ex);
+            }
+        }
+
+        /// <summary>
+        /// Validates a cached GOM address by attempting to read the structure.
+        /// </summary>
+        private static bool TryValidateGomAddress(ulong addr)
+        {
+            try
+            {
+                var gom = Memory.ReadValueEnsure<GameObjectManager>(addr);
+                // Validate by checking if the active nodes pointers look reasonable
+                return gom.LastActiveNode != 0 && gom.ActiveNodes != 0;
+            }
+            catch
+            {
+                return false;
             }
         }
 

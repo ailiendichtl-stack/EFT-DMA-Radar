@@ -99,9 +99,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// <summary>
         /// Checks if this container should be displayed based on min value filter.
         /// Containers with important, hideout, or quest items always pass the filter.
+        /// When PVE scanning is disabled, all containers pass (we can't determine value).
         /// </summary>
         private bool PassesMinValueFilter()
         {
+            // If PVE scan is disabled, we can't determine value - show all containers
+            if (!App.Config.Containers.PveScanEnabled) return true;
             var minValue = App.Config.Containers.MinValue;
             if (minValue <= 0) return true; // No filter
             if (HasImportantContents) return true; // Important items always show

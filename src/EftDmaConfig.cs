@@ -314,16 +314,32 @@ namespace LoneEftDmaRadar
     public sealed class DMAConfig
     {
         /// <summary>
-        /// FPGA Read Algorithm
+        /// DMA Device String for initialization.
+        /// Default: "fpga" (auto-detect algorithm)
+        /// Custom examples: "fpga://algo=2" for specific algorithm
         /// </summary>
-        [JsonPropertyName("fpgaAlgo")]
-        public FpgaAlgo FpgaAlgo { get; set; } = FpgaAlgo.Auto;
+        [JsonPropertyName("deviceStr")]
+        public string DeviceStr { get; set; } = "fpga";
 
         /// <summary>
         /// Use a Memory Map for FPGA DMA Connection.
         /// </summary>
         [JsonPropertyName("enableMemMap")]
         public bool MemMapEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Cached GameObjectManager address from last successful startup.
+        /// Speeds up radar initialization when GOM address hasn't changed.
+        /// </summary>
+        [JsonPropertyName("cachedGomAddress")]
+        public ulong CachedGomAddress { get; set; }
+
+        /// <summary>
+        /// Cached GamePlayerOwner class address for IL2CPP interop.
+        /// Used as an alternative method to locate GameWorld.
+        /// </summary>
+        [JsonPropertyName("cachedGamePlayerOwner")]
+        public ulong CachedGamePlayerOwner { get; set; }
     }
 
     public sealed class UIConfig
@@ -888,6 +904,13 @@ namespace LoneEftDmaRadar
         /// </summary>
         [JsonPropertyName("hideSearched")]
         public bool HideSearched { get; set; } = false;
+
+        /// <summary>
+        /// Keep discovered containers cached even when player moves out of scan range.
+        /// When enabled, containers won't disappear when you move away from them.
+        /// </summary>
+        [JsonPropertyName("persistentCache")]
+        public bool PersistentCache { get; set; } = true;
 
         /// <summary>
         /// Enable scanning container/corpse contents.

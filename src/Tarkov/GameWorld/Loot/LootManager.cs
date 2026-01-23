@@ -43,6 +43,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         private readonly ulong _lgw;
         private readonly Lock _filterSync = new();
         private readonly ConcurrentDictionary<ulong, LootItem> _loot = new();
+        /// <summary>
+        /// Persistent cache of static container addresses that have been discovered.
+        /// Containers in this set won't be removed when they leave the game's LootList range.
+        /// </summary>
+        private readonly HashSet<ulong> _persistentContainerCache = new();
 
         /// <summary>
         /// All loot (with filter applied).
@@ -121,21 +126,34 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             using var lootList = UnityList<ulong>.Create(
                 addr: lootListAddr,
                 useCache: true);
-            // Remove any loot no longer present
+            // Remove any loot no longer present (except persistently cached containers if enabled)
+            var persistentCacheEnabled = App.Config.Containers.PersistentCache;
             using var lootListHs = lootList.ToPooledSet();
             foreach (var existing in _loot.Keys)
             {
                 if (!lootListHs.Contains(existing))
                 {
+                    // Don't remove if persistent caching is enabled and it's a cached container
+                    if (persistentCacheEnabled && _persistentContainerCache.Contains(existing))
+                        continue;
                     _ = _loot.TryRemove(existing, out _);
                 }
             }
-            foreach (var item in _loot.Values)
+            // Update container status and optionally remove searched containers from persistent cache
+            var hideSearched = App.Config.Containers.HideSearched;
+            foreach (var kvp in _loot)
             {
-                if (item is StaticLootContainer container)
+                if (kvp.Value is StaticLootContainer container)
                 {
                     container.UpdateSearchedStatus();
                     container.RefreshContents(); // Load container contents for offline PVE
+
+                    // If HideSearched is enabled and container was searched, remove from persistent cache
+                    // so it can be cleaned up normally when out of range
+                    if (hideSearched && container.Searched)
+                    {
+                        _persistentContainerCache.Remove(kvp.Key);
+                    }
                 }
             }
             // Proceed to get new loot
@@ -261,7 +279,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                     {
                         if (p.ObjectName.Equals("loot_collider", StringComparison.OrdinalIgnoreCase))
                         {
-                            _ = _loot.TryAdd(p.ItemBase, new LootAirdrop(pos));
+                            if (_loot.TryAdd(p.ItemBase, new LootAirdrop(pos)))
+                            {
+                                // Airdrops are also persistently cached
+                                _persistentContainerCache.Add(p.ItemBase);
+                            }
                         }
                         else
                         {
@@ -270,7 +292,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                             var ownerItemTemplate = Memory.ReadPtr(ownerItemBase + Offsets.LootItem.Template);
                             var ownerItemMongoId = Memory.ReadValue<MongoID>(ownerItemTemplate + Offsets.ItemTemplate._id);
                             var ownerItemId = ownerItemMongoId.ReadString();
-                            _ = _loot.TryAdd(p.ItemBase, new StaticLootContainer(ownerItemId, pos, interactiveClass));
+                            if (_loot.TryAdd(p.ItemBase, new StaticLootContainer(ownerItemId, pos, interactiveClass)))
+                            {
+                                // Add to persistent cache so container isn't removed when out of range
+                                _persistentContainerCache.Add(p.ItemBase);
+                            }
                         }
                     }
                     catch

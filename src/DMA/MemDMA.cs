@@ -107,20 +107,19 @@ namespace LoneEftDmaRadar.DMA
         internal MemDMA()
         {
             Restart = _cts.Token;
-            FpgaAlgo fpgaAlgo = App.Config.DMA.FpgaAlgo;
+            string deviceStr = App.Config.DMA.DeviceStr;
             bool useMemMap = App.Config.DMA.MemMapEnabled;
             DebugLogger.LogDebug("Initializing DMA...");
             /// Check MemProcFS Versions...
             string vmmVersion = FileVersionInfo.GetVersionInfo("vmm.dll").FileVersion;
             string lcVersion = FileVersionInfo.GetVersionInfo("leechcore.dll").FileVersion;
-            string versions = $"Vmm Version: {vmmVersion}\n" +
-                $"Leechcore Version: {lcVersion}";
-            string[] initArgs = new[] {
+            List<string> initArgs = new()
+            {
                 "-norefresh",
                 "-device",
-                fpgaAlgo is FpgaAlgo.Auto ?
-                    "fpga" : $"fpga://algo={(int)fpgaAlgo}",
-                "-waitinitialize"};
+                deviceStr,
+                "-waitinitialize"
+            };
             try
             {
                 /// Begin Init...
@@ -129,7 +128,7 @@ namespace LoneEftDmaRadar.DMA
                     if (!File.Exists(_mmap))
                     {
                         DebugLogger.LogDebug("[DMA] No MemMap, attempting to generate...");
-                        _vmm = new Vmm(args: initArgs)
+                        _vmm = new Vmm(args: initArgs.ToArray())
                         {
                             EnableMemoryWriting = true
                         };
@@ -139,11 +138,11 @@ namespace LoneEftDmaRadar.DMA
                     }
                     else
                     {
-                        var mapArgs = new[] { "-memmap", _mmap };
-                        initArgs = initArgs.Concat(mapArgs).ToArray();
+                        initArgs.Add("-memmap");
+                        initArgs.Add(_mmap);
                     }
                 }
-                _vmm ??= new Vmm(args: initArgs)
+                _vmm ??= new Vmm(args: initArgs.ToArray())
                 {
                     EnableMemoryWriting = true
                 };
@@ -174,13 +173,15 @@ namespace LoneEftDmaRadar.DMA
             catch (Exception ex)
             {
                 throw new InvalidOperationException(
-                "DMA Initialization Failed!\n" +
-                $"Reason: {ex.Message}\n" +
-                $"{versions}\n\n" +
+                "DMA Initialization Failed!\n\n" +
+                $"Reason: {ex.Message}\n\n" +
+                $"Init Args: {string.Join(' ', initArgs)}\n" +
+                $"Vmm Version: {vmmVersion}\n" +
+                $"Leechcore Version: {lcVersion}\n\n" +
                 "===TROUBLESHOOTING===\n" +
                 "1. Reboot both your Game PC / Radar PC (This USUALLY fixes it).\n" +
-                "2. Reseat all cables/connections and make sure they are secure.\n" +
-                "3. Changed Hardware/Operating System on Game PC? Reset your DMA Config ('Options' menu in Client) and try again.\n" +
+                "2. Reseat all cables/connections and make sure they are secure. Try a different USB Port.\n" +
+                $"3. Changed Hardware/Operating System on Game PC? Delete {_mmap} and try again.\n" +
                 "4. Make sure all Setup Steps are completed (See DMA Setup Guide/FAQ for additional troubleshooting).\n\n" +
                 "PLEASE REVIEW THE ABOVE BEFORE CONTACTING SUPPORT!");
             }
@@ -522,18 +523,18 @@ namespace LoneEftDmaRadar.DMA
         /// <summary>
         /// Read an array of type <typeparamref name="T"/> from memory.
         /// The first element begins reading at 0x0 and the array is assumed to be contiguous.
-        /// IMPORTANT: You must call <see cref="IDisposable.Dispose"/> on the returned SharedArray when done."/>
+        /// IMPORTANT: You must call <see cref="IDisposable.Dispose"/> on the returned IMemoryOwner when done."/>
         /// </summary>
         /// <typeparam name="T">Value type to read.</typeparam>
         /// <param name="addr">Address to read from.</param>
         /// <param name="count">Number of array elements to read.</param>
         /// <param name="useCache">Use caching for this read.</param>
-        /// <returns><see cref="PooledMemory{T}"/> value. Be sure to call <see cref="IDisposable.Dispose"/>!</returns>
-        public PooledMemory<T> ReadArray<T>(ulong addr, int count, bool useCache = true)
+        /// <returns><see cref="IMemoryOwner{T}"/> value. Be sure to call <see cref="IDisposable.Dispose"/>!</returns>
+        public IMemoryOwner<T> ReadPooled<T>(ulong addr, int count, bool useCache = true)
             where T : unmanaged
         {
             var flags = useCache ? VmmFlags.NONE : VmmFlags.NOCACHE;
-            var arr = _vmm.MemReadArray<T>(_pid, addr, count, flags) ??
+            var arr = _vmm.MemReadPooled<T>(_pid, addr, count, flags) ??
                 throw new VmmException("Memory Read Failed!");
             return arr;
         }
@@ -562,7 +563,7 @@ namespace LoneEftDmaRadar.DMA
         public ulong ReadPtr(ulong addr, bool useCache = true)
         {
             var pointer = ReadValue<VmmPointer>(addr, useCache);
-            pointer.ThrowIfInvalid();
+            pointer.ThrowIfInvalidUserVA();
             return pointer;
         }
 

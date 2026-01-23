@@ -58,6 +58,10 @@
                 </TabControl>
             </TabItem>
 
+            <TabItem Header="Loot List">
+                <tabs:LootListTab x:Name="LootList" />
+            </TabItem>
+
             <TabItem Header="Web Radar">
                 <tabs:WebRadarTab x:Name="WebRadar" />
             </TabItem>
