@@ -166,6 +166,13 @@ namespace LoneEftDmaRadar
         public MiscConfig Misc { get; private set; } = new();
 
         /// <summary>
+        /// Panel Layout Config (floating panel positions/sizes).
+        /// </summary>
+        [JsonPropertyName("panelLayout")]
+        [JsonInclude]
+        public PanelLayoutConfig PanelLayout { get; private set; } = new();
+
+        /// <summary>
         /// Persistent Cache Access (not saved to config, runtime only).
         /// </summary>
         [JsonIgnore]
@@ -1340,6 +1347,46 @@ namespace LoneEftDmaRadar
         /// </summary>
         [JsonPropertyName("autoGroups")]
         public bool AutoGroups { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Panel layout configuration for floating panels.
+    /// </summary>
+    public sealed class PanelLayoutConfig
+    {
+        /// <summary>
+        /// Whether the sidebar is collapsed.
+        /// </summary>
+        [JsonPropertyName("sidebarCollapsed")]
+        public bool SidebarCollapsed { get; set; } = false;
+
+        /// <summary>
+        /// Panel states dictionary. Key is panel name.
+        /// </summary>
+        [JsonPropertyName("panels")]
+        [JsonInclude]
+        public Dictionary<string, PanelStateConfig> Panels { get; private set; } = new();
+    }
+
+    /// <summary>
+    /// Configuration for a single panel's state.
+    /// </summary>
+    public sealed class PanelStateConfig
+    {
+        [JsonPropertyName("isOpen")]
+        public bool IsOpen { get; set; }
+
+        [JsonPropertyName("x")]
+        public double X { get; set; }
+
+        [JsonPropertyName("y")]
+        public double Y { get; set; }
+
+        [JsonPropertyName("width")]
+        public double Width { get; set; }
+
+        [JsonPropertyName("height")]
+        public double Height { get; set; }
     }
 
     /// <summary>

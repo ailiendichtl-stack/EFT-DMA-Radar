@@ -20,55 +20,60 @@
     </UserControl.Resources>
 
     <Grid>
-        <!-- ─── top‑left toolbar ─────────────────────────────────────────────── -->
-        <StackPanel HorizontalAlignment="Left"
+        <!-- ─── top‑right toolbar ────────────────────────────────────────────── -->
+        <StackPanel HorizontalAlignment="Right"
                     VerticalAlignment="Top"
-                    Margin="8">
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    Margin="0,8,12,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
                 <ToggleButton x:Name="MapFreeToggle"
                               Content="{Binding MapFreeButtonText}"
                               IsChecked="{Binding IsMapFreeEnabled}"
-                              Padding="6,2"
+                              Style="{StaticResource OverlayToggleButton}"
                               Margin="0,0,4,0" />
                 <ToggleButton x:Name="LootToggle"
                               Visibility="{Binding IsLootButtonVisible, Converter={StaticResource BoolToVis}}"
                               Content="Loot"
                               IsChecked="{Binding IsLootOverlayVisible}"
-                              Padding="6,2" />
+                              Style="{StaticResource OverlayToggleButton}" />
             </StackPanel>
 
             <!-- Follow target indicator -->
-            <Border Background="#DD1E1E1E"
-                    Padding="8,4"
-                    CornerRadius="4"
+            <Border Background="{DynamicResource App.SurfaceBrush}"
+                    BorderBrush="{DynamicResource App.BorderBrush}"
+                    BorderThickness="1"
+                    Padding="10,6"
+                    CornerRadius="6"
                     MinWidth="150"
+                    HorizontalAlignment="Right"
                     Visibility="{Binding IsFollowTargetVisible, Converter={StaticResource BoolToVis}}">
                 <TextBlock Text="{Binding FollowTargetInfo}"
-                           Foreground="White"
+                           Foreground="{DynamicResource App.TextPrimaryBrush}"
                            FontWeight="SemiBold"
                            FontSize="12" />
             </Border>
         </StackPanel>
 
         <!-- ─── in‑tree Loot overlay ─────────────────────────────────────────── -->
-        <Border Background="#DD1E1E1E"
-                Padding="10"
-                CornerRadius="4"
+        <Border Background="{DynamicResource App.SurfaceBrush}"
+                BorderBrush="{DynamicResource App.BorderBrush}"
+                BorderThickness="1"
+                Padding="12"
+                CornerRadius="8"
                 MinWidth="300"
-                MaxWidth="400"
+                MaxWidth="420"
                 Visibility="{Binding IsLootOverlayVisible, Converter={StaticResource BoolToVis}}"
                 Panel.ZIndex="50"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Right"
                 VerticalAlignment="Top"
-                Margin="8,40,0,0">
+                Margin="0,44,12,0">
             <StackPanel>
                 <TextBlock Text="Loot"
-                           Foreground="White"
+                           Foreground="{DynamicResource App.AccentBrush}"
                            FontWeight="Bold"
                            FontSize="14" />
 
                 <TextBlock Text="Sort by Ruble Value"
-                           Foreground="White"
+                           Foreground="{DynamicResource App.TextPrimaryBrush}"
                            Margin="0,8,0,4" />
 
                 <Grid Margin="0,0,0,8">
@@ -82,14 +87,14 @@
 
                     <TextBlock Grid.Column="0"
                                Text="Regular"
-                               Foreground="White"
+                               Foreground="{DynamicResource App.TextPrimaryBrush}"
                                VerticalAlignment="Center" />
                     <TextBox Grid.Column="1"
                              Text="{Binding RegularValue, UpdateSourceTrigger=PropertyChanged}"
                              MinWidth="100" />
                     <TextBlock Grid.Column="2"
                                Text="Valuable"
-                               Foreground="White"
+                               Foreground="{DynamicResource App.TextPrimaryBrush}"
                                VerticalAlignment="Center"
                                Margin="12,0,0,0" />
                     <TextBox Grid.Column="3"
@@ -98,7 +103,7 @@
                     <CheckBox Grid.Column="4"
                               Content="Price Per Slot"
                               IsChecked="{Binding PricePerSlot}"
-                              Foreground="White"
+                              Foreground="{DynamicResource App.TextPrimaryBrush}"
                               Margin="12,0,0,0" />
                 </Grid>
 
@@ -108,39 +113,39 @@
                                  ToolTip="Use flea market prices"
                                  IsChecked="{Binding IsFleaPrices, Mode=TwoWay}"
                                  GroupName="PriceSource"
-                                 Foreground="White" />
+                                 Foreground="{DynamicResource App.TextPrimaryBrush}" />
                     <RadioButton Content="Trader Prices"
                                  ToolTip="Use trader prices"
                                  IsChecked="{Binding IsTraderPrices, Mode=TwoWay}"
                                  GroupName="PriceSource"
-                                 Foreground="White"
+                                 Foreground="{DynamicResource App.TextPrimaryBrush}"
                                  Margin="12,0,0,0" />
                 </StackPanel>
 
                 <WrapPanel Margin="0,0,0,8">
                     <CheckBox Content="Hide Corpses"
                               IsChecked="{Binding HideCorpses}"
-                              Foreground="White"
+                              Foreground="{DynamicResource App.TextPrimaryBrush}"
                               Margin="0,0,12,0" />
                     <CheckBox Content="Show Meds"
                               IsChecked="{Binding ShowMeds}"
-                              Foreground="White"
+                              Foreground="{DynamicResource App.TextPrimaryBrush}"
                               Margin="0,0,12,0" />
                     <CheckBox Content="Show Food"
                               IsChecked="{Binding ShowFood}"
-                              Foreground="White"
+                              Foreground="{DynamicResource App.TextPrimaryBrush}"
                               Margin="0,0,12,0" />
                     <CheckBox Content="Show Backpacks"
                               IsChecked="{Binding ShowBackpacks}"
-                              Foreground="White"
+                              Foreground="{DynamicResource App.TextPrimaryBrush}"
                               Margin="0,0,12,0" />
                     <CheckBox Content="Show Quest Items"
                               IsChecked="{Binding ShowQuestItems}"
-                              Foreground="White" />
+                              Foreground="{DynamicResource App.TextPrimaryBrush}" />
                 </WrapPanel>
 
                 <TextBlock Text="Loot Search (ex: Item1,Item2,etc.)"
-                           Foreground="White"
+                           Foreground="{DynamicResource App.TextPrimaryBrush}"
                            Margin="0,8,0,4" />
                 <TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=300}"
                          HorizontalAlignment="Stretch" />

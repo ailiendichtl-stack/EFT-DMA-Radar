@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:LoneEftDmaRadar"
              xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+             xmlns:converters="clr-namespace:LoneEftDmaRadar.UI.Converters"
              ThemeMode="Dark"
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
@@ -11,13 +12,23 @@
                 <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Palette -->
-            <SolidColorBrush x:Key="App.BackgroundBrush" Color="#0F1115" />
-            <SolidColorBrush x:Key="App.CardBrush" Color="#181B21" />
-            <SolidColorBrush x:Key="App.BorderBrush" Color="#22252D" />
-            <SolidColorBrush x:Key="App.AccentBrush" Color="#4DA3FF" />
-            <SolidColorBrush x:Key="App.TextPrimaryBrush" Color="#E6E9EF" />
-            <SolidColorBrush x:Key="App.TextMutedBrush" Color="#9AA3B5" />
+            <!-- Premium Deep Palette -->
+            <SolidColorBrush x:Key="App.BackgroundBrush" Color="#0D0D0D"/>
+            <SolidColorBrush x:Key="App.SurfaceBrush" Color="#161616"/>
+            <SolidColorBrush x:Key="App.CardBrush" Color="#1A1A1A"/>
+            <SolidColorBrush x:Key="App.ElevatedBrush" Color="#242424"/>
+            <SolidColorBrush x:Key="App.BorderBrush" Color="#2A2A2A"/>
+            <SolidColorBrush x:Key="App.AccentBrush" Color="#E63366"/>
+            <SolidColorBrush x:Key="App.AccentSecondaryBrush" Color="#9945FF"/>
+            <SolidColorBrush x:Key="App.AccentHoverBrush" Color="#D92656"/>
+            <SolidColorBrush x:Key="App.AccentPressedBrush" Color="#CC1A46"/>
+            <SolidColorBrush x:Key="App.TextPrimaryBrush" Color="#F5F5F5"/>
+            <SolidColorBrush x:Key="App.TextMutedBrush" Color="#B3B3B3"/>
+            <SolidColorBrush x:Key="App.TextTertiaryBrush" Color="#737373"/>
+
+            <!-- Panel-specific -->
+            <SolidColorBrush x:Key="Panel.TitleBarBrush" Color="#1F1F1F"/>
+            <SolidColorBrush x:Key="Panel.ResizeHandleBrush" Color="#404040"/>
 
             <!-- Override default control brushes to enforce dark inputs -->
             <SolidColorBrush x:Key="TextBox.Static.Background" Color="#14171D"/>
@@ -150,6 +161,7 @@
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Padding" Value="10,6" />
                 <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
@@ -169,6 +181,10 @@
                                 <Trigger Property="IsPressed" Value="True">
                                     <Setter TargetName="Root" Property="Background" Value="#13161C"/>
                                 </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource App.AccentBrush}"/>
+                                    <Setter TargetName="Root" Property="BorderThickness" Value="2"/>
+                                </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
                                     <Setter Property="Opacity" Value="0.5"/>
                                 </Trigger>
@@ -180,6 +196,7 @@
 
             <Style TargetType="CheckBox">
                 <Setter Property="Foreground" Value="{DynamicResource App.TextPrimaryBrush}" />
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="CheckBox">
@@ -211,6 +228,10 @@
                                 </Trigger>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="Box" Property="Background" Value="#252A33"/>
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource App.AccentBrush}"/>
+                                    <Setter TargetName="Box" Property="BorderThickness" Value="2"/>
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
                                     <Setter Property="Opacity" Value="0.5"/>
@@ -445,6 +466,41 @@
                 </Style.Triggers>
             </Style>
 
+            <!-- ListBox -->
+            <Style TargetType="ListBox">
+                <Setter Property="Background" Value="{DynamicResource App.CardBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource App.TextPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource App.BorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="4" />
+            </Style>
+
+            <Style TargetType="ListBoxItem">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource App.TextPrimaryBrush}" />
+                <Setter Property="Padding" Value="6,4" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    Padding="{TemplateBinding Padding}"
+                                    CornerRadius="4">
+                                <ContentPresenter />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#1A1D23"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#222730"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- Slider chrome -->
             <Style x:Key="SliderTrackButtonStyle" TargetType="RepeatButton">
                 <Setter Property="Background" Value="{DynamicResource App.BorderBrush}"/>
@@ -531,7 +587,134 @@
                 <Setter Property="TabForeground" Value="{DynamicResource App.TextPrimaryBrush}"/>
             </Style>
 
+            <!-- Sidebar Button Style -->
+            <Style x:Key="SidebarButton" TargetType="Button">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{DynamicResource App.TextPrimaryBrush}"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="2"/>
+                <Setter Property="Padding" Value="12,10"/>
+                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                <Setter Property="Margin" Value="0,2"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <!-- Hover: background highlight -->
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#1AE63366"/>
+                                </Trigger>
+                                <!-- Pressed: darker background -->
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#33E63366"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <!-- Panel open: outline (uses Tag property bound to IsOpen) -->
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource App.AccentBrush}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Sidebar Group Header Style -->
+            <Style x:Key="SidebarGroupHeader" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="{DynamicResource App.TextMutedBrush}"/>
+                <Setter Property="Margin" Value="4,20,0,8"/>
+            </Style>
+
+            <!-- Panel Close Button Style -->
+            <Style x:Key="PanelCloseButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{DynamicResource App.TextMutedBrush}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Focusable" Value="False"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="4"
+                                    Width="{TemplateBinding Width}"
+                                    Height="{TemplateBinding Height}">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#33E63366"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource App.AccentBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#4DE63366"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Overlay Toggle Button Style (for Map Free, Loot buttons) -->
+            <Style x:Key="OverlayToggleButton" TargetType="ToggleButton">
+                <Setter Property="Background" Value="{DynamicResource App.SurfaceBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource App.TextPrimaryBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource App.BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="10,6"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#1AE63366"/>
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource App.AccentBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#33E63366"/>
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource App.AccentBrush}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource App.AccentBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#4DE63366"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+            <converters:InverseBooleanToVisibilityConverter x:Key="BoolToVisInverted"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

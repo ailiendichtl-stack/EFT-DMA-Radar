@@ -7,67 +7,189 @@
         xmlns:vm="clr-namespace:LoneEftDmaRadar"
         xmlns:tabs="clr-namespace:LoneEftDmaRadar.UI.Radar.Views"
         xmlns:hotkeys="clr-namespace:LoneEftDmaRadar.UI.Hotkeys"
+        xmlns:controls="clr-namespace:LoneEftDmaRadar.UI.Controls"
+        xmlns:behaviors="clr-namespace:LoneEftDmaRadar.UI.Behaviors"
         mc:Ignorable="d"
         Title="Twilight PVE Radar"
         Width="1280" Height="720"
+        MinWidth="800" MinHeight="600"
         Icon="/lone-icon.ico">
+
     <d:Window.DataContext>
         <d:DesignInstance Type="{x:Type vm:MainWindowViewModel}"
-                      IsDesignTimeCreatable="False"/>
+                          IsDesignTimeCreatable="False"/>
     </d:Window.DataContext>
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="67*"/>
-            <ColumnDefinition Width="1213*"/>
-        </Grid.ColumnDefinitions>
-        <TabControl Grid.ColumnSpan="2">
-            <TabItem Header="Radar"
-                     x:Name="RadarTab">
-                <tabs:RadarTab x:Name="Radar" />
-            </TabItem>
 
-            <TabItem Header="Settings">
-                <TabControl Margin="4">
-                    <TabItem Header="Radar">
-                        <tabs:SettingsTab x:Name="Settings" />
-                    </TabItem>
-                    <TabItem Header="ESP Fuser">
-                        <tabs:EspSettingsTab x:Name="EspSettings" />
-                    </TabItem>
-                    <TabItem Header="Loot Filters">
-                        <tabs:LootFiltersTab x:Name="LootFilters"/>
-                    </TabItem>
-                    <TabItem Header="Static Containers">
-                        <tabs:StaticContainersTab x:Name="StaticContainers" />
-                    </TabItem>
-                    <TabItem Header="Hideout Tracker">
-                        <tabs:HideoutTab x:Name="HideoutTracker" />
-                    </TabItem>
-                    <TabItem Header="Active Quests">
-                        <tabs:ActiveQuestsTab x:Name="ActiveQuests" />
-                    </TabItem>
-                    <TabItem Header="Hotkeys">
-                        <hotkeys:HotkeyManagerTab x:Name="HotkeyManager" />
-                    </TabItem>
-                    <TabItem Header="Device Aimbot">
-                        <tabs:DeviceAimbotTab x:Name="DeviceAimbot" />
-                    </TabItem>
-                    <TabItem Header="MemWrites">
-                        <tabs:MemWritesTab x:Name="MemWrites" />
-                    </TabItem>
-                </TabControl>
-            </TabItem>
+    <Grid x:Name="MainGrid">
+        <!-- Layer 0: Radar (fills entire window) -->
+        <tabs:RadarTab x:Name="Radar" Panel.ZIndex="0"/>
 
-            <TabItem Header="Loot List">
-                <tabs:LootListTab x:Name="LootList" />
-            </TabItem>
+        <!-- Layer 1: Panel Canvas (floating panels) -->
+        <Canvas x:Name="PanelCanvas" Panel.ZIndex="1">
 
-            <TabItem Header="Web Radar">
-                <tabs:WebRadarTab x:Name="WebRadar" />
-            </TabItem>
-            <TabItem Header="Debug">
-                <tabs:DebugTab x:Name="DebugTab" />
-            </TabItem>
-        </TabControl>
+            <!-- Settings Panel -->
+            <controls:DraggablePanel
+                x:Name="SettingsPanel"
+                Title="⚙ Settings"
+                Visibility="{Binding PanelManager.SettingsPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.SettingsPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.SettingsPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.SettingsPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.SettingsPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:SettingsTab/>
+            </controls:DraggablePanel>
+
+            <!-- ESP Fuser Panel -->
+            <controls:DraggablePanel
+                x:Name="EspPanel"
+                Title="👁 ESP Fuser"
+                Visibility="{Binding PanelManager.EspPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.EspPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.EspPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.EspPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.EspPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:EspSettingsTab/>
+            </controls:DraggablePanel>
+
+            <!-- Loot Filters Panel -->
+            <controls:DraggablePanel
+                x:Name="LootFiltersPanel"
+                Title="🎯 Loot Filters"
+                Visibility="{Binding PanelManager.LootFiltersPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.LootFiltersPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.LootFiltersPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.LootFiltersPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.LootFiltersPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:LootFiltersTab/>
+            </controls:DraggablePanel>
+
+            <!-- Static Containers Panel -->
+            <controls:DraggablePanel
+                x:Name="ContainersPanel"
+                Title="📦 Containers"
+                Visibility="{Binding PanelManager.ContainersPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.ContainersPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.ContainersPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.ContainersPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.ContainersPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:StaticContainersTab/>
+            </controls:DraggablePanel>
+
+            <!-- Loot List Panel -->
+            <controls:DraggablePanel
+                x:Name="LootListPanel"
+                Title="📋 Loot List"
+                Visibility="{Binding PanelManager.LootListPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.LootListPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.LootListPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.LootListPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.LootListPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:LootListTab/>
+            </controls:DraggablePanel>
+
+            <!-- Active Quests Panel -->
+            <controls:DraggablePanel
+                x:Name="QuestsPanel"
+                Title="📍 Active Quests"
+                Visibility="{Binding PanelManager.QuestsPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.QuestsPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.QuestsPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.QuestsPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.QuestsPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:ActiveQuestsTab/>
+            </controls:DraggablePanel>
+
+            <!-- Hideout Panel -->
+            <controls:DraggablePanel
+                x:Name="HideoutPanel"
+                Title="🏠 Hideout"
+                Visibility="{Binding PanelManager.HideoutPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.HideoutPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.HideoutPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.HideoutPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.HideoutPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:HideoutTab/>
+            </controls:DraggablePanel>
+
+            <!-- Hotkeys Panel -->
+            <controls:DraggablePanel
+                x:Name="HotkeysPanel"
+                Title="⌨ Hotkeys"
+                Visibility="{Binding PanelManager.HotkeysPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.HotkeysPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.HotkeysPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.HotkeysPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.HotkeysPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <hotkeys:HotkeyManagerTab/>
+            </controls:DraggablePanel>
+
+            <!-- Device Aimbot Panel -->
+            <controls:DraggablePanel
+                x:Name="AimbotPanel"
+                Title="🎯 Device Aimbot"
+                Visibility="{Binding PanelManager.AimbotPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.AimbotPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.AimbotPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.AimbotPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.AimbotPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:DeviceAimbotTab/>
+            </controls:DraggablePanel>
+
+            <!-- MemWrites Panel -->
+            <controls:DraggablePanel
+                x:Name="MemWritesPanel"
+                Title="💾 MemWrites"
+                Visibility="{Binding PanelManager.MemWritesPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.MemWritesPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.MemWritesPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.MemWritesPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.MemWritesPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:MemWritesTab/>
+            </controls:DraggablePanel>
+
+            <!-- Web Radar Panel -->
+            <controls:DraggablePanel
+                x:Name="WebRadarPanel"
+                Title="🌐 Web Radar"
+                Visibility="{Binding PanelManager.WebRadarPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.WebRadarPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.WebRadarPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.WebRadarPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.WebRadarPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:WebRadarTab/>
+            </controls:DraggablePanel>
+
+            <!-- Debug Panel -->
+            <controls:DraggablePanel
+                x:Name="DebugPanel"
+                Title="🔧 Debug"
+                Visibility="{Binding PanelManager.DebugPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.DebugPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.DebugPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.DebugPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.DebugPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:DebugTab/>
+            </controls:DraggablePanel>
+
+        </Canvas>
+
+        <!-- Layer 2: Sidebar (auto-collapses) -->
+        <controls:Sidebar x:Name="Sidebar"
+                          Panel.ZIndex="2"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Stretch"
+                          DataContext="{Binding PanelManager}"/>
     </Grid>
 </Window>

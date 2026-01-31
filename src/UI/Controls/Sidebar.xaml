@@ -1,0 +1,117 @@
+<UserControl x:Class="LoneEftDmaRadar.UI.Controls.Sidebar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:behaviors="clr-namespace:LoneEftDmaRadar.UI.Behaviors"
+             mc:Ignorable="d"
+             d:DesignWidth="240" d:DesignHeight="720"
+             behaviors:SidebarCollapseBehavior.IsEnabled="True"
+             behaviors:SidebarCollapseBehavior.TriggerDistance="50"
+             behaviors:SidebarCollapseBehavior.CollapseTimeout="1000"
+             behaviors:SidebarCollapseBehavior.ExpandedWidth="240"
+             behaviors:SidebarCollapseBehavior.CollapsedWidth="12">
+
+    <Border x:Name="SidebarRoot"
+            Width="240"
+            Background="{DynamicResource App.SurfaceBrush}"
+            BorderBrush="{DynamicResource App.BorderBrush}"
+            BorderThickness="0,0,1,0">
+
+        <Grid>
+            <!-- 3px accent bar on left edge (always visible) -->
+            <Rectangle Width="3"
+                       HorizontalAlignment="Left"
+                       Fill="{DynamicResource App.AccentBrush}"/>
+
+            <!-- Content (hidden when collapsed) -->
+            <ScrollViewer x:Name="ContentScroller"
+                          Margin="3,0,0,0"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="12,8,12,20">
+
+                    <!-- Logo/Title -->
+                    <TextBlock Text="TWILIGHT"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource App.AccentBrush}"
+                               Margin="4,12,0,24"/>
+
+                    <!-- RADAR section -->
+                    <TextBlock Text="RADAR" Style="{StaticResource SidebarGroupHeader}"/>
+                    <Button Content="⚙ Settings"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleSettingsPanelCommand}"
+                            Tag="{Binding SettingsPanel.IsOpen, Mode=OneWay}"/>
+                    <Button Content="👁 ESP Fuser"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleEspPanelCommand}"
+                            Tag="{Binding EspPanel.IsOpen, Mode=OneWay}"/>
+
+                    <!-- LOOT section -->
+                    <TextBlock Text="LOOT" Style="{StaticResource SidebarGroupHeader}"/>
+                    <Button Content="🎯 Loot Filters"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleLootFiltersPanelCommand}"
+                            Tag="{Binding LootFiltersPanel.IsOpen, Mode=OneWay}"/>
+                    <Button Content="📦 Containers"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleContainersPanelCommand}"
+                            Tag="{Binding ContainersPanel.IsOpen, Mode=OneWay}"/>
+                    <Button Content="📋 Loot List"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleLootListPanelCommand}"
+                            Tag="{Binding LootListPanel.IsOpen, Mode=OneWay}"/>
+
+                    <!-- QUESTS section -->
+                    <TextBlock Text="QUESTS" Style="{StaticResource SidebarGroupHeader}"/>
+                    <Button Content="📍 Active Quests"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleQuestsPanelCommand}"
+                            Tag="{Binding QuestsPanel.IsOpen, Mode=OneWay}"/>
+                    <Button Content="🏠 Hideout"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleHideoutPanelCommand}"
+                            Tag="{Binding HideoutPanel.IsOpen, Mode=OneWay}"/>
+
+                    <!-- TOOLS section -->
+                    <TextBlock Text="TOOLS" Style="{StaticResource SidebarGroupHeader}"/>
+                    <Button Content="⌨ Hotkeys"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleHotkeysPanelCommand}"
+                            Tag="{Binding HotkeysPanel.IsOpen, Mode=OneWay}"/>
+                    <Button Content="🎯 Device Aimbot"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleAimbotPanelCommand}"
+                            Tag="{Binding AimbotPanel.IsOpen, Mode=OneWay}"/>
+                    <Button Content="💾 MemWrites"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleMemWritesPanelCommand}"
+                            Tag="{Binding MemWritesPanel.IsOpen, Mode=OneWay}"/>
+
+                    <!-- OTHER section -->
+                    <TextBlock Text="OTHER" Style="{StaticResource SidebarGroupHeader}"/>
+                    <Button Content="🌐 Web Radar"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleWebRadarPanelCommand}"
+                            Tag="{Binding WebRadarPanel.IsOpen, Mode=OneWay}"/>
+                    <Button Content="🔧 Debug"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleDebugPanelCommand}"
+                            Tag="{Binding DebugPanel.IsOpen, Mode=OneWay}"/>
+
+                    <!-- Spacer -->
+                    <Rectangle Height="20"/>
+
+                    <!-- Reset button -->
+                    <Button Content="↺ Reset Panels"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ResetAllPanelsCommand}"
+                            Foreground="{DynamicResource App.TextMutedBrush}"/>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

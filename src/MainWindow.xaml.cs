@@ -27,7 +27,10 @@ SOFTWARE.
 */
 
 using LoneEftDmaRadar.UI.Radar.ViewModels;
+using LoneEftDmaRadar.UI.Radar.Views;
 using LoneEftDmaRadar.UI.Skia;
+using LoneEftDmaRadar.UI.Controls;
+using LoneEftDmaRadar.UI.ViewModels;
 using System.Diagnostics.CodeAnalysis;
 using System.Windows.Input;
 using LoneEftDmaRadar.UI.ESP;
@@ -65,6 +68,35 @@ namespace LoneEftDmaRadar
             DebugLogger.Toggle();
         }
 
+        /// <summary>
+        /// Handles close requests from floating panels.
+        /// </summary>
+        private void Panel_CloseRequested(object sender, RoutedEventArgs e)
+        {
+            if (sender is DraggablePanel panel)
+            {
+                // Find the corresponding PanelState and close it via ViewModel
+                var panelName = panel.Name;
+                var pm = ViewModel.PanelManager;
+
+                switch (panelName)
+                {
+                    case "SettingsPanel": pm.SettingsPanel.IsOpen = false; break;
+                    case "EspPanel": pm.EspPanel.IsOpen = false; break;
+                    case "LootFiltersPanel": pm.LootFiltersPanel.IsOpen = false; break;
+                    case "ContainersPanel": pm.ContainersPanel.IsOpen = false; break;
+                    case "LootListPanel": pm.LootListPanel.IsOpen = false; break;
+                    case "QuestsPanel": pm.QuestsPanel.IsOpen = false; break;
+                    case "HideoutPanel": pm.HideoutPanel.IsOpen = false; break;
+                    case "HotkeysPanel": pm.HotkeysPanel.IsOpen = false; break;
+                    case "AimbotPanel": pm.AimbotPanel.IsOpen = false; break;
+                    case "MemWritesPanel": pm.MemWritesPanel.IsOpen = false; break;
+                    case "WebRadarPanel": pm.WebRadarPanel.IsOpen = false; break;
+                    case "DebugPanel": pm.DebugPanel.IsOpen = false; break;
+                }
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
             ESPManager.CloseESP();
@@ -82,6 +114,20 @@ namespace LoneEftDmaRadar
         /// ViewModel for the MainWindow.
         /// </summary>
         public MainWindowViewModel ViewModel { get; }
+
+        #region Panel Content Accessors
+
+        /// <summary>
+        /// Gets the SettingsTab from within the SettingsPanel.
+        /// </summary>
+        public SettingsTab Settings => SettingsPanel?.PanelContent as SettingsTab;
+
+        /// <summary>
+        /// Gets the DeviceAimbotTab from within the AimbotPanel.
+        /// </summary>
+        public DeviceAimbotTab DeviceAimbot => AimbotPanel?.PanelContent as DeviceAimbotTab;
+
+        #endregion
 
         /// <summary>
         /// Make sure the program really closes.
@@ -104,6 +150,9 @@ namespace LoneEftDmaRadar
                     App.Config.InfoWidget.Minimized = infoWidget.Minimized;
                 }
 
+                // Save panel layout states
+                ViewModel?.PanelManager?.SaveToConfig();
+
                 Memory.Dispose(); // Close FPGA
             }
             finally
@@ -116,6 +165,16 @@ namespace LoneEftDmaRadar
         {
             try
             {
+                // Escape key closes the topmost open panel
+                if (e.Key is Key.Escape)
+                {
+                    if (ViewModel?.PanelManager?.CloseTopmostPanel() == true)
+                    {
+                        e.Handled = true;
+                        return;
+                    }
+                }
+
                 if (!Radar?.IsVisible ?? false)
                     return; // Ignore if radar is not visible
                 if (e.Key is Key.F1)

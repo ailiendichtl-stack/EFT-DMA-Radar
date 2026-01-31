@@ -29,6 +29,7 @@ SOFTWARE.
 using LoneEftDmaRadar.UI.Hotkeys;
 using LoneEftDmaRadar.UI.Radar.ViewModels;
 using LoneEftDmaRadar.UI.ESP;
+using LoneEftDmaRadar.UI.ViewModels;
 using LoneEftDmaRadar.DMA;
 
 namespace LoneEftDmaRadar
@@ -37,6 +38,11 @@ namespace LoneEftDmaRadar
     {
         private readonly MainWindow _parent;
         //public event PropertyChangedEventHandler PropertyChanged;
+
+        /// <summary>
+        /// Manages floating panel states for the modular GUI system.
+        /// </summary>
+        public PanelManagerViewModel PanelManager { get; } = new();
 
         public MainWindowViewModel(MainWindow parent)
         {

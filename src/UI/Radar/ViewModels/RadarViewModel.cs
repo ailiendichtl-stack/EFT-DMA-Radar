@@ -688,17 +688,13 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         }
 
         /// <summary>
-        /// Set the Map Name on Radar Tab.
+        /// Set the Map Name on Window Title.
         /// </summary>
         private static void SetMapName()
         {
             string map = EftMapManager.Map?.Config?.Name;
-            string name = map is null ?
-                "Radar" : $"Radar ({map})";
-            if (MainWindow.Instance?.RadarTab is TabItem tab)
-            {
-                tab.Header = name;
-            }
+            // Map name is now included in the periodic title update via RunPeriodicTimerAsync
+            // No separate tab header needed since tabs are replaced with floating panels
         }
 
         /// <summary>
