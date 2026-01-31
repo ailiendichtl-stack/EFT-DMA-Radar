@@ -230,6 +230,13 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         protected int _verticesCount;
         protected Vector3 _cachedPosition; // Fallback position cache
 
+        // Frame counter for distance-based update throttling
+        private int _realtimeFrameCounter;
+
+        // Distance thresholds for update throttling (squared for faster comparison)
+        private const float NEAR_DISTANCE_SQ = 50f * 50f;   // 50m
+        private const float MID_DISTANCE_SQ = 150f * 150f;  // 150m
+
         /// <summary>
         /// TRUE if critical memory reads (position/rotation) have failed.
         /// </summary>
@@ -510,7 +517,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// <param name="scatter"></param>
         /// <param name="registered"></param>
         /// <param name="isActiveParam"></param>
-        public virtual void OnRegRefresh(VmmScatter scatter, ISet<ulong> registered, bool? isActiveParam = null)
+        public virtual void OnRegRefresh(VmmScatterManaged scatter, ISet<ulong> registered, bool? isActiveParam = null)
         {
             if (isActiveParam is not bool isActive)
                 isActive = registered.Contains(this);
@@ -564,7 +571,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// Executed on each Realtime Loop.
         /// </summary>
         /// <param name="index">Scatter read index dedicated to this player.</param>
-        public virtual void OnRealtimeLoop(VmmScatter scatter)
+        public virtual void OnRealtimeLoop(VmmScatterManaged scatter)
         {
             if (SkeletonRoot == null)
             {
@@ -572,17 +579,41 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 return;
             }
 
+            _realtimeFrameCounter++;
+
+            // Distance-based throttling for non-local players
+            if (this is not LocalPlayer && Memory.LocalPlayer is { } lp)
+            {
+                float distSq = Vector3.DistanceSquared(lp.Position, _cachedPosition);
+
+                // Far players (>150m): update every 4th frame
+                if (distSq > MID_DISTANCE_SQ && _realtimeFrameCounter % 4 != 0)
+                    return;
+                // Mid-range players (50-150m): update every 2nd frame
+                else if (distSq > NEAR_DISTANCE_SQ && _realtimeFrameCounter % 2 != 0)
+                    return;
+                // Near players (<50m): update every frame
+            }
+
             int vertexCount = SkeletonRoot.Count;
+
+            // Determine if we need full skeleton data (for ESP skeleton rendering)
+            // LocalPlayer always needs full skeleton for aimbot features
+            bool needFullSkeleton = this is LocalPlayer ||
+                (IsAI ? App.Config.UI.EspAISkeletons : App.Config.UI.EspPlayerSkeletons);
 
             // Calculate actual vertex requirements including all bones
             int maxBoneRequirement = 0;
-            foreach (var bone in PlayerBones.Values)
+            if (needFullSkeleton)
             {
-                if (bone.Count > maxBoneRequirement)
-                    maxBoneRequirement = bone.Count;
+                foreach (var bone in PlayerBones.Values)
+                {
+                    if (bone.Count > maxBoneRequirement)
+                        maxBoneRequirement = bone.Count;
+                }
             }
 
-            int actualRequired = Math.Max(vertexCount, maxBoneRequirement);
+            int actualRequired = needFullSkeleton ? Math.Max(vertexCount, maxBoneRequirement) : vertexCount;
 
             if (actualRequired <= 0 || actualRequired > 10000)
             {
@@ -598,12 +629,15 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
 
                     vertexCount = SkeletonRoot.Count;
                     maxBoneRequirement = 0;
-                    foreach (var bone in PlayerBones.Values)
+                    if (needFullSkeleton)
                     {
-                        if (bone.Count > maxBoneRequirement)
-                            maxBoneRequirement = bone.Count;
+                        foreach (var bone in PlayerBones.Values)
+                        {
+                            if (bone.Count > maxBoneRequirement)
+                                maxBoneRequirement = bone.Count;
+                        }
                     }
-                    actualRequired = Math.Max(vertexCount, maxBoneRequirement);
+                    actualRequired = needFullSkeleton ? Math.Max(vertexCount, maxBoneRequirement) : vertexCount;
                 }
                 catch { }
 
@@ -617,7 +651,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             }
 
             scatter.PrepareReadValue<Vector2>(RotationAddress); // Rotation
-            int requestedVertices = _verticesCount > 0 ? _verticesCount : actualRequired;
+            int requestedVertices = _verticesCount > 0 ? Math.Min(_verticesCount, actualRequired) : actualRequired;
             scatter.PrepareReadArray<TrsX>(SkeletonRoot.VerticesAddr, requestedVertices); // ESP Vertices
 
             scatter.Completed += (sender, s) =>
@@ -645,22 +679,26 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                                     return;
                                 }
 
-                                foreach (var bonePair in PlayerBones)
+                                // Only update individual bones if skeleton rendering is enabled
+                                if (needFullSkeleton)
                                 {
-                                    try
+                                    foreach (var bonePair in PlayerBones)
                                     {
-                                        if (bonePair.Value.Count <= span.Length)
+                                        try
                                         {
-                                            bonePair.Value.UpdatePosition(span);
+                                            if (bonePair.Value.Count <= span.Length)
+                                            {
+                                                bonePair.Value.UpdatePosition(span);
+                                            }
+                                            else
+                                            {
+                                                ResetBoneTransform(bonePair.Key);
+                                            }
                                         }
-                                        else
+                                        catch
                                         {
                                             ResetBoneTransform(bonePair.Key);
                                         }
-                                    }
-                                    catch
-                                    {
-                                        ResetBoneTransform(bonePair.Key);
                                     }
                                 }
 
@@ -710,7 +748,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// </summary>
         /// <param name="round1">Index (round 1)</param>
         /// <param name="round2">Index (round 2)</param>
-        public void OnValidateTransforms(VmmScatter round1, VmmScatter round2)
+        public void OnValidateTransforms(VmmScatterManaged round1, VmmScatterManaged round2)
         {
             round1.PrepareReadPtr(SkeletonRoot.TransformInternal + UnitySDK.UnityOffsets.TransformAccess_HierarchyOffset); // Bone Hierarchy
             round1.Completed += (sender, x1) =>

@@ -59,7 +59,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
             _aspect = 0f;
             IsInitialized = false;
             _potentialOpticCameras.Clear();
-            _hasSearchedForPotentialCameras = false;
             _useFpsCameraForCurrentAds = false;
         }
         public ulong FPSCamera { get; }
@@ -69,7 +68,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
         private bool OpticCameraActive => OpticCameraPtr != 0;
 
         private static readonly List<ulong> _potentialOpticCameras = new();
-        private static bool _hasSearchedForPotentialCameras = false;
         private static bool _useFpsCameraForCurrentAds = false;
 
         public static void UpdateViewportRes()
@@ -196,7 +194,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                 return;
 
             _potentialOpticCameras.Clear();
-            _hasSearchedForPotentialCameras = false;
             _useFpsCameraForCurrentAds = false;
 
             try
@@ -397,7 +394,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
             }
         }
 
-        public void OnRealtimeLoop(VmmScatter scatter, LocalPlayer localPlayer)
+        public void OnRealtimeLoop(VmmScatterManaged scatter, LocalPlayer localPlayer)
         {
             try
             {
@@ -532,8 +529,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                         // continue searching
                     }
                 }
-
-                _hasSearchedForPotentialCameras = true;
             }
             catch
             {

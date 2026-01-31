@@ -170,7 +170,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// Initializes and updates the look raycast transform using memory scatter reads.
         /// Called when aimview is enabled.
         /// </summary>
-        public override void OnRealtimeLoop(VmmScatter scatter)
+        public override void OnRealtimeLoop(VmmScatterManaged scatter)
         {
             base.OnRealtimeLoop(scatter);
 

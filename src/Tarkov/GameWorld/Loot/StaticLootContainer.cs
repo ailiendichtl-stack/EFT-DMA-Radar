@@ -44,6 +44,16 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         private bool _contentsLoaded = false;
         private string _cachedFilterColor;
 
+        /// <summary>
+        /// Internal access to InteractiveClass pointer for batch container scanning.
+        /// </summary>
+        internal ulong InteractiveClass => _interactiveClass;
+
+        /// <summary>
+        /// True if container contents have already been loaded and cached.
+        /// </summary>
+        internal bool ContentsLoaded => _contentsLoaded;
+
         public override string Name { get; }
 
         /// <summary>
@@ -181,6 +191,24 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                     .OrderByDescending(x => x.Price)
                     .FirstOrDefault()?.FilterColor;
             }
+        }
+
+        /// <summary>
+        /// Sets the container contents from a batch scatter read operation.
+        /// Used by ContainerContentsReader.BatchRefreshContents().
+        /// </summary>
+        internal void SetContents(List<ContainerItem> contents)
+        {
+            if (contents == null || contents.Count == 0)
+                return;
+
+            _contents = contents;
+            _contentsLoaded = true;
+            // Cache filter color from highest value important item
+            _cachedFilterColor = _contents
+                .Where(x => x.IsImportant && !string.IsNullOrEmpty(x.FilterColor))
+                .OrderByDescending(x => x.Price)
+                .FirstOrDefault()?.FilterColor;
         }
 
         public override void Draw(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)

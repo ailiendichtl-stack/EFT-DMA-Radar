@@ -26,6 +26,7 @@ SOFTWARE.
  *
 */
 
+using System.Runtime;
 using LoneEftDmaRadar.DMA;
 using LoneEftDmaRadar.Misc;
 using LoneEftDmaRadar.Misc.Workers;
@@ -66,6 +67,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         private readonly WorkerThread _t4;
         private readonly MemWritesManager _memWritesManager;
         private readonly QuestManager _questManager;
+
+        // Pre-allocated list to avoid LINQ allocations in hot path
+        private readonly List<AbstractPlayer> _activePlayersCache = new(32);
 
         // Loot scan throttling - only scan on raid start, then at configurable interval
         private bool _initialLootScanComplete = false;
@@ -169,6 +173,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         /// </summary>
         public void Start()
         {
+            // Switch to low-latency GC mode during raid for better realtime performance
+            GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
             _memWritesManager?.OnRaidStart();
             _t1.Start();
             _t2.Start();
@@ -323,9 +329,16 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
             var start = Stopwatch.GetTimestamp();
             try
             {
-                var players = _rgtPlayers.Where(x => x.IsActive && x.IsAlive);
+                // Build active player list without LINQ allocations
+                _activePlayersCache.Clear();
+                foreach (var player in _rgtPlayers)
+                {
+                    if (player.IsActive && player.IsAlive)
+                        _activePlayersCache.Add(player);
+                }
+
                 var localPlayer = LocalPlayer;
-                if (!players.Any()) // No players - Throttle
+                if (_activePlayersCache.Count == 0) // No players - Throttle
                 {
                     Thread.Sleep(1);
                     return;
@@ -336,7 +349,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 {
                     MemDMA.CameraManager.OnRealtimeLoop(scatter, localPlayer);
                 }
-                foreach (var player in players)
+                foreach (var player in _activePlayersCache)
                 {
                     player.OnRealtimeLoop(scatter);
                 }
@@ -620,6 +633,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         {
             if (Interlocked.Exchange(ref _disposed, true) == false)
             {
+                // Restore interactive GC mode when raid ends
+                GCSettings.LatencyMode = GCLatencyMode.Interactive;
                 _t1?.Dispose();
                 _t2?.Dispose();
                 _t3?.Dispose();

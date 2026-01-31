@@ -27,6 +27,7 @@ SOFTWARE.
 */
 
 using Collections.Pooled;
+using LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers;
 using LoneEftDmaRadar.Tarkov.GameWorld.Quests;
 using LoneEftDmaRadar.Tarkov.Unity;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
@@ -139,14 +140,36 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                     _ = _loot.TryRemove(existing, out _);
                 }
             }
-            // Update container status and optionally remove searched containers from persistent cache
+            // Update container status and batch refresh contents
             var hideSearched = App.Config.Containers.HideSearched;
+
+            // Collect containers that need content refresh (PVE mode only)
+            if (App.Config.Containers.PveScanEnabled)
+            {
+                var containersToRefresh = new List<StaticLootContainer>();
+                foreach (var kvp in _loot)
+                {
+                    if (kvp.Value is StaticLootContainer container &&
+                        !container.ContentsLoaded &&
+                        container.InteractiveClass != 0)
+                    {
+                        containersToRefresh.Add(container);
+                    }
+                }
+
+                // Batch refresh all container contents using scatter reads
+                if (containersToRefresh.Count > 0)
+                {
+                    ContainerContentsReader.BatchRefreshContents(containersToRefresh);
+                }
+            }
+
+            // Update searched status for all containers
             foreach (var kvp in _loot)
             {
                 if (kvp.Value is StaticLootContainer container)
                 {
                     container.UpdateSearchedStatus();
-                    container.RefreshContents(); // Load container contents for offline PVE
 
                     // If HideSearched is enabled and container was searched, remove from persistent cache
                     // so it can be cleaned up normally when out of range

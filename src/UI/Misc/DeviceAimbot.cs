@@ -89,7 +89,22 @@ namespace LoneEftDmaRadar.UI.Misc
         // Reusable list to avoid allocations in hot path
         private readonly List<TargetCandidate> _candidateBuffer = new(32);
 
-        // Cached SKPaints for debug overlay (avoid allocations every frame)
+        // Cached fonts and paints for debug overlay (avoid allocations every frame)
+        private static readonly SKTypeface DebugTypeface = SKTypeface.FromFamilyName("Consolas", SKFontStyle.Normal);
+        private static readonly SKTypeface DebugTypefaceBold = SKTypeface.FromFamilyName("Consolas", SKFontStyle.Bold);
+
+        private static SKFont DebugFont => new(DebugTypeface, 14f)
+        {
+            Subpixel = true,
+            Edging = SKFontEdging.SubpixelAntialias
+        };
+
+        private static SKFont DebugFontBold => new(DebugTypefaceBold, 14f)
+        {
+            Subpixel = true,
+            Edging = SKFontEdging.SubpixelAntialias
+        };
+
         private static readonly SKPaint DebugBgPaint = new()
         {
             Color = new SKColor(0, 0, 0, 180),
@@ -99,25 +114,19 @@ namespace LoneEftDmaRadar.UI.Misc
         private static readonly SKPaint DebugTextPaint = new()
         {
             Color = SKColors.White,
-            TextSize = 14,
-            IsAntialias = true,
-            Typeface = SKTypeface.FromFamilyName("Consolas", SKFontStyle.Normal)
+            IsAntialias = true
         };
         private static readonly SKPaint DebugHeaderPaint = new()
         {
             Color = SKColors.Yellow,
-            TextSize = 14,
-            IsAntialias = true,
-            Typeface = SKTypeface.FromFamilyName("Consolas", SKFontStyle.Bold)
+            IsAntialias = true
         };
         private static readonly SKPaint DebugShadowPaint = new()
         {
             Color = SKColors.Black,
-            TextSize = 14,
             IsAntialias = true,
             Style = SKPaintStyle.Stroke,
-            StrokeWidth = 3,
-            Typeface = SKTypeface.FromFamilyName("Consolas", SKFontStyle.Bold)
+            StrokeWidth = 3
         };
 
         // Reusable list for debug lines
@@ -1157,12 +1166,15 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 float y = 30;
                 float lineHeight = 18;
 
-                // Use cached paints to avoid allocations
+                // Use cached fonts and paints to avoid allocations
+                using var font = DebugFont;
+                using var fontBold = DebugFontBold;
+
                 // Background size
                 float maxWidth = 0;
                 foreach (var line in lines)
                 {
-                    float width = DebugTextPaint.MeasureText(line);
+                    float width = font.MeasureText(line);
                     if (width > maxWidth) maxWidth = width;
                 }
 
@@ -1171,16 +1183,17 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 // Text with shadow (fake bold / shading)
                 foreach (var line in lines)
                 {
-                    var paint = line.StartsWith("===") ||
-                                line == "Ballistics:" ||
-                                line == "Settings:" ||
-                                line == "Target Filters:" ||
-                                line == "Players (this scan):"
-                        ? DebugHeaderPaint
-                        : DebugTextPaint;
+                    bool isHeader = line.StartsWith("===") ||
+                                    line == "Ballistics:" ||
+                                    line == "Settings:" ||
+                                    line == "Target Filters:" ||
+                                    line == "Players (this scan):";
 
-                    canvas.DrawText(line, x + 1.5f, y + 1.5f, DebugShadowPaint);
-                    canvas.DrawText(line, x, y, paint);
+                    var paint = isHeader ? DebugHeaderPaint : DebugTextPaint;
+                    var lineFont = isHeader ? fontBold : font;
+
+                    canvas.DrawText(line, x + 1.5f, y + 1.5f, SKTextAlign.Left, fontBold, DebugShadowPaint);
+                    canvas.DrawText(line, x, y, SKTextAlign.Left, lineFont, paint);
                     y += lineHeight;
                 }
             }

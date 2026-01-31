@@ -107,11 +107,7 @@ namespace LoneEftDmaRadar.Tarkov.IL2CPP
         private static Vmm _vmm = null!;
         private static uint _pid;
         private static int gTypeCount;
-        private static ulong gAssembliesStart;
-        private static ulong gAssembliesEnd;
         private static ulong gTypeInfoDefinitionTable;
-        private static ulong gMetadataGlobalHeader;
-        private static ulong gGlobalMetadata;
 
         static IL2CPPLib()
         {

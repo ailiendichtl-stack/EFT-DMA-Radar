@@ -71,7 +71,7 @@ namespace LoneEftDmaRadar.DMA
             {
                 try
                 {
-                    _input.UpdateKeys();
+                    _input?.UpdateKeys();
                 }
                 catch (Exception ex)
                 {
@@ -92,7 +92,7 @@ namespace LoneEftDmaRadar.DMA
                 {
                     try
                     {
-                        isDownWin32 = _input.IsKeyDown(vk);
+                        isDownWin32 = _input?.IsKeyDown(vk) ?? false;
                     }
                     catch
                     {

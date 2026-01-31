@@ -646,21 +646,21 @@ namespace LoneEftDmaRadar.DMA
         #region Misc
 
         /// <summary>
-        /// Creates a new <see cref="VmmScatterMap"/>.
+        /// Creates a new <see cref="VmmScatterMap{T}"/>.
         /// </summary>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public VmmScatterMap CreateScatterMap() =>
-            _vmm.CreateScatterMap(_pid);
+        public VmmScatterMap<VmmScatterManaged> CreateScatterMap() =>
+            new VmmScatterMap<VmmScatterManaged>(_vmm, _pid);
 
         /// <summary>
-        /// Creates a new <see cref="VmmScatter"/>.
+        /// Creates a new <see cref="VmmScatterManaged"/>.
         /// </summary>
         /// <param name="flags"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public VmmScatter CreateScatter(VmmFlags flags = VmmFlags.NONE) =>
-            _vmm.CreateScatter(_pid, flags);
+        public VmmScatterManaged CreateScatter(VmmFlags flags = VmmFlags.NONE) =>
+            new VmmScatterManaged(_vmm, _pid, flags);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong FindSignature(string signature)

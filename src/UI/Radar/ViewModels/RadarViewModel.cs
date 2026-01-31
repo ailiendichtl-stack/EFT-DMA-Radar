@@ -205,15 +205,18 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
 
         /// <summary>
         /// Contains all 'mouse-overable' items.
+        /// Returns enumerable directly - caller handles empty case.
         /// </summary>
         private static IEnumerable<IMouseoverEntity> MouseOverItems
         {
             get
             {
-                var players = AllPlayers
+                var players = AllPlayers?
                     .Where(x => x is not Tarkov.GameWorld.Player.LocalPlayer
-                        && !x.HasExfild && (LootCorpsesVisible ? x.IsAlive : true)) ??
-                        Enumerable.Empty<AbstractPlayer>();
+                        && !x.HasExfild && (LootCorpsesVisible ? x.IsAlive : true));
+
+                if (players is null)
+                    return null;
 
                 var loot = Loot ?? Enumerable.Empty<IMouseoverEntity>();
                 var containers = Containers ?? Enumerable.Empty<IMouseoverEntity>();
@@ -227,8 +230,9 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                     players = players.Where(x =>
                         x.LootObject is null || !loot.Contains(x.LootObject)); // Don't show both corpse objects
 
-                var result = loot.Concat(containers).Concat(players).Concat(exits).Concat(hazards).Concat(questLocs);
-                return result.Any() ? result : null;
+                // Return enumerable directly - removed .Any() which forced expensive enumeration
+                // The caller's foreach handles empty case gracefully (closest will be null)
+                return loot.Concat(containers).Concat(players).Concat(exits).Concat(hazards).Concat(questLocs);
             }
         }
 
@@ -530,17 +534,20 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                             using var groups = groupedPlayers.Select(x => x.GroupID).ToPooledSet();
                             foreach (var grp in groups)
                             {
-                                var grpMembers = groupedPlayers.Where(x => x.GroupID == grp);
-                                if (grpMembers is not null && grpMembers.Any())
+                                // Materialize group members to list to avoid multiple enumeration
+                                var grpMembers = groupedPlayers.Where(x => x.GroupID == grp).ToList();
+                                if (grpMembers.Count < 2)
+                                    continue;
+
+                                // Draw unique pairs only (i < j) instead of O(n²) Cartesian product
+                                // This eliminates Tuple allocations and reduces pairs from n² to n(n-1)/2
+                                for (int i = 0; i < grpMembers.Count; i++)
                                 {
-                                    var combinations = grpMembers
-                                        .SelectMany(x => grpMembers, (x, y) =>
-                                            Tuple.Create(
-                                                x.Position.ToMapPos(map.Config).ToZoomedPos(mapParams),
-                                                y.Position.ToMapPos(map.Config).ToZoomedPos(mapParams)));
-                                    foreach (var pair in combinations)
+                                    var pos1 = grpMembers[i].Position.ToMapPos(map.Config).ToZoomedPos(mapParams);
+                                    for (int j = i + 1; j < grpMembers.Count; j++)
                                     {
-                                        canvas.DrawLine(pair.Item1.X, pair.Item1.Y, pair.Item2.X, pair.Item2.Y, SKPaints.PaintConnectorGroup);
+                                        var pos2 = grpMembers[j].Position.ToMapPos(map.Config).ToZoomedPos(mapParams);
+                                        canvas.DrawLine(pos1.X, pos1.Y, pos2.X, pos2.Y, SKPaints.PaintConnectorGroup);
                                     }
                                 }
                             }
@@ -901,19 +908,29 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 }
 
                 var items = MouseOverItems;
-                if (items?.Any() != true)
+                if (items is null)
                 {
                     ClearRefs();
                     return;
                 }
 
-                // find closest
-                var closest = items.Aggregate(
-                    (x1, x2) => Vector2.Distance(x1.MouseoverPosition, mouse)
-                             < Vector2.Distance(x2.MouseoverPosition, mouse)
-                        ? x1 : x2);
+                // Find closest item using squared distance (avoids expensive sqrt)
+                // Also avoids calling Distance twice per comparison like Aggregate did
+                IMouseoverEntity closest = null;
+                float closestDistSq = float.MaxValue;
+                const float thresholdSq = 12f * 12f; // 144
 
-                if (Vector2.Distance(closest.MouseoverPosition, mouse) >= 12)
+                foreach (var item in items)
+                {
+                    var distSq = Vector2.DistanceSquared(item.MouseoverPosition, mouse);
+                    if (distSq < closestDistSq)
+                    {
+                        closestDistSq = distSq;
+                        closest = item;
+                    }
+                }
+
+                if (closest is null || closestDistSq >= thresholdSq)
                 {
                     ClearRefs();
                     return;

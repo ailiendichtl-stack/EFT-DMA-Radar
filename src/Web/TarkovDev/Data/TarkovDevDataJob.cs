@@ -129,9 +129,9 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
             var result = new OutgoingTarkovMarketData
             {
                 Items = ParseMarketData(data),
-                Maps = data.Data.Maps,
-                Tasks = data.Data.Tasks,
-                HideoutStations = data.Data.HideoutStations
+                Maps = data.Data?.Maps,
+                Tasks = data.Data?.Tasks,
+                HideoutStations = data.Data?.HideoutStations
             };
 
             DebugLogger.LogDebug($"[TarkovDevDataJob] Output - Items: {result.Items?.Count ?? 0}, Tasks: {result.Tasks?.Count ?? 0}");
@@ -142,7 +142,11 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
         private static List<OutgoingItem> ParseMarketData(TarkovDevDataQuery data)
         {
             var outgoingItems = new List<OutgoingItem>();
-            foreach (var item in data.Data.Items)
+
+            if (data.Data == null)
+                return outgoingItems;
+
+            foreach (var item in data.Data.Items ?? [])
             {
                 int slots = item.Width * item.Height;
                 outgoingItems.Add(new OutgoingItem
@@ -156,7 +160,7 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
                     Slots = slots
                 });
             }
-            foreach (var container in data.Data.LootContainers)
+            foreach (var container in data.Data.LootContainers ?? [])
             {
                 outgoingItems.Add(new OutgoingItem
                 {
