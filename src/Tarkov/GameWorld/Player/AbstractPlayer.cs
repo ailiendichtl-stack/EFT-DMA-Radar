@@ -1400,6 +1400,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             var distance = Vector3.Distance(localPlayer.Position, Position);
             tooltip.AddRow("Distance", $"{distance:F1} m");
 
+            // Weapon
+            if (!string.IsNullOrEmpty(HeldWeaponName))
+                tooltip.AddRow("Weapon", WeaponDisplayText, accentColor);
+
             // Group ID
             if (GroupID != -1)
                 tooltip.AddRow("Group", $"#{GroupID}");

@@ -1,59 +1,95 @@
-# Moulman's EFT DMA Radar
+# Twilight PVE Radar
 
-Fork of [Lone EFT DMA Radar](https://github.com/lone-dma/Lone-EFT-DMA-Radar) with additional ESP, aimbot, and memory-write features.
+A feature-rich DMA-based radar for Escape from Tarkov, forked from [Lone EFT DMA Radar](https://github.com/lone-dma/Lone-EFT-DMA-Radar) with additional enhancements.
 
-## Disclaimer ⚠️  
-This app has been tested on 🪟 Windows 11 25H2 (Game) and 🪟 Windows 11 23H2 (Radar).  
-⚠️ Older versions of Windows (e.g., Windows 10) may not work properly and are not officially supported.
+## Features
 
-**Note:** All current testing is done with both the radar and game running at **1920x1080** resolution.  
+### Radar & Tracking
+- Real-time player tracking with team/group detection
+- PMC, Scav, Boss, and Raider identification
+- Player gear value estimation
+- Corpse and death marker tracking
+- Exfil point display with status indicators
+- Quest location markers and objective tracking
+- Hazard zone visualization (minefields, sniper zones)
 
-## Features ✨
+### Loot System
+- Loose loot scanning with price filtering
+- Container contents scanning (PVE/Offline)
+- Custom loot filters with color coding
+- Quest item highlighting
+- Hideout upgrade item tracking
+- Corpse loot inspection
 
-- 🛰️ ESP Fuser DX9 overlay
-   - Mini radar integration to the fuser ESP overlay
-- 🎯 Device Aimbot / Kmbox integration
-- 🕵️‍♂️ Silent aim (memory aim)
-- 💪 No recoil, no sway, and infinite stamina
-- 🧼 Clean UI
+### Widgets & UI
+- Aimview widget with configurable FOV
+- Player info widget (health, gear, distance)
+- Freelook mode with smooth panning
+- Multi-map support with auto-detection
+- Configurable draw distances and entity visibility
+- Clean WPF interface with SkiaSharp rendering
 
-##  Common Issues ⚠️
+### ESP & Overlay
+- DX9 Fuser overlay with mini-radar
+- Box ESP, skeleton ESP, distance markers
+- Health bars and player names
+- Loot ESP with filtering
 
-### - You might have performance issue when running both the radar and the fuser overlay at the same time on low end hardware
+### Memory Features
+- Device aimbot (KMBox support)
+- Silent aim
+- No recoil / no sway
+- Infinite stamina
+- Thermal/NVG toggle
+- Loot through walls
 
-### - The silent aimbot / device aimbot might be innacurate
+### Web Radar
+- Remote web-based radar access
+- Real-time data streaming
+- Mobile-friendly interface
 
-### - DX Overlay/D3DX Errors ("DX overlay init failed", "ESP DX init failed: System.DllNotFoundException: Unable to load DLL 'd3dx943.dll'...")
+## Requirements
 
-If you see an error like:
+- Windows 11 (tested on 23H2/25H2)
+- DMA hardware (FPGA-based)
+- .NET 8.0 Runtime
+- 1920x1080 resolution recommended
 
+## Common Issues
+
+### DX Overlay/D3DX Errors
+
+If you see errors like:
 ```
 DX overlay init failed
-
-ESP DX init failed: System.DllNotFoundException: Unable to load DLL 'd3dx943.dll' or one of its dependencies: The specified module could not be found
+ESP DX init failed: System.DllNotFoundException: Unable to load DLL 'd3dx943.dll'
 ```
 
-This means your PC does **not** have the required legacy DirectX 9 *D3DX* runtime (specifically `d3dx9_43.dll`). Modern Windows installs (Windows 10/11) **do not include** this file by default.
+**Fix:** Download and install the [DirectX End-User Runtime (June 2010)](https://www.microsoft.com/en-us/download/details.aspx?id=8109) from Microsoft.
 
-**How to fix:**
+Do **not** download DLL files from third-party sites.
 
-1. **On your Radar PC**, download and run Microsoft’s official installer:
+### Performance Issues
 
-   👉 [DirectX End-User Runtime (June 2010)](https://www.microsoft.com/en-us/download/details.aspx?id=8109)
+Running both radar and fuser overlay simultaneously may impact performance on lower-end hardware. Consider disabling the overlay if experiencing issues.
 
-   > This will add the required DirectX 9 component (`d3dx9_43.dll`) and several others needed by the overlay.
+## Building
 
-2. **Follow the install prompts** to complete setup.
+```bash
+dotnet build -c Release
+```
 
-3. **Restart the radar app.** A full PC reboot may help but is usually not required.
+Output will be in `bin/Release/net8.0-windows/`
 
-**Do NOT** attempt to download `d3dx9_43.dll` from random third-party DLL sites. Use only Microsoft’s official installer.
+## Credits
 
+- [Lone DMA](https://github.com/lone-dma) - Original Lone EFT DMA Radar
+- [Moulman](https://github.com/Moulman) - ESP, aimbot, and memory-write features
 
-##  Contributing 🤝
+## Contributing
 
-Send PRs if you wish to participate. Contributions are welcome!
+Contributions welcome. Fork the repository and submit pull requests for features or fixes.
 
-- Please fork the repository and create pull requests for features or fixes.
-- Test your changes before submitting a PR.
-- If you are submitting a significant change, consider opening an issue to discuss it first.
+## Disclaimer
+
+For educational purposes only. Use at your own risk.

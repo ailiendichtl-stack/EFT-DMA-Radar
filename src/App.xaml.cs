@@ -65,7 +65,7 @@ namespace LoneEftDmaRadar
     /// </summary>
     public partial class App : Application
     {
-        internal const string Name = "Moulman EFT DMA Radar";
+        internal const string Name = "Twilight PVE Radar";
         private const string MUTEX_ID = "0f908ff7-e614-6a93-60a3-cee36c9cea91";
         private static readonly Mutex _mutex;
 
@@ -73,7 +73,7 @@ namespace LoneEftDmaRadar
         /// Path to the Configuration Folder in %AppData%
         /// </summary>
         public static DirectoryInfo ConfigPath { get; } =
-            new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Moulman-EFT-DMA"));
+            new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Twilight-PVE-Radar"));
         /// <summary>
         /// Global Program Configuration.
         /// </summary>
@@ -114,7 +114,7 @@ namespace LoneEftDmaRadar
         }
 
         /// <summary>
-        /// Migrates config from old "Lone-EFT-DMA" folder to new "Moulman-EFT-DMA" folder if needed.
+        /// Migrates config from old "Moulman-EFT-DMA" or "Lone-EFT-DMA" folder to new "Twilight-PVE-Radar" folder if needed.
         /// </summary>
         private static void MigrateOldConfig()
         {
@@ -124,9 +124,12 @@ namespace LoneEftDmaRadar
                 if (ConfigPath.Exists)
                     return;
 
-                // Check if old config folder exists
-                var oldConfigPath = new DirectoryInfo(
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lone-EFT-DMA"));
+                // Check for old config folders (Moulman first, then Lone)
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var oldConfigPath = new DirectoryInfo(Path.Combine(appData, "Moulman-EFT-DMA"));
+
+                if (!oldConfigPath.Exists)
+                    oldConfigPath = new DirectoryInfo(Path.Combine(appData, "Lone-EFT-DMA"));
 
                 if (!oldConfigPath.Exists)
                     return;
@@ -266,7 +269,7 @@ namespace LoneEftDmaRadar
             {
                 var updater = new UpdateManager(
                     source: new GithubSource(
-                        repoUrl: "https://github.com/moulmandev/EFT-DMA-Radar",
+                        repoUrl: "https://github.com/ailiendichtl-stack/EFT-DMA-Radar",
                         accessToken: null,
                         prerelease: false));
                 if (!updater.IsInstalled)

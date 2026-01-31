@@ -8,7 +8,7 @@
         xmlns:tabs="clr-namespace:LoneEftDmaRadar.UI.Radar.Views"
         xmlns:hotkeys="clr-namespace:LoneEftDmaRadar.UI.Hotkeys"
         mc:Ignorable="d"
-        Title="Moulman EFT DMA Radar"
+        Title="Twilight PVE Radar"
         Width="1280" Height="720"
         Icon="/lone-icon.ico">
     <d:Window.DataContext>

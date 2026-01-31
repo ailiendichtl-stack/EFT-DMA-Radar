@@ -370,5 +370,8 @@ namespace LoneEftDmaRadar.UI.Skia
         public static readonly SKColor EnemyRaider = SKColor.Parse("FFC70F"); // Amber
         public static readonly SKColor Teammate = SKColor.Parse("4CAF50");    // Green
         public static readonly SKColor Default = SKColor.Parse("9E9E9E");     // Gray
+        public static readonly SKColor ExtractOpen = SKColor.Parse("32CD32");    // LimeGreen
+        public static readonly SKColor ExtractPending = SKColor.Parse("FFD700"); // Gold/Yellow
+        public static readonly SKColor ExtractClosed = SKColor.Parse("CD5C5C");  // IndianRed
     }
 }

@@ -42,23 +42,36 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
         /// </summary>
         private ulong _exfilPointAddr;
 
+        /// <summary>
+        /// Extract faction type (PMC, Scav, or Shared).
+        /// </summary>
+        public enum EFaction { PMC, Scav, Shared }
+
         public Exfil(TarkovDataManager.ExtractElement extract)
         {
             Name = extract.Name;
             _position = extract.Position.AsVector3();
+            Faction = extract.IsPmc ? EFaction.PMC :
+                      extract.IsShared ? EFaction.Shared : EFaction.Scav;
         }
 
         /// <summary>
         /// Constructor for exfil loaded directly from memory.
         /// </summary>
-        public Exfil(string name, Vector3 position, ulong exfilPointAddr)
+        public Exfil(string name, Vector3 position, ulong exfilPointAddr, EFaction faction = EFaction.Shared)
         {
             Name = name;
             _position = position;
             _exfilPointAddr = exfilPointAddr;
+            Faction = faction;
         }
 
         public string Name { get; }
+
+        /// <summary>
+        /// The faction type of this extract (PMC, Scav, or Shared).
+        /// </summary>
+        public EFaction Faction { get; }
 
         /// <summary>
         /// Sets the memory address for this exfil to enable live status updates.
@@ -146,9 +159,47 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
 
         public void DrawMouseover(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
         {
-            var exfilName = Name;
-            exfilName ??= "unknown";
-            Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams).DrawMouseoverText(canvas, exfilName);
+            var pos = Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams);
+
+            // Select accent color based on status
+            var accentColor = Status switch
+            {
+                EStatus.Open => TooltipColors.ExtractOpen,
+                EStatus.Pending => TooltipColors.ExtractPending,
+                _ => TooltipColors.ExtractClosed
+            };
+
+            var tooltip = new TooltipData(Name ?? "Unknown Extract", accentColor);
+
+            // Status row with colored value
+            var statusText = Status switch
+            {
+                EStatus.Open => "Open",
+                EStatus.Pending => "Pending",
+                EStatus.Closed => "Closed",
+                _ => "Unknown"
+            };
+            tooltip.AddRow("Status", statusText, accentColor);
+
+            // Faction row
+            var factionText = Faction switch
+            {
+                EFaction.PMC => "PMC",
+                EFaction.Scav => "Scav",
+                EFaction.Shared => "Shared",
+                _ => "Unknown"
+            };
+            tooltip.AddRow("Type", factionText);
+
+            // Distance row
+            var distance = Vector3.Distance(Position, localPlayer.Position);
+            tooltip.AddRow("Distance", $"{distance:F0} m");
+
+            // Get canvas dimensions for edge detection
+            var canvasWidth = canvas.LocalClipBounds.Width;
+            var canvasHeight = canvas.LocalClipBounds.Height;
+
+            TooltipCard.Draw(canvas, pos, tooltip, canvasWidth, canvasHeight);
         }
 
         #endregion

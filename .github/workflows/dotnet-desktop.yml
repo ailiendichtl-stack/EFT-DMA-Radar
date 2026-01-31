@@ -18,7 +18,7 @@ concurrency:
 jobs:
   build:
     name: Build & Deploy
-    if: github.repository_owner == 'moulmandev' ## If you remove this change the Velopack packId from 'github.moulmandev.eft' below.
+    if: github.repository_owner == 'ailiendichtl-stack' ## If you remove this change the Velopack packId below.
     runs-on: windows-latest
 
     steps:
@@ -68,11 +68,11 @@ jobs:
       - name: Pack with Velopack
         run: |
           vpk pack `
-            --packId github.moulmandev.eft `
+            --packId github.ailiendichtl.twilight `
             --packVersion "${{ steps.nbgv.outputs.SemVer2 }}" `
             --packDir "out" `
-            --mainExe "Moulman-EFT-DMA-Radar.exe" `
-            --packTitle "Moulman's EFT DMA Radar" `
+            --mainExe "Twilight-PVE-Radar.exe" `
+            --packTitle "Twilight PVE Radar" `
             --icon "Resources/lone-icon.ico"
 
       - name: Upload to GitHub Releases
@@ -82,7 +82,7 @@ jobs:
           vpk upload github `
             --repoUrl "https://github.com/${{ github.repository }}" `
             --publish `
-            --releaseName "EFT ${{ steps.nbgv.outputs.SemVer2 }}" `
+            --releaseName "Twilight ${{ steps.nbgv.outputs.SemVer2 }}" `
             --tag "v${{ steps.nbgv.outputs.SemVer2 }}" `
             --targetCommitish "${{ github.sha }}" `
             --token "$env:GITHUB_TOKEN"

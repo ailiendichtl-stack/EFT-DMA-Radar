@@ -25,7 +25,7 @@ namespace SDK
 
         public readonly partial struct ExfiltrationPoint
         {
-            public const uint Status = 0xA8; // EExfiltrationStatus
+            public const uint Status = 0xC8; // EExfiltrationStatus (updated offset)
             public const uint Settings = 0x58; // ExitSettings
             public const uint PlayersMetAllRequirements = 0xB8; // List<string>
         }
