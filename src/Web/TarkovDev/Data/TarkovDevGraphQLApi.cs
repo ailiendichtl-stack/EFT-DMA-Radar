@@ -147,6 +147,7 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
                                         name
                                     }
                                     position {x,y,z}
+                                    outline {x,y,z}
                                 }
                             }
                             ... on TaskObjectiveItem {
@@ -164,6 +165,7 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
                                         name
                                     }
                                     position {x,y,z}
+                                    outline {x,y,z}
                                 }
                             }
                             ... on TaskObjectiveQuestItem {
@@ -181,6 +183,7 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
                                         name
                                     }
                                     position {x,y,z}
+                                    outline {x,y,z}
                                 }
                             }
                             ... on TaskObjectiveMark {
@@ -196,6 +199,7 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
                                         name
                                     }
                                     position {x,y,z}
+                                    outline {x,y,z}
                                 }
                             }
                             ... on TaskObjectiveShoot {
@@ -207,6 +211,7 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
                                         name
                                     }
                                     position {x,y,z}
+                                    outline {x,y,z}
                                 }
                             }
                             ... on TaskObjectiveExtract {

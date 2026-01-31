@@ -70,33 +70,65 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
             var point = Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams);
             MouseoverPosition = new Vector2(point.X, point.Y);
 
-            var paint = SKPaints.PaintQuestZone;
-            SKPaints.ShapeOutline.StrokeWidth = QuestConstants.QuestMarkerStrokeWidth;
+            float scale = App.Config.UI.UIScale;
+            float markerRadius = (HasOutline ? 4f : 6f) * scale;
 
-            // Adjust marker size based on whether polygon is shown
-            float markerSize = HasOutline ? QuestConstants.QuestMarkerSquareSize * 0.5f : QuestConstants.QuestMarkerSquareSize;
+            // Quest marker colors
+            var fillColor = TooltipColors.Quest;
+            var borderColor = SKColors.White;
+
+            using var fillPaint = new SKPaint
+            {
+                Color = fillColor,
+                Style = SKPaintStyle.Fill,
+                IsAntialias = true
+            };
+
+            using var borderPaint = new SKPaint
+            {
+                Color = borderColor,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 2f * scale,
+                IsAntialias = true
+            };
 
             if (heightDiff > QuestConstants.QuestMarkerHeightThreshold)
             {
-                // Location is above player - draw up arrow
-                using var path = point.GetUpArrow(markerSize);
-                canvas.DrawPath(path, SKPaints.ShapeOutline);
-                canvas.DrawPath(path, paint);
+                // Location is above player - draw circle with up indicator
+                canvas.DrawCircle(point, markerRadius, fillPaint);
+                canvas.DrawCircle(point, markerRadius, borderPaint);
+
+                // Small up arrow above
+                var arrowY = point.Y - markerRadius - 4 * scale;
+                using var arrowPaint = new SKPaint { Color = fillColor, Style = SKPaintStyle.Fill, IsAntialias = true };
+                using var arrowPath = new SKPath();
+                arrowPath.MoveTo(point.X, arrowY - 4 * scale);
+                arrowPath.LineTo(point.X - 4 * scale, arrowY);
+                arrowPath.LineTo(point.X + 4 * scale, arrowY);
+                arrowPath.Close();
+                canvas.DrawPath(arrowPath, arrowPaint);
             }
             else if (heightDiff < -QuestConstants.QuestMarkerHeightThreshold)
             {
-                // Location is below player - draw down arrow
-                using var path = point.GetDownArrow(markerSize);
-                canvas.DrawPath(path, SKPaints.ShapeOutline);
-                canvas.DrawPath(path, paint);
+                // Location is below player - draw circle with down indicator
+                canvas.DrawCircle(point, markerRadius, fillPaint);
+                canvas.DrawCircle(point, markerRadius, borderPaint);
+
+                // Small down arrow below
+                var arrowY = point.Y + markerRadius + 4 * scale;
+                using var arrowPaint = new SKPaint { Color = fillColor, Style = SKPaintStyle.Fill, IsAntialias = true };
+                using var arrowPath = new SKPath();
+                arrowPath.MoveTo(point.X, arrowY + 4 * scale);
+                arrowPath.LineTo(point.X - 4 * scale, arrowY);
+                arrowPath.LineTo(point.X + 4 * scale, arrowY);
+                arrowPath.Close();
+                canvas.DrawPath(arrowPath, arrowPaint);
             }
             else
             {
-                // Location is level with player - draw square
-                float size = markerSize * App.Config.UI.UIScale;
-                var rect = new SKRect(point.X - size, point.Y - size, point.X + size, point.Y + size);
-                canvas.DrawRect(rect, SKPaints.ShapeOutline);
-                canvas.DrawRect(rect, paint);
+                // Location is level with player - draw filled circle
+                canvas.DrawCircle(point, markerRadius, fillPaint);
+                canvas.DrawCircle(point, markerRadius, borderPaint);
             }
         }
 
@@ -105,8 +137,156 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
         /// </summary>
         public void DrawMouseover(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
         {
-            string text = GetDisplayText();
-            Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams).DrawMouseoverText(canvas, text);
+            var isExpanded = TooltipCard.IsExpanded(this);
+            var tooltip = new TooltipData("Quest Objective", TooltipColors.Quest);
+
+            if (TarkovDataManager.TaskData.TryGetValue(QuestId, out var task))
+            {
+                var traderName = task.Trader?.Name ?? "Unknown";
+                var questName = task.Name ?? "Unknown Quest";
+
+                tooltip = new TooltipData(questName, TooltipColors.Quest);
+                tooltip.SetSubHeader(traderName);
+
+                // Find objective
+                var objective = task.Objectives?.FirstOrDefault(o => o.Id == ObjectiveId);
+                if (objective != null)
+                {
+                    // Objective type
+                    var typeName = GetObjectiveTypeDisplayName(objective.Type);
+                    tooltip.AddRow("Type", typeName);
+
+                    // Progress
+                    var progress = Memory.Quests?.GetObjectiveProgress(QuestId, ObjectiveId);
+                    if (progress.HasValue)
+                    {
+                        var (isCompleted, currentCount) = progress.Value;
+                        var targetCount = objective.Count > 0 ? objective.Count : 1;
+
+                        if (isCompleted)
+                            tooltip.AddRow("Status", "Complete", TooltipColors.Teammate);
+                        else if (targetCount > 1)
+                            tooltip.AddRow("Progress", $"{currentCount}/{targetCount}");
+                    }
+
+                    // FIR requirement
+                    if (objective.FoundInRaid)
+                        tooltip.AddRow("Requirement", "Found in Raid", TooltipColors.LootQuest);
+
+                    // Description - full when expanded, truncated otherwise
+                    if (!string.IsNullOrEmpty(objective.Description))
+                    {
+                        if (isExpanded)
+                        {
+                            // Show full description, split into multiple lines if needed
+                            var desc = objective.Description;
+                            var maxLineLength = 50;
+                            var lines = SplitTextIntoLines(desc, maxLineLength);
+                            for (int i = 0; i < lines.Count; i++)
+                            {
+                                tooltip.AddRow(i == 0 ? "Objective" : "", lines[i]);
+                            }
+                        }
+                        else
+                        {
+                            var desc = objective.Description.Length > 40
+                                ? objective.Description.Substring(0, 40) + "..."
+                                : objective.Description;
+                            tooltip.AddRow("Objective", desc);
+                        }
+                    }
+
+                    // Expanded: Show item details if applicable
+                    if (isExpanded)
+                    {
+                        if (objective.Item != null && !string.IsNullOrEmpty(objective.Item.Name))
+                            tooltip.AddRow("Item", objective.Item.Name, TooltipColors.LootQuest);
+                        if (objective.QuestItem != null && !string.IsNullOrEmpty(objective.QuestItem.Name))
+                            tooltip.AddRow("Quest Item", objective.QuestItem.Name, TooltipColors.LootQuest);
+                        if (objective.MarkerItem != null && !string.IsNullOrEmpty(objective.MarkerItem.Name))
+                            tooltip.AddRow("Marker", objective.MarkerItem.Name);
+                    }
+                }
+
+                // Keys needed - show all when expanded
+                if (task.NeededKeys?.Count > 0)
+                {
+                    var allKeys = task.NeededKeys
+                        .SelectMany(group => group.Keys ?? Enumerable.Empty<TarkovDataManager.TaskElement.ObjectiveElement.MarkerItemClass>())
+                        .Select(k => k.ShortName ?? k.Name)
+                        .Where(name => !string.IsNullOrEmpty(name))
+                        .ToList();
+
+                    if (allKeys.Count > 0)
+                    {
+                        if (isExpanded)
+                        {
+                            // Show all keys
+                            for (int i = 0; i < allKeys.Count; i++)
+                            {
+                                tooltip.AddRow(i == 0 ? "Keys" : "", allKeys[i], TooltipColors.LootValuable);
+                            }
+                        }
+                        else
+                        {
+                            // Show first 2 only
+                            var keyNames = allKeys.Take(2).ToList();
+                            var keysText = string.Join(", ", keyNames);
+                            if (allKeys.Count > 2)
+                                keysText += $" (+{allKeys.Count - 2})";
+                            tooltip.AddRow("Keys", keysText, TooltipColors.LootValuable);
+                        }
+                    }
+                }
+
+                // Badges
+                if (task.KappaRequired)
+                    tooltip.AddRow("Badge", "Kappa Required", SKColors.Gold);
+                else if (task.LightkeeperRequired)
+                    tooltip.AddRow("Badge", "Lightkeeper", SKColors.LightBlue);
+            }
+
+            // Distance
+            var distance = Vector3.Distance(localPlayer.Position, Position);
+            tooltip.AddRow("Distance", $"{distance:F1} m");
+
+            // Click hint when not expanded
+            if (!isExpanded)
+                tooltip.AddRow("", "[Click to expand]", TooltipColors.Default);
+
+            var pos = Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams);
+            var canvasWidth = mapParams.Bounds.Width * mapParams.XScale;
+            var canvasHeight = mapParams.Bounds.Height * mapParams.YScale;
+            TooltipCard.Draw(canvas, pos, tooltip, canvasWidth, canvasHeight);
+        }
+
+        /// <summary>
+        /// Split text into lines of max length.
+        /// </summary>
+        private static List<string> SplitTextIntoLines(string text, int maxLength)
+        {
+            var lines = new List<string>();
+            var words = text.Split(' ');
+            var currentLine = "";
+
+            foreach (var word in words)
+            {
+                if (currentLine.Length + word.Length + 1 <= maxLength)
+                {
+                    currentLine += (currentLine.Length > 0 ? " " : "") + word;
+                }
+                else
+                {
+                    if (currentLine.Length > 0)
+                        lines.Add(currentLine);
+                    currentLine = word;
+                }
+            }
+
+            if (currentLine.Length > 0)
+                lines.Add(currentLine);
+
+            return lines;
         }
 
         /// <summary>
@@ -136,19 +316,19 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
 
             path.Close();
 
-            // Fill with semi-transparent cyan
+            // Fill with semi-transparent quest color
             using var fillPaint = new SKPaint
             {
-                Color = SKColors.Cyan.WithAlpha(40),  // Very transparent fill
+                Color = TooltipColors.Quest.WithAlpha(40),  // Very transparent fill
                 Style = SKPaintStyle.Fill,
                 IsAntialias = true
             };
             canvas.DrawPath(path, fillPaint);
 
-            // Stroke with more opaque cyan
+            // Stroke with more opaque quest color
             using var strokePaint = new SKPaint
             {
-                Color = SKColors.Cyan.WithAlpha(180),  // Match current point alpha
+                Color = TooltipColors.Quest.WithAlpha(180),
                 Style = SKPaintStyle.Stroke,
                 StrokeWidth = 2f * App.Config.UI.UIScale,
                 IsAntialias = true

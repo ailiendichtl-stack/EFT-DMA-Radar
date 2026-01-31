@@ -267,6 +267,54 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
         public virtual void DrawMouseover(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
         {
+            // Determine accent color based on item type
+            SKColor accentColor;
+            if (IsQuestItem)
+                accentColor = TooltipColors.LootQuest;
+            else if (IsHideoutItem)
+                accentColor = TooltipColors.LootHideout;
+            else if (IsValuableLoot)
+                accentColor = TooltipColors.LootValuable;
+            else if (!string.IsNullOrEmpty(CustomFilter?.Color) && SKColor.TryParse(CustomFilter.Color, out var filterColor))
+                accentColor = filterColor;
+            else
+                accentColor = TooltipColors.Default;
+
+            var tooltip = new TooltipData(ShortName, accentColor);
+            tooltip.SetSubHeader(Name != ShortName ? Name : null);
+
+            // Price info
+            if (Price > 0)
+            {
+                var priceSource = App.Config.Loot.PriceMode == LootPriceMode.FleaMarket ? "Flea" : "Trader";
+                tooltip.AddRow("Value", $"${Utilities.FormatNumberKM(Price)}", TooltipColors.LootValuable);
+                tooltip.AddRow("Source", priceSource);
+            }
+            else
+            {
+                tooltip.AddRow("Value", "Unknown", TooltipColors.Default);
+            }
+
+            // Size (slots)
+            if (GridCount > 1)
+                tooltip.AddRow("Size", $"{GridCount} slots");
+
+            // Tags
+            if (IsQuestItem)
+                tooltip.AddRow("Tag", "Quest Item", TooltipColors.LootQuest);
+            else if (IsHideoutItem)
+                tooltip.AddRow("Tag", "Hideout Item", TooltipColors.LootHideout);
+            else if (Important)
+                tooltip.AddRow("Tag", "Important", SKColors.MediumPurple);
+
+            // Distance
+            var distance = Vector3.Distance(localPlayer.Position, Position);
+            tooltip.AddRow("Distance", $"{distance:F1} m");
+
+            var pos = Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams);
+            var canvasWidth = mapParams.Bounds.Width * mapParams.XScale;
+            var canvasHeight = mapParams.Bounds.Height * mapParams.YScale;
+            TooltipCard.Draw(canvas, pos, tooltip, canvasWidth, canvasHeight);
         }
 
         /// <summary>

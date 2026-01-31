@@ -22,7 +22,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
             QuestObjectiveType.BuildWeapon,
             QuestObjectiveType.GiveQuestItem,
             QuestObjectiveType.Extract,
-            QuestObjectiveType.Shoot,
             QuestObjectiveType.TraderLevel,
             QuestObjectiveType.GiveItem
         }.ToFrozenSet();
@@ -112,7 +111,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Quests
             return type == QuestObjectiveType.Visit ||
                    type == QuestObjectiveType.Mark ||
                    type == QuestObjectiveType.PlantItem ||
-                   type == QuestObjectiveType.PlantQuestItem;
+                   type == QuestObjectiveType.PlantQuestItem ||
+                   type == QuestObjectiveType.Shoot;
         }
 
         private static void ProcessLocationObjective(

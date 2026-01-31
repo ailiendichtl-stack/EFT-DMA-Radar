@@ -839,6 +839,12 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             {
                 _lastMousePosition = mouse;
                 _mouseDown = true;
+
+                // Toggle expanded tooltip on left-click when hovering an item
+                if (_mouseOverItem != null)
+                {
+                    TooltipCard.ToggleExpanded(_mouseOverItem);
+                }
             }
             if (e.RightButton is System.Windows.Input.MouseButtonState.Pressed)
             {
@@ -964,6 +970,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 {
                     _mouseOverItem = null;
                     MouseoverGroup = null;
+                    TooltipCard.ClearExpanded();
                 }
             }
         }

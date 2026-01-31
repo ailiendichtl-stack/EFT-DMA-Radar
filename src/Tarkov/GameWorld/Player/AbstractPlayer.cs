@@ -1317,49 +1317,99 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         {
             if (this == localPlayer)
                 return;
-            using var lines = new PooledList<string>();
-            var name = App.Config.UI.HideNames && IsHuman ? "<Hidden>" : Name;
-            string health = null;
-            if (this is ObservedPlayer observed)
-                health = observed.HealthStatus is Enums.ETagStatus.Healthy
-                    ? null
-                    : $" ({observed.HealthStatus.ToString()})"; // Only display abnormal health status
-            string alert = Alerts?.Trim();
-            if (!string.IsNullOrEmpty(alert)) // Special Players,etc.
-                lines.Add(alert);
-            if (IsHostileActive) // Enemy Players, display information
-            {
-                lines.Add($"{name}{health}".Trim());
-                var faction = PlayerSide.ToString();
-                string g = null;
-                if (GroupID != -1)
-                    g = $" G:{GroupID} ";
-                lines.Add($"{faction}{g}");
-            }
-            else if (!IsAlive)
-            {
-                lines.Add($"{Type.ToString()}:{name}");
-                string g = null;
-                if (GroupID != -1)
-                    g = $"G:{GroupID} ";
-                if (g is not null) lines.Add(g);
-            }
-            else if (IsAIActive)
-            {
-                lines.Add(name);
-            }
 
+            var name = App.Config.UI.HideNames && IsHuman ? "<Hidden>" : Name;
+
+            // Determine accent color based on player type
+            var accentColor = Type switch
+            {
+                PlayerType.Teammate => TooltipColors.Teammate,
+                PlayerType.PMC => IsPmc ? (PlayerSide == Enums.EPlayerSide.Bear ? TooltipColors.EnemyPMC : SKColor.Parse("2196F3")) : TooltipColors.EnemyPMC,
+                PlayerType.AIScav => TooltipColors.EnemyScav,
+                PlayerType.AIBoss => TooltipColors.EnemyBoss,
+                PlayerType.AIRaider => TooltipColors.EnemyRaider,
+                PlayerType.PScav => SKColors.White,
+                PlayerType.SpecialPlayer => SKColors.HotPink,
+                PlayerType.Streamer => SKColors.MediumPurple,
+                _ => TooltipColors.Default
+            };
+
+            // Build header: type + name
+            string typeLabel = Type switch
+            {
+                PlayerType.PMC => PlayerSide == Enums.EPlayerSide.Bear ? "BEAR" : "USEC",
+                PlayerType.AIScav => "Scav",
+                PlayerType.AIBoss => "Boss",
+                PlayerType.AIRaider => "Raider",
+                PlayerType.PScav => "P.Scav",
+                PlayerType.Teammate => "Team",
+                PlayerType.SpecialPlayer => "Special",
+                PlayerType.Streamer => "Streamer",
+                _ => Type.ToString()
+            };
+            var header = $"{typeLabel}";
+
+            var tooltip = new TooltipData(header, accentColor);
+            tooltip.SetSubHeader(name);
+
+            // Status row
+            string status = IsAlive ? "Alive" : "Dead";
+            if (this is ObservedPlayer observed && observed.HealthStatus != Enums.ETagStatus.Healthy)
+                status = observed.HealthStatus.ToString();
+            tooltip.AddRow("Status", status, IsAlive ? null : SKColors.Red);
+
+            // Distance
+            var distance = Vector3.Distance(localPlayer.Position, Position);
+            tooltip.AddRow("Distance", $"{distance:F1} m");
+
+            // Group ID
+            if (GroupID != -1)
+                tooltip.AddRow("Group", $"#{GroupID}");
+
+            // Equipment info for ObservedPlayers
+            var isExpanded = TooltipCard.IsExpanded(this);
             if (this is ObservedPlayer obs2 && obs2.Equipment.Items is IReadOnlyDictionary<string, TarkovMarketItem> equipment)
             {
-                // This is outside of the previous conditionals to always show equipment even if they're dead,etc.
-                lines.Add($"Value: {Utilities.FormatNumberKM(obs2.Equipment.Value)}");
-                foreach (var item in equipment.OrderBy(e => e.Key))
+                tooltip.AddRow("Gear", $"${Utilities.FormatNumberKM(obs2.Equipment.Value)}", TooltipColors.LootValuable);
+
+                if (isExpanded)
                 {
-                    lines.Add($"{item.Key.Substring(0, 5)}: {item.Value.ShortName}");
+                    // Show all equipment when expanded
+                    foreach (var item in equipment.OrderBy(e => e.Key))
+                    {
+                        tooltip.AddRow($"  {item.Key}", item.Value.ShortName);
+                    }
+                }
+                else
+                {
+                    // Show key equipment only
+                    if (equipment.TryGetValue("ArmorVest", out var armor))
+                        tooltip.AddRow("Armor", armor.ShortName);
+                    else if (equipment.TryGetValue("TacticalVest", out var rig))
+                        tooltip.AddRow("Rig", rig.ShortName);
+                    else
+                        tooltip.AddRow("Armor", "None", TooltipColors.Default);
+
+                    if (equipment.TryGetValue("Headwear", out var helmet))
+                        tooltip.AddRow("Helmet", helmet.ShortName);
+                    else
+                        tooltip.AddRow("Helmet", "None", TooltipColors.Default);
+
+                    // Show expand hint if has more equipment
+                    if (equipment.Count > 2)
+                        tooltip.AddRow("", "[Click to expand]", TooltipColors.Default);
                 }
             }
 
-            Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams).DrawMouseoverText(canvas, lines.Span);
+            // Alerts (special player warnings)
+            string alert = Alerts?.Trim();
+            if (!string.IsNullOrEmpty(alert))
+                tooltip.AddRow("Alert", alert, SKColors.HotPink);
+
+            var pos = Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams);
+            var canvasWidth = mapParams.Bounds.Width * mapParams.XScale;
+            var canvasHeight = mapParams.Bounds.Height * mapParams.YScale;
+            TooltipCard.Draw(canvas, pos, tooltip, canvasWidth, canvasHeight);
         }
 
         #endregion

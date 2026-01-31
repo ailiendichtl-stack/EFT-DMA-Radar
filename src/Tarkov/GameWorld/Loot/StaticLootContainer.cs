@@ -273,26 +273,67 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
         public override void DrawMouseover(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
         {
-            using var lines = new PooledList<string>();
-            lines.Add(Name);
+            var isExpanded = TooltipCard.IsExpanded(this);
 
+            // Determine accent color based on container contents
+            SKColor accentColor;
+            if (HasImportantContents)
+                accentColor = !string.IsNullOrEmpty(ImportantItemFilterColor) && SKColor.TryParse(ImportantItemFilterColor, out var filterColor)
+                    ? filterColor
+                    : SKColors.MediumPurple;
+            else if (HasQuestContents)
+                accentColor = TooltipColors.LootQuest;
+            else if (HasHideoutContents)
+                accentColor = TooltipColors.LootHideout;
+            else if (IsValuableContainer)
+                accentColor = TooltipColors.LootValuable;
+            else
+                accentColor = TooltipColors.Container;
+
+            var tooltip = new TooltipData(Name, accentColor);
+
+            // Status
+            if (Searched)
+                tooltip.AddRow("Status", "Searched", TooltipColors.Default);
+
+            // Value info
             if (_contents?.Count > 0)
             {
-                lines.Add($"Value: {Utilities.FormatNumberKM(TotalValue)}");
-                // Show top items sorted by price (max 8 items)
-                // Mark hideout items with [H] prefix
-                foreach (var item in _contents.OrderByDescending(x => x.Price).Take(8))
+                tooltip.AddRow("Value", $"${Utilities.FormatNumberKM(TotalValue)}", TooltipColors.LootValuable);
+                tooltip.AddRow("Items", $"{_contents.Count}");
+
+                // Show items - more when expanded
+                var itemLimit = isExpanded ? 15 : 5;
+                var topItems = _contents.OrderByDescending(x => x.Price).Take(itemLimit);
+                foreach (var item in topItems)
                 {
-                    var prefix = item.IsHideoutItem ? "[H] " : "";
-                    lines.Add($"  {prefix}[{Utilities.FormatNumberKM(item.Price)}] {item.Name}");
+                    var itemColor = item.IsQuestItem ? TooltipColors.LootQuest
+                        : item.IsHideoutItem ? TooltipColors.LootHideout
+                        : (SKColor?)null;
+                    tooltip.AddRow($"  ${Utilities.FormatNumberKM(item.Price)}", item.Name, itemColor);
                 }
+
+                // Show remaining count if not expanded
+                if (!isExpanded && _contents.Count > 5)
+                    tooltip.AddRow("", $"(+{_contents.Count - 5} more)", TooltipColors.Default);
             }
             else
             {
-                lines.Add("(Empty or unopened)");
+                tooltip.AddRow("Contents", "Unknown", TooltipColors.Default);
             }
 
-            Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams).DrawMouseoverText(canvas, lines.Span);
+            // Distance
+            var distance = Vector3.Distance(localPlayer.Position, Position);
+            tooltip.AddRow("Distance", $"{distance:F1} m");
+
+            // Click hint when not expanded and has more items
+            if (!isExpanded && _contents?.Count > 5)
+                tooltip.AddRow("", "[Click to expand]", TooltipColors.Default);
+
+            var pos = Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams);
+            var canvasWidth = mapParams.Bounds.Width * mapParams.XScale;
+            var canvasHeight = mapParams.Bounds.Height * mapParams.YScale;
+            TooltipCard.Draw(canvas, pos, tooltip, canvasWidth, canvasHeight);
         }
     }
 }
