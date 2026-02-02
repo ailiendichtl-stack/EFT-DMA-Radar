@@ -101,14 +101,37 @@ namespace LoneEftDmaRadar.UI.Controls
             // Set the TitleBar as the drag handle so dragging only works from title bar
             // This allows resize to work from the rest of the panel
             DraggableBehavior.SetDragHandle(this, TitleBar);
+
+            // Fix for panels that were saved in collapsed state:
+            // If height is at or near TitleBarHeight but IsCollapsed is false,
+            // the panel was collapsed when saved. Restore to a reasonable height.
+            if (!IsCollapsed && ActualHeight <= TitleBarHeight + 10)
+            {
+                // Panel was saved collapsed - restore to default height
+                _expandedHeight = 400;
+                Height = _expandedHeight;
+            }
+            else if (!IsCollapsed && ActualHeight > TitleBarHeight)
+            {
+                // Normal expanded panel - store the height
+                _expandedHeight = ActualHeight;
+            }
         }
 
         private void CollapseButton_Click(object sender, RoutedEventArgs e)
         {
             if (!IsCollapsed)
             {
-                // Store current height before collapsing
-                _expandedHeight = ActualHeight;
+                // Store current height before collapsing (only if valid)
+                if (ActualHeight > TitleBarHeight + 10)
+                {
+                    _expandedHeight = ActualHeight;
+                }
+                else if (_expandedHeight <= TitleBarHeight)
+                {
+                    // No valid expanded height stored, use default
+                    _expandedHeight = 400;
+                }
             }
             IsCollapsed = !IsCollapsed;
         }
@@ -125,18 +148,25 @@ namespace LoneEftDmaRadar.UI.Controls
         {
             if (isCollapsed)
             {
-                // Store height if not already stored
-                if (_expandedHeight <= 0)
+                // Store height if not already stored (and valid)
+                if (_expandedHeight <= TitleBarHeight && ActualHeight > TitleBarHeight + 10)
                     _expandedHeight = ActualHeight;
+
+                // Ensure we have a fallback expanded height
+                if (_expandedHeight <= TitleBarHeight)
+                    _expandedHeight = 400;
 
                 // Collapse to just title bar
                 Height = TitleBarHeight;
             }
             else
             {
+                // Ensure we have a valid expanded height
+                if (_expandedHeight <= TitleBarHeight)
+                    _expandedHeight = 400;
+
                 // Restore expanded height
-                if (_expandedHeight > TitleBarHeight)
-                    Height = _expandedHeight;
+                Height = _expandedHeight;
             }
         }
 

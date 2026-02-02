@@ -960,6 +960,19 @@ namespace LoneEftDmaRadar
         public float HipfireSpeedFactor { get; set; } = 0.3f;
 
         /// <summary>
+        /// Derivative gain for velocity-based aim prediction.
+        /// Higher = more lead on moving targets. 0 = disabled (legacy behavior).
+        /// Range: 0.0-2.0, Default: 0.5
+        /// </summary>
+        public float DerivativeGain { get; set; } = 0.5f;
+
+        /// <summary>
+        /// Enable adaptive smoothing based on target movement speed.
+        /// Faster lock on stationary targets, smoother tracking on moving targets.
+        /// </summary>
+        public bool AdaptiveSmoothing { get; set; } = true;
+
+        /// <summary>
         /// Polling rate in Hz for the aimbot loop. Higher = more responsive but more CPU usage.
         /// Default: 125 Hz (~8ms per tick). Range: 30-1000 Hz.
         /// </summary>
@@ -972,6 +985,24 @@ namespace LoneEftDmaRadar
         public TargetingMode Targeting { get; set; } = TargetingMode.ClosestToCrosshair;
         public bool EnablePrediction { get; set; } = true;
         public float DropCompensationFactor { get; set; } = 0.5f; // 0.1 to 1.0 multiplier for drop compensation
+
+        /// <summary>
+        /// Enable horizontal lead prediction for moving targets.
+        /// </summary>
+        public bool EnableLeadPrediction { get; set; } = true;
+
+        /// <summary>
+        /// Multiplier for ballistic lead prediction (based on bullet travel time).
+        /// 1.0 = exact ballistic lead. Only affects long-range shots significantly.
+        /// </summary>
+        public float LeadCompensationFactor { get; set; } = 1.0f;
+
+        /// <summary>
+        /// Extra lead time in milliseconds to compensate for DMA read latency.
+        /// This adds constant lead regardless of distance. Typical values: 15-50ms.
+        /// Target moving at 5 m/s with 30ms latency = 15cm extra lead.
+        /// </summary>
+        public float DmaLatencyMs { get; set; } = 0f;
 
         // Target Filters
         public bool TargetPMC { get; set; } = true;

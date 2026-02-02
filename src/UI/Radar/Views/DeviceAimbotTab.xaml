@@ -194,6 +194,11 @@
                               IsChecked="{Binding EnablePrediction, Mode=TwoWay}"
                               Margin="8,4,8,8" />
 
+                    <CheckBox Content="Enable Lead Prediction (Moving Targets)"
+                              IsChecked="{Binding EnableLeadPrediction, Mode=TwoWay}"
+                              ToolTip="Predicts where moving targets will be. Disable if you prefer no horizontal compensation."
+                              Margin="8,4,8,8" />
+
                     <TextBlock Text="{Binding DropCompensationFactor, StringFormat='Drop Compensation: {0:P0}'}"
                                FontWeight="Bold"
                                Margin="8,8,8,4" />
@@ -201,6 +206,28 @@
                             Minimum="0.1"
                             Maximum="1.0"
                             TickFrequency="0.1"
+                            IsSnapToTickEnabled="True"
+                            Margin="8,4,8,8" />
+
+                    <TextBlock Text="{Binding LeadCompensationFactor, StringFormat='Ballistic Lead: {0:F1}x'}"
+                               FontWeight="Bold"
+                               Margin="8,8,8,4"
+                               ToolTip="Multiplier for bullet travel time lead. Only noticeable at long range." />
+                    <Slider Value="{Binding LeadCompensationFactor, Mode=TwoWay}"
+                            Minimum="0.5"
+                            Maximum="3.0"
+                            TickFrequency="0.1"
+                            IsSnapToTickEnabled="True"
+                            Margin="8,4,8,8" />
+
+                    <TextBlock Text="{Binding DmaLatencyMs, StringFormat='DMA Latency: {0:F0} ms'}"
+                               FontWeight="Bold"
+                               Margin="8,8,8,4"
+                               ToolTip="Extra lead time to compensate for DMA read delay. Start with 50-100ms and adjust. Higher = aim further ahead of moving targets." />
+                    <Slider Value="{Binding DmaLatencyMs, Mode=TwoWay}"
+                            Minimum="0"
+                            Maximum="300"
+                            TickFrequency="10"
                             IsSnapToTickEnabled="True"
                             Margin="8,4,8,8" />
 

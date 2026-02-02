@@ -2,6 +2,8 @@
 
 A feature-rich DMA-based radar for Escape from Tarkov, forked from [Lone EFT DMA Radar](https://github.com/lone-dma/Lone-EFT-DMA-Radar) with additional enhancements.
 
+**Note:** This project is primarily developed and tested for **PVE mode**. Most features should work in PVP as well, but PVP compatibility is not actively tested.
+
 ## Features
 
 ### Radar & Tracking
@@ -27,7 +29,9 @@ A feature-rich DMA-based radar for Escape from Tarkov, forked from [Lone EFT DMA
 - Freelook mode with smooth panning
 - Multi-map support with auto-detection
 - Configurable draw distances and entity visibility
-- Clean WPF interface with SkiaSharp rendering
+- Modular floating panel UI with drag, resize, and collapse
+- Auto-collapsing sidebar navigation
+- SkiaSharp-powered radar rendering
 
 ### ESP & Overlay
 - DX9 Fuser overlay with mini-radar
@@ -42,6 +46,8 @@ A feature-rich DMA-based radar for Escape from Tarkov, forked from [Lone EFT DMA
 - Infinite stamina
 - Thermal/NVG toggle
 - Loot through walls
+
+*Memory write features are from the original Moulman fork and have not been tested by the current maintainer.*
 
 ### Web Radar
 - Remote web-based radar access

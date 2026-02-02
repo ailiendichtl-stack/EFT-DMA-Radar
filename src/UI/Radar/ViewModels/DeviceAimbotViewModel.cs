@@ -226,10 +226,28 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             set { App.Config.Device.EnablePrediction = value; OnPropertyChanged(); }
         }
 
+        public bool EnableLeadPrediction
+        {
+            get => App.Config.Device.EnableLeadPrediction;
+            set { App.Config.Device.EnableLeadPrediction = value; OnPropertyChanged(); }
+        }
+
         public float DropCompensationFactor
         {
             get => App.Config.Device.DropCompensationFactor;
             set { App.Config.Device.DropCompensationFactor = Math.Clamp(value, 0.1f, 1.0f); OnPropertyChanged(); }
+        }
+
+        public float LeadCompensationFactor
+        {
+            get => App.Config.Device.LeadCompensationFactor;
+            set { App.Config.Device.LeadCompensationFactor = Math.Clamp(value, 0.5f, 3.0f); OnPropertyChanged(); }
+        }
+
+        public float DmaLatencyMs
+        {
+            get => App.Config.Device.DmaLatencyMs;
+            set { App.Config.Device.DmaLatencyMs = Math.Clamp(value, 0f, 300f); OnPropertyChanged(); }
         }
 
         public bool NoRecoilEnabled

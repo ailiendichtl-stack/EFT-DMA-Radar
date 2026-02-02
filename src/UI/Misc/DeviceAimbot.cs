@@ -86,6 +86,19 @@ namespace LoneEftDmaRadar.UI.Misc
         // Fractional accumulators - track sub-pixel movement to prevent rounding loss
         private float _accumX, _accumY;
 
+        // Velocity tracking for PD control (screen-space)
+        private Vector2 _lastTargetScreenPos;
+        private Vector2 _targetScreenVelocity;
+        private bool _hasLastScreenPos;
+        private long _lastVelocityUpdateTicks;
+
+        // World-space velocity tracking (works for ALL target types including AI)
+        private Vector3 _velocitySamplePos;      // Position used for velocity calculation
+        private Vector3 _targetWorldVelocity;
+        private bool _hasVelocitySample;
+        private long _velocitySampleTicks;
+        private string _lastTrackedTargetId;
+
         // Reusable list to avoid allocations in hot path
         private readonly List<TargetCandidate> _candidateBuffer = new(32);
 
@@ -319,6 +332,9 @@ namespace LoneEftDmaRadar.UI.Misc
                             Thread.Sleep(10);
                             continue;
                         }
+
+                        // Reset velocity tracking for new target
+                        ResetVelocityTracking();
                     }
                     else if (!IsTargetValid(_lockedTarget, localPlayer))
                     {
@@ -334,6 +350,9 @@ namespace LoneEftDmaRadar.UI.Misc
                                 Thread.Sleep(10);
                                 continue;
                             }
+
+                            // Reset velocity tracking for new target
+                            ResetVelocityTracking();
                         }
                         else
                         {
@@ -619,11 +638,19 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             // Clear fractional accumulators to prevent carryover
             _accumX = 0;
             _accumY = 0;
+            // Reset velocity tracking
+            ResetVelocityTracking();
         }
 
         private bool TryGetTargetBone(AbstractPlayer target, Bones targetBone, out UnityTransform boneTransform)
         {
             boneTransform = null;
+
+            // Use PlayerBones directly - this is the live data source
+            // Skeleton.BoneTransforms references PlayerBones but Skeleton object can become stale
+            var bones = target.PlayerBones;
+            if (bones == null || bones.Count == 0)
+                return false;
 
             // Closest-visible bone option - with caching to avoid expensive recalculation every frame
             if (targetBone == Bones.Closest)
@@ -636,7 +663,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                     (nowTicks - _closestBoneCacheTimeTicks) < ClosestBoneCacheDurationTicks)
                 {
                     // Use cached bone selection
-                    if (target.Skeleton.BoneTransforms.TryGetValue(_cachedClosestBone, out boneTransform))
+                    if (bones.TryGetValue(_cachedClosestBone, out boneTransform))
                         return true;
                 }
 
@@ -644,7 +671,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 float bestFov = float.MaxValue;
                 Bones bestBone = default;
 
-                foreach (var kvp in target.Skeleton.BoneTransforms)
+                foreach (var kvp in bones)
                 {
                     if (CameraManager.WorldToScreen(in kvp.Value.Position, out var screenPos))
                     {
@@ -669,11 +696,11 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             }
 
             // Specific bone
-            if (target.Skeleton.BoneTransforms.TryGetValue(targetBone, out boneTransform))
+            if (bones.TryGetValue(targetBone, out boneTransform))
                 return true;
 
             // Fallback to chest if configured bone not found
-            return target.Skeleton.BoneTransforms.TryGetValue(Bones.HumanSpine3, out boneTransform);
+            return bones.TryGetValue(Bones.HumanSpine3, out boneTransform);
         }
 
         #endregion
@@ -682,8 +709,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
 
         private void AimAtTarget(LocalPlayer localPlayer, AbstractPlayer target, Vector3? fireportPos)
         {
-            // Check if skeleton exists
-            if (target.Skeleton?.BoneTransforms == null)
+            // Check if bones exist
+            if (target.PlayerBones == null || target.PlayerBones.Count == 0)
                 return;
 
             var selectedBone = (App.Config.MemWrites.Enabled && App.Config.MemWrites.MemoryAimEnabled)
@@ -714,6 +741,9 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             // Convert to screen space
             if (!CameraManager.WorldToScreen(ref targetPos, out var screenPos, false))
                 return;
+
+            // Update target screen velocity for PD control
+            UpdateTargetScreenVelocity(screenPos);
 
             // Calculate delta from center
             var center = CameraManager.ViewportCenter;
@@ -760,22 +790,56 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
 
             // Rate compensation for high polling rates
             // Higher polling rates need smaller movements per tick for same perceived speed
+            // Linear scaling ensures consistent movement speed regardless of polling rate
             float pollingRate = Math.Max(30f, Config.PollingRateHz);
-            float rateScale = MathF.Sqrt(pollingRate / SMOOTHING_REFERENCE_RATE);
+            float rateScale = pollingRate / SMOOTHING_REFERENCE_RATE;
 
             // Smoothing 1 = instant (no rate scaling)
             // Smoothing 2+ = apply rate scaling for consistent feel at high poll rates
-            float effectiveSmoothing = Config.Smoothing <= 1f
+            float baseSmoothing = Config.Smoothing <= 1f
                 ? 1f
                 : Config.Smoothing * rateScale;
+
+            // Adaptive smoothing based on target movement speed
+            float targetSpeed = _targetScreenVelocity.Length();
+            float effectiveSmoothing = GetAdaptiveSmoothing(baseSmoothing, targetSpeed);
 
             // Apply hipfire speed reduction when not aiming down sights
             // This prevents massive overshoots in hipfire where screen delta is much larger
             float speedFactor = isAiming ? 1.0f : Config.HipfireSpeedFactor;
 
-            // Simple proportional control: move = delta / smoothing * speedFactor
-            float moveX = (deltaX / effectiveSmoothing) * speedFactor;
-            float moveY = (deltaY / effectiveSmoothing) * speedFactor;
+            // === PD Control ===
+            // P term: Proportional to error
+            float Kp = 1.0f / effectiveSmoothing;
+
+            // D term: Adds target velocity to "lead" the aim
+            // Velocity is in pixels/sec, so divide by polling rate to get per-tick contribution
+            // This keeps the D term effect consistent across different polling rates
+            float Kd = (Config.DerivativeGain * 0.01f) / pollingRate;
+
+            // === Aim Settling (soft dead zone) ===
+            // When very close to target, reduce correction strength to prevent micro-oscillation
+            // This gives smooth "settling" without losing accuracy during acquisition
+            float errorDistance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
+            const float settleRadius = 3.0f;  // Pixels - start settling within this radius
+            float settleFactor = 1.0f;
+
+            if (errorDistance < settleRadius && errorDistance > 0.1f)
+            {
+                // Quadratic falloff: corrections get weaker as we get closer
+                // At edge of radius: factor = 1.0, at center: factor approaches 0
+                float t = errorDistance / settleRadius;
+                settleFactor = t * t;  // Quadratic for smooth feel
+            }
+            else if (errorDistance <= 0.1f)
+            {
+                // Essentially on target - no correction needed
+                settleFactor = 0f;
+            }
+
+            // Control output: P term + D term (velocity feed-forward), with settling
+            float moveX = (deltaX * Kp * settleFactor + _targetScreenVelocity.X * Kd) * speedFactor;
+            float moveY = (deltaY * Kp * settleFactor + _targetScreenVelocity.Y * Kd) * speedFactor;
 
             // Clamp to device limits (-127 to 127)
             moveX = Math.Clamp(moveX, -MAX_MOVE_PER_TICK, MAX_MOVE_PER_TICK);
@@ -796,6 +860,171 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             return (resultX, resultY);
         }
 
+        /// <summary>
+        /// Updates target screen-space velocity for PD control.
+        /// Call this each frame with the current target screen position.
+        /// </summary>
+        private void UpdateTargetScreenVelocity(Vector2 currentScreenPos)
+        {
+            long now = _cacheTimer.ElapsedTicks;
+
+            if (_hasLastScreenPos)
+            {
+                // Calculate time delta in seconds
+                float dt = (now - _lastVelocityUpdateTicks) / (float)Stopwatch.Frequency;
+
+                if (dt > 0.001f && dt < 0.5f) // Valid delta time range
+                {
+                    Vector2 posDelta = currentScreenPos - _lastTargetScreenPos;
+                    Vector2 newVelocity = posDelta / dt;
+
+                    // Smooth velocity with exponential moving average (reduces jitter)
+                    const float velocitySmoothing = 0.3f;
+                    _targetScreenVelocity = Vector2.Lerp(_targetScreenVelocity, newVelocity, velocitySmoothing);
+                }
+            }
+
+            _lastTargetScreenPos = currentScreenPos;
+            _lastVelocityUpdateTicks = now;
+            _hasLastScreenPos = true;
+        }
+
+        /// <summary>
+        /// Resets velocity tracking when target changes.
+        /// </summary>
+        private void ResetVelocityTracking()
+        {
+            _hasLastScreenPos = false;
+            _targetScreenVelocity = Vector2.Zero;
+            _hasVelocitySample = false;
+            _targetWorldVelocity = Vector3.Zero;
+        }
+
+        /// <summary>
+        /// Updates world-space velocity tracking by calculating velocity from position changes.
+        /// Works for ALL target types (AI scavs, PMCs, etc.) unlike memory-read velocity.
+        /// Uses accumulated position delta over ~20ms for stable velocity estimation.
+        /// </summary>
+        private void UpdateTargetWorldVelocity(Vector3 currentWorldPos, string targetId)
+        {
+            long now = _cacheTimer.ElapsedTicks;
+
+            // Reset if target changed
+            if (_lastTrackedTargetId != targetId)
+            {
+                _hasVelocitySample = false;
+                _targetWorldVelocity = Vector3.Zero;
+                _lastTrackedTargetId = targetId;
+            }
+
+            if (!_hasVelocitySample)
+            {
+                // First frame - just store position, can't calculate velocity yet
+                _velocitySamplePos = currentWorldPos;
+                _velocitySampleTicks = now;
+                _hasVelocitySample = true;
+                return;
+            }
+
+            // Calculate time since last velocity sample
+            float dt = (now - _velocitySampleTicks) / (float)Stopwatch.Frequency;
+
+            // Use shorter interval for first reading (faster response), longer for subsequent (stability)
+            bool isFirstReading = _targetWorldVelocity == Vector3.Zero;
+            float sampleInterval = isFirstReading ? 0.005f : 0.025f; // 5ms first, 25ms after
+
+            if (dt >= sampleInterval)
+            {
+                Vector3 posDelta = currentWorldPos - _velocitySamplePos;
+                float posDeltaMag = posDelta.Length();
+
+                // Minimum movement threshold - filters out rotation/jitter
+                // Walking at 2m/s for 25ms = 5cm movement, so 3cm is safe threshold
+                float minMovement = isFirstReading ? 0.02f : 0.03f; // 2cm first, 3cm after
+
+                if (posDeltaMag > minMovement)
+                {
+                    Vector3 newVelocity = posDelta / dt;
+                    float newSpeed = newVelocity.Length();
+
+                    // Minimum speed to count as moving (filters rotation jitter)
+                    // Walking = ~2m/s, rotation jitter = ~0.3-0.8m/s
+                    const float minSpeedThreshold = 1.2f;
+
+                    // Clamp to realistic max speed (15 m/s ~= sprinting speed)
+                    const float maxRealisticSpeed = 15f;
+
+                    if (newSpeed >= minSpeedThreshold && newSpeed <= maxRealisticSpeed)
+                    {
+                        if (isFirstReading)
+                        {
+                            // First reading - initialize immediately
+                            _targetWorldVelocity = newVelocity;
+                        }
+                        else
+                        {
+                            // Smooth subsequent readings (lower = more stable)
+                            const float velocitySmoothing = 0.18f;
+                            _targetWorldVelocity = Vector3.Lerp(_targetWorldVelocity, newVelocity, velocitySmoothing);
+                        }
+
+                        // Update sample position for next calculation
+                        _velocitySamplePos = currentWorldPos;
+                        _velocitySampleTicks = now;
+                    }
+                    else if (newSpeed > maxRealisticSpeed)
+                    {
+                        // Spike - ignore this sample but don't update position
+                    }
+                    else
+                    {
+                        // Below threshold - decay velocity
+                        _targetWorldVelocity = Vector3.Lerp(_targetWorldVelocity, Vector3.Zero, 0.15f);
+                        _velocitySamplePos = currentWorldPos;
+                        _velocitySampleTicks = now;
+                    }
+                }
+                else if (dt > 0.050f)
+                {
+                    // Target stationary for 50ms+ - decay velocity toward zero
+                    _targetWorldVelocity = Vector3.Lerp(_targetWorldVelocity, Vector3.Zero, 0.2f);
+                    _velocitySamplePos = currentWorldPos;
+                    _velocitySampleTicks = now;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Calculates adaptive smoothing based on target movement speed.
+        /// Stationary targets get faster lock, moving targets get smoother tracking.
+        /// </summary>
+        private float GetAdaptiveSmoothing(float baseSmoothing, float targetSpeed)
+        {
+            if (!Config.AdaptiveSmoothing)
+                return baseSmoothing;
+
+            // targetSpeed is in pixels/second
+            const float stationaryThreshold = 50f;   // pixels/sec
+            const float fastThreshold = 500f;        // pixels/sec
+
+            if (targetSpeed < stationaryThreshold)
+            {
+                // Stationary: reduce smoothing for faster lock (50% of base)
+                return baseSmoothing * 0.5f;
+            }
+            else if (targetSpeed > fastThreshold)
+            {
+                // Fast moving: increase smoothing for stability (150% of base)
+                return baseSmoothing * 1.5f;
+            }
+            else
+            {
+                // Linear interpolation
+                float t = (targetSpeed - stationaryThreshold) / (fastThreshold - stationaryThreshold);
+                return baseSmoothing * (0.5f + t * 1.0f);
+            }
+        }
+
         private Vector3 PredictHitPoint(LocalPlayer localPlayer, AbstractPlayer target, Vector3 fireportPos, Vector3 targetPos)
         {
             try
@@ -805,19 +1034,34 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 if (ballistics == null || !ballistics.IsAmmoValid)
                     return targetPos;
 
-                // Get target velocity (only for player scavs and PMCs that have movement)
-                Vector3 targetVelocity = Vector3.Zero;
+                // Update world-space velocity tracking (works for ALL target types)
+                // This calculates velocity from position changes over time
+                string targetId = target.Base.ToString();
+                UpdateTargetWorldVelocity(targetPos, targetId);
+
+                // Get target velocity - prefer calculated velocity as it works for all targets
+                // Memory-read velocity only works for ObservedPlayer types
+                Vector3 targetVelocity = _targetWorldVelocity;
+
+                // Try memory read for ObservedPlayer (may be more accurate for PMCs/player scavs)
                 if (target is ObservedPlayer)
                 {
                     try
                     {
-                        targetVelocity = _memory.ReadValue<Vector3>(
+                        Vector3 memVelocity = _memory.ReadValue<Vector3>(
                             target.MovementContext + Offsets.ObservedMovementController.Velocity,
                             false);
+
+                        // Use memory velocity if it's valid and faster than calculated
+                        // This handles cases where memory is more responsive
+                        if (memVelocity.Length() > targetVelocity.Length() * 0.5f)
+                        {
+                            targetVelocity = memVelocity;
+                        }
                     }
                     catch
                     {
-                        // Velocity read failed, use zero
+                        // Memory read failed, stick with calculated velocity
                     }
                 }
 
@@ -848,17 +1092,24 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                     predictedPos.Y += sim.DropCompensation * Config.DropCompensationFactor;
                 }
 
-                // Get travel time for lead calculation (always use full distance)
-                var fullSim = BallisticsSimulation.Run(ref fireportPos, ref targetPos, ballistics);
-
-                // Add lead for moving targets (use full distance travel time)
-                if (targetVelocity != Vector3.Zero)
+                // Add lead for moving targets (if enabled)
+                if (Config.EnableLeadPrediction && targetVelocity != Vector3.Zero)
                 {
                     float speed = targetVelocity.Length();
-                    if (speed > 0.5f) // Only predict if moving faster than 0.5 m/s
+                    if (speed > 1.0f) // Only predict if actually moving (filters rotation)
                     {
-                        Vector3 lead = targetVelocity * fullSim.TravelTime;
-                        predictedPos += lead;
+                        // Get travel time for lead calculation
+                        var fullSim = BallisticsSimulation.Run(ref fireportPos, ref targetPos, ballistics);
+
+                        // Ballistic lead: based on bullet travel time (affects long range)
+                        Vector3 ballisticLead = targetVelocity * fullSim.TravelTime * Config.LeadCompensationFactor;
+
+                        // DMA latency lead: constant extra lead based on estimated read delay
+                        // This is the main compensation for DMA latency at all ranges
+                        float latencySeconds = Config.DmaLatencyMs / 1000f;
+                        Vector3 latencyLead = targetVelocity * latencySeconds;
+
+                        predictedPos += ballisticLead + latencyLead;
                     }
                 }
 
