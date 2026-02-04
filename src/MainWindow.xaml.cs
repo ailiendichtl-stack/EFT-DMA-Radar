@@ -208,6 +208,19 @@ namespace LoneEftDmaRadar
             {
                 if (!Radar?.IsVisible ?? false)
                     return; // Ignore if radar is not visible
+
+                // Don't zoom if scrolling inside a panel (check if mouse is over a ScrollViewer)
+                if (e.OriginalSource is DependencyObject source)
+                {
+                    var parent = source;
+                    while (parent != null)
+                    {
+                        if (parent is System.Windows.Controls.ScrollViewer)
+                            return; // Let the ScrollViewer handle the wheel event
+                        parent = System.Windows.Media.VisualTreeHelper.GetParent(parent);
+                    }
+                }
+
                 if (e.Delta > 0) // mouse wheel up (zoom in)
                 {
                     int amt = (int)((e.Delta / wheelDelta) * 5d); // Calculate zoom amount based on number of deltas

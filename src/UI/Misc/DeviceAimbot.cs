@@ -49,13 +49,14 @@ namespace LoneEftDmaRadar.UI.Misc
         private readonly MemDMA _memory;
         private readonly Thread _worker;
         private readonly object _targetLock = new(); // Lock for thread-safe target access
+        private readonly object _ballisticsLock = new(); // Lock for ballistics cache atomicity
         private readonly Stopwatch _cacheTimer = Stopwatch.StartNew(); // High-precision timer for caching
 
         // Thread-safe state
         private volatile bool _disposed;
         private volatile string _debugStatus = "Initializing...";
         private AbstractPlayer _lockedTarget; // Protected by _targetLock
-        private BallisticsInfo _lastBallistics; // Protected by _targetLock
+        private BallisticsInfo _lastBallistics; // Protected by _ballisticsLock
 
         // FOV / target debug fields (read by UI thread, written by worker)
         private volatile int _lastCandidateCount;
@@ -319,36 +320,54 @@ namespace LoneEftDmaRadar.UI.Misc
                         _hasLastFireport = false;
                     }
 
-                    // 6) Target acquisition
-                    if (_lockedTarget == null)
+                    // 6) Target acquisition (thread-safe)
+                    AbstractPlayer currentTarget;
+                    lock (_targetLock)
+                    {
+                        currentTarget = _lockedTarget;
+                    }
+
+                    if (currentTarget == null)
                     {
                         // No target - always try to acquire one
                         _debugStatus = "Scanning for target...";
-                        _lockedTarget = FindBestTarget(game, localPlayer);
+                        var newTarget = FindBestTarget(game, localPlayer);
 
-                        if (_lockedTarget == null)
+                        if (newTarget == null)
                         {
                             _debugStatus = "No target in FOV / range";
                             Thread.Sleep(10);
                             continue;
                         }
 
+                        lock (_targetLock)
+                        {
+                            _lockedTarget = newTarget;
+                            currentTarget = newTarget;
+                        }
+
                         // Reset velocity tracking for new target
                         ResetVelocityTracking();
                     }
-                    else if (!IsTargetValid(_lockedTarget, localPlayer))
+                    else if (!IsTargetValid(currentTarget, localPlayer))
                     {
                         if (Config.AutoTargetSwitch)
                         {
                             // Auto switch enabled - find new target
                             _debugStatus = "Target invalid, auto-switching...";
-                            _lockedTarget = FindBestTarget(game, localPlayer);
+                            var newTarget = FindBestTarget(game, localPlayer);
 
-                            if (_lockedTarget == null)
+                            if (newTarget == null)
                             {
                                 _debugStatus = "No target in FOV / range";
                                 Thread.Sleep(10);
                                 continue;
+                            }
+
+                            lock (_targetLock)
+                            {
+                                _lockedTarget = newTarget;
+                                currentTarget = newTarget;
                             }
 
                             // Reset velocity tracking for new target
@@ -363,21 +382,21 @@ namespace LoneEftDmaRadar.UI.Misc
                         }
                     }
 
-                    _debugStatus = $"Target locked: {_lockedTarget.Name}";
+                    _debugStatus = $"Target locked: {currentTarget.Name}";
 
                     // 7) Ballistics
                     _lastBallistics = GetBallisticsInfo(localPlayer);
-            if (_lastBallistics == null || !_lastBallistics.IsAmmoValid)
-            {
-                _debugStatus = $"Target {_lockedTarget.Name} - No valid ammo/ballistics (using raw aim)";
-            }
-            else
-            {
-                _debugStatus = $"Target {_lockedTarget.Name} - Ballistics OK";
-            }
+                    if (_lastBallistics == null || !_lastBallistics.IsAmmoValid)
+                    {
+                        _debugStatus = $"Target {currentTarget.Name} - No valid ammo/ballistics (using raw aim)";
+                    }
+                    else
+                    {
+                        _debugStatus = $"Target {currentTarget.Name} - Ballistics OK";
+                    }
 
                     // 8) Aim
-                    AimAtTarget(localPlayer, _lockedTarget, fireportPosOpt);
+                    AimAtTarget(localPlayer, currentTarget, fireportPosOpt);
 
                     // === PRECISION TIMING (Step 2) ===
                     // Use configurable polling rate with sub-ms precision
@@ -617,23 +636,29 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
         {
             // Use fast path for already-locked targets (skip FOV re-check)
             // The target was already validated when acquired, just check it's still alive/in-range
-            if (target == _lockedTarget && _lockedTarget != null)
+            lock (_targetLock)
             {
-                return IsTargetValidFast(target, localPlayer);
+                if (target == _lockedTarget && _lockedTarget != null)
+                {
+                    return IsTargetValidFast(target, localPlayer);
+                }
             }
 
-            // Full validation for new targets
+            // Full validation for new targets (outside lock to avoid contention)
             return IsTargetValidFull(target, localPlayer);
         }
 
         private void ResetTarget()
         {
-            if (_lockedTarget != null)
+            lock (_targetLock)
             {
-                _lockedTarget = null;
-                // Clear bone cache when target changes
-                _cachedClosestBone = default;
-                _cachedClosestBoneTarget = null;
+                if (_lockedTarget != null)
+                {
+                    _lockedTarget = null;
+                    // Clear bone cache when target changes
+                    _cachedClosestBone = default;
+                    _cachedClosestBoneTarget = null;
+                }
             }
             // Clear fractional accumulators to prevent carryover
             _accumX = 0;
@@ -1074,23 +1099,24 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 // Apply prediction
                 Vector3 predictedPos = targetPos;
 
-                // Only calculate drop for distance beyond zeroing
-                // If target is within zeroing distance, no drop compensation needed
+                // Run full ballistics simulation to target (used for both drop and lead)
+                var fullSim = BallisticsSimulation.Run(ref fireportPos, ref targetPos, ballistics);
+
+                // Calculate drop compensation using correct physics:
+                // When zeroed at 50m, the sight line is angled so bullet hits aim point at 50m.
+                // Actual compensation needed = fullDrop - zeroingDrop
                 if (actualDistance > zeroingDistance)
                 {
-                    // Calculate effective distance (distance beyond zeroing point)
-                    float effectiveDistance = actualDistance - zeroingDistance;
-
-                    // Create an adjusted target position at the effective distance for simulation
+                    // Simulate drop at zeroing distance
                     Vector3 directionToTarget = Vector3.Normalize(targetPos - fireportPos);
-                    Vector3 effectiveTargetPos = fireportPos + directionToTarget * effectiveDistance;
+                    Vector3 zeroingTargetPos = fireportPos + directionToTarget * zeroingDistance;
+                    var zeroingSim = BallisticsSimulation.Run(ref fireportPos, ref zeroingTargetPos, ballistics);
 
-                    // Run ballistics simulation for the effective distance only
-                    var sim = BallisticsSimulation.Run(ref fireportPos, ref effectiveTargetPos, ballistics);
-
-                    // Add drop compensation (scaled by user-configured factor)
-                    predictedPos.Y += sim.DropCompensation * Config.DropCompensationFactor;
+                    // True drop compensation = total drop minus what zeroing already accounts for
+                    float dropCompensation = fullSim.DropCompensation - zeroingSim.DropCompensation;
+                    predictedPos.Y += dropCompensation * Config.DropCompensationFactor;
                 }
+                // Within zeroing distance: bullet is still rising to meet sight line, minimal compensation needed
 
                 // Add lead for moving targets (if enabled)
                 if (Config.EnableLeadPrediction && targetVelocity != Vector3.Zero)
@@ -1098,10 +1124,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                     float speed = targetVelocity.Length();
                     if (speed > 1.0f) // Only predict if actually moving (filters rotation)
                     {
-                        // Get travel time for lead calculation
-                        var fullSim = BallisticsSimulation.Run(ref fireportPos, ref targetPos, ballistics);
-
-                        // Ballistic lead: based on bullet travel time (affects long range)
+                        // Ballistic lead: based on bullet travel time (reuse fullSim)
                         Vector3 ballisticLead = targetVelocity * fullSim.TravelTime * Config.LeadCompensationFactor;
 
                         // DMA latency lead: constant extra lead based on estimated read delay
@@ -1133,13 +1156,16 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 ulong handsAddr = snapshot.ItemAddr;
                 long nowTicks = _cacheTimer.ElapsedTicks;
 
-                // === BALLISTICS CACHING ===
+                // === BALLISTICS CACHING (thread-safe) ===
                 // Check if we can use cached ballistics (same weapon and cache not expired)
-                if (_lastBallistics != null &&
-                    handsAddr == _cachedBallisticsHandsAddr &&
-                    (nowTicks - _ballisticsCacheTimeTicks) < BallisticsCacheDurationTicks)
+                lock (_ballisticsLock)
                 {
-                    return _lastBallistics; // Return cached result
+                    if (_lastBallistics != null &&
+                        handsAddr == _cachedBallisticsHandsAddr &&
+                        (nowTicks - _ballisticsCacheTimeTicks) < BallisticsCacheDurationTicks)
+                    {
+                        return _lastBallistics; // Return cached result
+                    }
                 }
 
                 ulong itemBase = handsAddr;
@@ -1196,9 +1222,13 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 if (!ballistics.IsAmmoValid)
                     return CreateFallbackBallistics();
 
-                // Cache the result
-                _cachedBallisticsHandsAddr = handsAddr;
-                _ballisticsCacheTimeTicks = nowTicks;
+                // Cache the result (thread-safe atomic update)
+                lock (_ballisticsLock)
+                {
+                    _lastBallistics = ballistics;
+                    _cachedBallisticsHandsAddr = handsAddr;
+                    _ballisticsCacheTimeTicks = nowTicks;
+                }
 
                 return ballistics;
             }
@@ -1256,8 +1286,9 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
 
         /// <summary>
         /// Set to true while the aim-key is held (from hotkey/ui).
+        /// Thread-safe: marked volatile for cross-thread visibility.
         /// </summary>
-        private bool _isEngaged;
+        private volatile bool _isEngaged;
         public bool IsEngaged
         {
             get => _isEngaged;
