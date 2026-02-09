@@ -74,6 +74,7 @@ namespace LoneEftDmaRadar.UI.ViewModels
         public PanelState MemWritesPanel { get; } = new() { X = 440, Y = 90, Width = 350, Height = 300 };
         public PanelState WebRadarPanel { get; } = new() { X = 460, Y = 110, Width = 450, Height = 350 };
         public PanelState DebugPanel { get; } = new() { X = 480, Y = 130, Width = 400, Height = 300 };
+        public PanelState VisibilityPanel { get; } = new() { X = 300, Y = 80, Width = 500, Height = 460 };
 
         #endregion
 
@@ -111,6 +112,7 @@ namespace LoneEftDmaRadar.UI.ViewModels
         public ICommand ToggleMemWritesPanelCommand { get; }
         public ICommand ToggleWebRadarPanelCommand { get; }
         public ICommand ToggleDebugPanelCommand { get; }
+        public ICommand ToggleVisibilityPanelCommand { get; }
         public ICommand ResetAllPanelsCommand { get; }
 
         #endregion
@@ -131,7 +133,8 @@ namespace LoneEftDmaRadar.UI.ViewModels
                 ["AimbotPanel"] = AimbotPanel,
                 ["MemWritesPanel"] = MemWritesPanel,
                 ["WebRadarPanel"] = WebRadarPanel,
-                ["DebugPanel"] = DebugPanel
+                ["DebugPanel"] = DebugPanel,
+                ["VisibilityPanel"] = VisibilityPanel
             };
 
             // Initialize toggle commands
@@ -147,6 +150,7 @@ namespace LoneEftDmaRadar.UI.ViewModels
             ToggleMemWritesPanelCommand = new RelayCommand(() => TogglePanel(MemWritesPanel));
             ToggleWebRadarPanelCommand = new RelayCommand(() => TogglePanel(WebRadarPanel));
             ToggleDebugPanelCommand = new RelayCommand(() => TogglePanel(DebugPanel));
+            ToggleVisibilityPanelCommand = new RelayCommand(() => TogglePanel(VisibilityPanel));
             ResetAllPanelsCommand = new RelayCommand(ResetAllPanels);
 
             // Load saved panel states from config
@@ -216,6 +220,7 @@ namespace LoneEftDmaRadar.UI.ViewModels
             ResetPanel(MemWritesPanel, 440, 90, 350, 300);
             ResetPanel(WebRadarPanel, 460, 110, 450, 350);
             ResetPanel(DebugPanel, 480, 130, 400, 300);
+            ResetPanel(VisibilityPanel, 300, 80, 500, 460);
         }
 
         private void ResetPanel(PanelState panel, double x, double y, double width, double height)

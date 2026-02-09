@@ -1,0 +1,174 @@
+<UserControl x:Class="LoneEftDmaRadar.UI.Radar.Views.VisibilityTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:LoneEftDmaRadar.UI.Misc"
+             xmlns:vm="clr-namespace:LoneEftDmaRadar.UI.Radar.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+             mc:Ignorable="d"
+             Padding="10">
+
+    <d:UserControl.DataContext>
+        <d:DesignInstance Type="{x:Type vm:VisibilityViewModel}"
+                          IsDesignTimeCreatable="False" />
+    </d:UserControl.DataContext>
+
+    <UserControl.Resources>
+        <conv:StringToColorConverter x:Key="StringToColorConverter" />
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Orientation="Vertical" Margin="0,0,0,10">
+
+            <!-- Connection Status -->
+            <GroupBox Header="Connection" Margin="0,0,0,12">
+                <StackPanel>
+                    <WrapPanel Margin="0,4,0,0">
+                        <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,6,0">
+                            <Ellipse.Style>
+                                <Style TargetType="Ellipse">
+                                    <Setter Property="Fill" Value="Red"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                            <Setter Property="Fill" Value="LimeGreen"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Ellipse.Style>
+                        </Ellipse>
+                        <TextBlock Text="{Binding ConnectionStatus}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding StatsText}" Margin="0,4,0,0" Foreground="Gray"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- LOS Settings -->
+            <GroupBox Header="LOS Settings" Margin="0,0,0,12">
+                <StackPanel>
+                    <CheckBox Content="Enable LOS Integration" IsChecked="{Binding Enabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                    <CheckBox Content="Auto-connect to SHM" IsChecked="{Binding ShmEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                    <CheckBox Content="Per-Bone Coloring" IsChecked="{Binding PerBoneColoring, Mode=TwoWay}" Margin="0,0,0,8"
+                              ToolTip="Color each skeleton segment individually based on bone visibility. When off, colors the whole entity."/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Colors -->
+            <GroupBox Header="Colors" Margin="0,0,0,12">
+                <StackPanel>
+                    <WrapPanel Margin="0,4,0,6">
+                        <TextBlock Text="Visible:" VerticalAlignment="Center" Width="100"/>
+                        <xctk:ColorPicker Width="42" Height="26"
+                                          SelectedColor="{Binding VisibleColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
+                                          UsingAlphaChannel="True" ShowRecentColors="False"/>
+                        <TextBlock Text="Eye LOS visible bones/box/head" Foreground="Gray" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </WrapPanel>
+                    <WrapPanel Margin="0,4,0,6">
+                        <TextBlock Text="Hitscan Only:" VerticalAlignment="Center" Width="100"/>
+                        <xctk:ColorPicker Width="42" Height="26"
+                                          SelectedColor="{Binding HitscanOnlyColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
+                                          UsingAlphaChannel="True" ShowRecentColors="False"/>
+                        <TextBlock Text="Shootable but not eye-visible" Foreground="Gray" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </WrapPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Raycast Flags -->
+            <GroupBox Header="Raycast Flags" Margin="0,0,0,12">
+                <StackPanel>
+                    <WrapPanel Margin="0,4,0,8">
+                        <TextBlock Text="Flags (hex):" VerticalAlignment="Center" Width="100"/>
+                        <TextBox Width="80" Text="{Binding FlagsHex, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                 ToolTip="SHM flags bitfield: 0x04=DualCheck, 0x10=NoFoliage"/>
+                    </WrapPanel>
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="Bone Mask:" VerticalAlignment="Center" Width="100"/>
+                        <TextBox Width="80" Text="{Binding BoneMaskHex, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                 ToolTip="Bitmask of which bones to raycast (18 bits, 0x3FFFF = all)"/>
+                    </WrapPanel>
+                    <WrapPanel>
+                        <TextBlock Text="Presets:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <Button Content="Eye Only" Command="{Binding PresetEyeOnlyCommand}" Width="75" Height="26" Margin="0,0,8,0"
+                                ToolTip="Flags: 0x00 - Eye LOS only, no hitscan"/>
+                        <Button Content="Dual Check" Command="{Binding PresetDualCheckCommand}" Width="85" Height="26" Margin="0,0,8,0"
+                                ToolTip="Flags: 0x04 - Eye LOS + fireport hitscan (Recommended)"/>
+                        <Button Content="Dual+NoFoliage" Command="{Binding PresetDualNoFoliageCommand}" Width="110" Height="26"
+                                ToolTip="Flags: 0x14 - Dual check with foliage excluded from eye LOS"/>
+                    </WrapPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- SPT Auto-Start -->
+            <GroupBox Header="SPT Auto-Start" Margin="0,0,0,12">
+                <StackPanel>
+                    <CheckBox Content="Enable SPT Auto-Start"
+                              IsChecked="{Binding AutoStartEnabled, Mode=TwoWay}" Margin="0,0,0,8"
+                              ToolTip="Automatically start SPT Server + Game when radar detects game via DMA"/>
+
+                    <!-- Status -->
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="Status:" VerticalAlignment="Center" Width="100"/>
+                        <TextBlock Text="{Binding SptStatusText}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </WrapPanel>
+
+                    <!-- Fika Install Path -->
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="Fika Path:" VerticalAlignment="Center" Width="100"/>
+                        <TextBox Width="260" Text="{Binding SptPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                 ToolTip="Path to your Fika/SPT installation (e.g. C:\SPT_Fika)"/>
+                        <Button Content="..." Width="30" Height="26" Margin="4,0,0,0"
+                                Command="{Binding BrowseSptPathCommand}"
+                                ToolTip="Browse for Fika install folder"/>
+                    </WrapPanel>
+
+                    <!-- Profile Selection -->
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="Profile:" VerticalAlignment="Center" Width="100"/>
+                        <ComboBox Width="200"
+                                  ItemsSource="{Binding AvailableProfiles}"
+                                  SelectedValue="{Binding SelectedProfileId, Mode=TwoWay}"
+                                  SelectedValuePath="Id"
+                                  DisplayMemberPath="DisplayName"
+                                  ToolTip="SPT account to use for the headless client"/>
+                        <Button Content="&#x21bb;" Width="30" Height="26" Margin="4,0,0,0"
+                                Command="{Binding RefreshProfilesCommand}"
+                                ToolTip="Rescan profiles from Fika install"/>
+                    </WrapPanel>
+
+                    <!-- Raid defaults -->
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="Side:" VerticalAlignment="Center" Width="100"/>
+                        <ComboBox Width="100" SelectedValue="{Binding SptDefaultSide, Mode=TwoWay}"
+                                  SelectedValuePath="Content">
+                            <ComboBoxItem Content="PMC"/>
+                            <ComboBoxItem Content="Scav"/>
+                        </ComboBox>
+                        <TextBlock Text="Time:" VerticalAlignment="Center" Margin="16,0,0,0" Width="50"/>
+                        <ComboBox Width="80" SelectedValue="{Binding SptDefaultTime, Mode=TwoWay}"
+                                  SelectedValuePath="Content">
+                            <ComboBoxItem Content="day"/>
+                            <ComboBoxItem Content="night"/>
+                        </ComboBox>
+                    </WrapPanel>
+
+                    <!-- Manual controls -->
+                    <WrapPanel Margin="0,4,0,0">
+                        <Button Content="Start SPT" Command="{Binding StartSptCommand}"
+                                Width="85" Height="26" Margin="0,0,8,0"
+                                ToolTip="Manually start SPT Server + Game"/>
+                        <Button Content="Stop SPT" Command="{Binding StopSptCommand}"
+                                Width="85" Height="26" Margin="0,0,8,0"
+                                ToolTip="Stop SPT Server + Game processes"/>
+                        <Button Content="Start Raid" Command="{Binding ManualStartRaidCommand}"
+                                Width="85" Height="26" Margin="0,0,8,0"
+                                ToolTip="Manually send start_raid to plugin"/>
+                        <Button Content="Leave Raid" Command="{Binding ManualLeaveRaidCommand}"
+                                Width="85" Height="26"
+                                ToolTip="Manually send leave_raid to plugin"/>
+                    </WrapPanel>
+                </StackPanel>
+            </GroupBox>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

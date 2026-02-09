@@ -48,6 +48,10 @@
                             Style="{StaticResource SidebarButton}"
                             Command="{Binding ToggleEspPanelCommand}"
                             Tag="{Binding EspPanel.IsOpen, Mode=OneWay}"/>
+                    <Button Content="🔍 Visibility"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleVisibilityPanelCommand}"
+                            Tag="{Binding VisibilityPanel.IsOpen, Mode=OneWay}"/>
 
                     <!-- LOOT section -->
                     <TextBlock Text="LOOT" Style="{StaticResource SidebarGroupHeader}"/>

@@ -183,6 +183,19 @@
                 <tabs:DebugTab/>
             </controls:DraggablePanel>
 
+            <!-- Visibility Panel -->
+            <controls:DraggablePanel
+                x:Name="VisibilityPanel"
+                Title="🔍 Visibility"
+                Visibility="{Binding PanelManager.VisibilityPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.VisibilityPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.VisibilityPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.VisibilityPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.VisibilityPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:VisibilityTab/>
+            </controls:DraggablePanel>
+
         </Canvas>
 
         <!-- Layer 2: Sidebar (auto-collapses) -->

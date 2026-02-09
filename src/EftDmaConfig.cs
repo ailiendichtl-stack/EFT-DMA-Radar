@@ -173,6 +173,13 @@ namespace LoneEftDmaRadar
         public PanelLayoutConfig PanelLayout { get; private set; } = new();
 
         /// <summary>
+        /// Visibility / LOS Integration Config (shared memory with SPT plugin).
+        /// </summary>
+        [JsonPropertyName("visibility")]
+        [JsonInclude]
+        public VisibilityConfig Visibility { get; private set; } = new();
+
+        /// <summary>
         /// Persistent Cache Access (not saved to config, runtime only).
         /// </summary>
         [JsonIgnore]
@@ -1418,6 +1425,93 @@ namespace LoneEftDmaRadar
 
         [JsonPropertyName("height")]
         public double Height { get; set; }
+    }
+
+    /// <summary>
+    /// Visibility / LOS integration config (shared memory with Twilight SPT Fika plugin).
+    /// </summary>
+    public sealed class VisibilityConfig
+    {
+        /// <summary>
+        /// Master enable for LOS integration.
+        /// </summary>
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = false;
+
+        /// <summary>
+        /// Auto-connect to SHM when available.
+        /// </summary>
+        [JsonPropertyName("shmEnabled")]
+        public bool ShmEnabled { get; set; } = true;
+
+        /// <summary>
+        /// SHM flags bitmask: 0x04=DUAL_CHECK, 0x10=NO_FOLIAGE.
+        /// Default 0x04 = DUAL_CHECK.
+        /// </summary>
+        [JsonPropertyName("flags")]
+        public uint Flags { get; set; } = 0x04;
+
+        /// <summary>
+        /// Bone mask bitmask: which bones to check. 0x3FFFF = all 18.
+        /// </summary>
+        [JsonPropertyName("boneMask")]
+        public uint BoneMask { get; set; } = 0x3FFFF;
+
+        /// <summary>
+        /// Color individual bones based on per-bone visibility.
+        /// </summary>
+        [JsonPropertyName("perBoneColoring")]
+        public bool PerBoneColoring { get; set; } = true;
+
+        /// <summary>
+        /// Color for visible bones/entities (hex ARGB).
+        /// </summary>
+        [JsonPropertyName("visibleColor")]
+        public string VisibleColor { get; set; } = "#FF00FF00";
+
+        /// <summary>
+        /// Color for not-visible bones/entities (hex ARGB).
+        /// </summary>
+        [JsonPropertyName("notVisibleColor")]
+        public string NotVisibleColor { get; set; } = "#80FF4444";
+
+        /// <summary>
+        /// Color for hitscan-only bones (shootable but not eye-visible).
+        /// </summary>
+        [JsonPropertyName("hitscanOnlyColor")]
+        public string HitscanOnlyColor { get; set; } = "#FFFFAA00";
+
+        /// <summary>
+        /// Dim not-visible entities instead of using flat NotVisibleColor.
+        /// </summary>
+        [JsonPropertyName("dimNotVisible")]
+        public bool DimNotVisible { get; set; } = true;
+
+        /// <summary>
+        /// Opacity multiplier when DimNotVisible is true (0.0 - 1.0).
+        /// </summary>
+        [JsonPropertyName("dimOpacity")]
+        public float DimOpacity { get; set; } = 0.4f;
+
+        // --- SPT Auto-Start ---
+
+        [JsonPropertyName("autoStartEnabled")]
+        public bool AutoStartEnabled { get; set; } = false;
+
+        [JsonPropertyName("sptPath")]
+        public string SptPath { get; set; } = "";
+
+        [JsonPropertyName("sptProfileId")]
+        public string SptProfileId { get; set; } = "";
+
+        [JsonPropertyName("sptProfileName")]
+        public string SptProfileName { get; set; } = "";
+
+        [JsonPropertyName("sptDefaultSide")]
+        public string SptDefaultSide { get; set; } = "PMC";
+
+        [JsonPropertyName("sptDefaultTime")]
+        public string SptDefaultTime { get; set; } = "day";
     }
 
     /// <summary>

@@ -26,6 +26,7 @@ using DxColor = SharpDX.Mathematics.Interop.RawColorBGRA;
 using LoneEftDmaRadar.Tarkov.GameWorld.Camera;
 using LoneEftDmaRadar.UI.Radar;
 using LoneEftDmaRadar.UI.Radar.Maps;
+using LoneEftDmaRadar.LOS;
 
 namespace LoneEftDmaRadar.UI.ESP
 {
@@ -852,6 +853,25 @@ namespace LoneEftDmaRadar.UI.ESP
                 color = ToColor(new SKColor(0, 200, 255, 220));
             }
 
+            // LOS visibility - compute entity-level color override
+            // Not visible = keep default class color. Only override when any bone is visible or hitscan-only.
+            var visCfg = App.Config.Visibility;
+            var visMgr = VisibilityManager.Instance;
+            PlayerVisibility? losVis = null;
+            DxColor boxColor = color; // Box/label color: entity-level LOS override
+            if (visCfg.Enabled && visMgr?.IsConnected == true && !isDeviceAimbotLocked)
+            {
+                losVis = visMgr.GetVisibility(player);
+                if (losVis.HasValue)
+                {
+                    if (losVis.Value.VisibleMask != 0)
+                        boxColor = ToColor(ColorFromHex(visCfg.VisibleColor));
+                    else if (losVis.Value.HitscanMask != 0)
+                        boxColor = ToColor(ColorFromHex(visCfg.HitscanOnlyColor));
+                    // else: not visible - keep default class color
+                }
+            }
+
             bool drawSkeleton = isAI ? App.Config.UI.EspAISkeletons : App.Config.UI.EspPlayerSkeletons;
             var boxStyle = isAI ? App.Config.UI.EspAIBoxStyle : App.Config.UI.EspPlayerBoxStyle;
             bool drawBox = boxStyle != EspBoxStyle.None;
@@ -874,29 +894,29 @@ namespace LoneEftDmaRadar.UI.ESP
                 hasBox = TryGetBoundingBox(player, screenWidth, screenHeight, out bbox);
             }
 
-            // Draw Box based on selected style
+            // Draw Box based on selected style (uses entity-level LOS color)
             if (drawBox && hasBox)
             {
                 switch (boxStyle)
                 {
                     case EspBoxStyle.Box2D:
-                        DrawBoundingBox(ctx, bbox, color, _boxPaint.StrokeWidth);
+                        DrawBoundingBox(ctx, bbox, boxColor, _boxPaint.StrokeWidth);
                         break;
                     case EspBoxStyle.Corner2D:
-                        Draw2DCorners(ctx, bbox, color, _boxPaint.StrokeWidth);
+                        Draw2DCorners(ctx, bbox, boxColor, _boxPaint.StrokeWidth);
                         break;
                     case EspBoxStyle.Corner3D:
                         if (TryGet3DCorners(player, screenWidth, screenHeight, out var corners3dc))
-                            Draw3DCorners(ctx, corners3dc, color, _boxPaint.StrokeWidth);
+                            Draw3DCorners(ctx, corners3dc, boxColor, _boxPaint.StrokeWidth);
                         break;
                     case EspBoxStyle.Box3D:
                         if (TryGet3DCorners(player, screenWidth, screenHeight, out var corners3db))
-                            Draw3DBox(ctx, corners3db, color, _boxPaint.StrokeWidth);
+                            Draw3DBox(ctx, corners3db, boxColor, _boxPaint.StrokeWidth);
                         break;
                 }
             }
 
-            // Draw head marker
+            // Draw head marker (uses per-bone head visibility if LOS active)
             bool drawHeadCircle = isAI ? App.Config.UI.EspHeadCircleAI : App.Config.UI.EspHeadCirclePlayers;
             if (drawHeadCircle)
             {
@@ -920,8 +940,18 @@ namespace LoneEftDmaRadar.UI.ESP
                         radius = dy * 0.65f;
                     }
 
+                    // Head dot color: check head bone specifically
+                    var headColor = color;
+                    if (visCfg.Enabled && losVis.HasValue)
+                    {
+                        if (IsShmBoneSet(losVis.Value.VisibleMask, Bones.HumanHead))
+                            headColor = ToColor(ColorFromHex(visCfg.VisibleColor));
+                        else if (IsShmBoneSet(losVis.Value.HitscanMask, Bones.HumanHead))
+                            headColor = ToColor(ColorFromHex(visCfg.HitscanOnlyColor));
+                    }
+
                     radius = Math.Clamp(radius, 2f, 12f);
-                    ctx.DrawCircle(ToRaw(headScreen), radius, color, filled: false);
+                    ctx.DrawCircle(ToRaw(headScreen), radius, headColor, filled: false);
                 }
             }
 
@@ -1296,6 +1326,20 @@ namespace LoneEftDmaRadar.UI.ESP
 
         private void DrawSkeleton(Dx9RenderContext ctx, AbstractPlayer player, float w, float h, DxColor color, float thickness)
         {
+            var visCfg = App.Config.Visibility;
+            var visMgr = VisibilityManager.Instance;
+            bool perBone = visCfg.Enabled && visCfg.PerBoneColoring && visMgr?.IsConnected == true;
+
+            // Pre-compute LOS colors once per player (only visible/hitscan - not-visible keeps default)
+            DxColor visColor = default, hitscanOnlyColor = default;
+            PlayerVisibility? vis = null;
+            if (perBone)
+            {
+                visColor = ToColor(ColorFromHex(visCfg.VisibleColor));
+                hitscanOnlyColor = ToColor(ColorFromHex(visCfg.HitscanOnlyColor));
+                vis = visMgr.GetVisibility(player);
+            }
+
             foreach (var (from, to) in _boneConnections)
             {
                 var p1 = player.GetBonePos(from);
@@ -1305,11 +1349,40 @@ namespace LoneEftDmaRadar.UI.ESP
                 if (p1 == Vector3.Zero || p2 == Vector3.Zero)
                     continue;
 
+                var segColor = color; // Default class color = not visible
+                if (perBone && vis.HasValue)
+                {
+                    // Check eye LOS visibility for both bones of this segment
+                    bool fVis = IsShmBoneSet(vis.Value.VisibleMask, from);
+                    bool tVis = IsShmBoneSet(vis.Value.VisibleMask, to);
+                    if (fVis || tVis)
+                    {
+                        segColor = visColor;
+                    }
+                    else
+                    {
+                        // Check hitscan (only meaningful when dual-check is active)
+                        bool fHit = IsShmBoneSet(vis.Value.HitscanMask, from);
+                        bool tHit = IsShmBoneSet(vis.Value.HitscanMask, to);
+                        if (fHit || tHit)
+                            segColor = hitscanOnlyColor;
+                        // else: keep default class color
+                    }
+                }
+
                 if (TryProject(p1, w, h, out var s1) && TryProject(p2, w, h, out var s2))
                 {
-                    ctx.DrawLine(ToRaw(s1), ToRaw(s2), color, thickness);
+                    ctx.DrawLine(ToRaw(s1), ToRaw(s2), segColor, thickness);
                 }
             }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        private static bool IsShmBoneSet(uint mask, Bones bone)
+        {
+            if (!SharedMemoryClient.RadarBoneToShmId.TryGetValue(bone, out int shmId))
+                return false; // Unmapped bone = not set (keep default color)
+            return (mask & (1u << shmId)) != 0;
         }
 
             private bool TryGetBoundingBox(AbstractPlayer player, float w, float h, out RectangleF rect)
@@ -1746,6 +1819,26 @@ namespace LoneEftDmaRadar.UI.ESP
         {
             var fpsText = $"FPS: {_fps}";
             ctx.DrawText(fpsText, 10, 10, new DxColor(255, 255, 255, 255), DxTextSize.Small);
+
+            // LOS diagnostic overlay
+            var visMgr = VisibilityManager.Instance;
+            if (App.Config.Visibility.Enabled && visMgr != null)
+            {
+                string status = visMgr.IsConnected
+                    ? $"LOS: {visMgr.EnemiesTracked} tracked | {visMgr.LatencyMs:F1}ms | {visMgr.FramesPerSecond}fps"
+                    : "LOS: Disconnected";
+                ctx.DrawText(status, 10, 26, new DxColor(255, 255, 255, 200), DxTextSize.Small);
+            }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        private static DxColor DimColor(DxColor c, float opacity)
+        {
+            return new DxColor(
+                (byte)(c.B * opacity),
+                (byte)(c.G * opacity),
+                (byte)(c.R * opacity),
+                (byte)(c.A * opacity));
         }
 
         private static RawVector2 ToRaw(SKPoint point) => new(point.X, point.Y);

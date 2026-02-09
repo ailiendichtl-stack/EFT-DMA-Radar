@@ -93,6 +93,7 @@ namespace LoneEftDmaRadar
                     case "MemWritesPanel": pm.MemWritesPanel.IsOpen = false; break;
                     case "WebRadarPanel": pm.WebRadarPanel.IsOpen = false; break;
                     case "DebugPanel": pm.DebugPanel.IsOpen = false; break;
+                    case "VisibilityPanel": pm.VisibilityPanel.IsOpen = false; break;
                 }
             }
         }

@@ -184,12 +184,17 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
 
         // Track last error type to avoid spam logging the same error repeatedly
         private static string _lastInstantiationError = null;
+        private static bool _mapDetectedFired = false;
 
         /// <summary>
         /// Blocks until a LocalGameWorld Singleton Instance can be instantiated.
+        /// Fires MemDMA.MapDetected early when the map name is first readable,
+        /// allowing SPT to start loading in parallel.
         /// </summary>
         public static LocalGameWorld CreateGameInstance(CancellationToken ct)
         {
+            _mapDetectedFired = false;
+
             while (true)
             {
                 ct.ThrowIfCancellationRequested();
@@ -199,6 +204,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 {
                     var instance = GetLocalGameWorld(ct);
                     _lastInstantiationError = null; // Reset on success
+
+                    // Fire early map detection if not already fired
+                    if (!_mapDetectedFired && !string.IsNullOrEmpty(instance.MapID))
+                    {
+                        _mapDetectedFired = true;
+                        MemDMA.OnMapDetected(instance.MapID);
+                    }
+
                     DebugLogger.LogDebug("Raid has started!");
                     return instance;
                 }
@@ -218,6 +231,23 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                     {
                         _lastInstantiationError = errorKey;
                         DebugLogger.LogDebug($"ERROR Instantiating Game Instance: {ex.InnerException?.Message ?? ex.Message}");
+                    }
+
+                    // Early map detection: GameWorld exists but full init failed.
+                    // Try to read just the map name so SPT can start loading in parallel.
+                    if (!_mapDetectedFired)
+                    {
+                        try
+                        {
+                            var gw = GameObjectManager.Get().GetGameWorld(ct, out string earlyMap);
+                            if (gw != 0 && !string.IsNullOrEmpty(earlyMap))
+                            {
+                                _mapDetectedFired = true;
+                                DebugLogger.LogDebug($"Early map detected during loading: {earlyMap}");
+                                MemDMA.OnMapDetected(earlyMap);
+                            }
+                        }
+                        catch { } // Ignore errors - this is best-effort
                     }
                 }
                 finally

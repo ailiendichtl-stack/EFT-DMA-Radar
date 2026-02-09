@@ -47,6 +47,12 @@ using VmmSharpEx.Scatter;
 
 namespace LoneEftDmaRadar.DMA
 {
+    public class MapDetectedEventArgs : EventArgs
+    {
+        public string MapID { get; }
+        public MapDetectedEventArgs(string mapId) => MapID = mapId;
+    }
+
     /// <summary>
     /// DMA Memory Module.
     /// </summary>
@@ -203,6 +209,10 @@ namespace LoneEftDmaRadar.DMA
                     {
                         RunStartupLoop();
                         OnProcessStarted();
+
+                        // Always start SPT session manager (handles both auto-start and manual controls)
+                        LOS.SptSessionManager.Initialize();
+
                         try
                         {
                             _deviceAimbot = new DeviceAimbot(this);
@@ -213,6 +223,7 @@ namespace LoneEftDmaRadar.DMA
                             DebugLogger.LogDebug($"Failed to start DeviceAimbot: {ex}");
                         }
                         RunGameLoop();
+                        LOS.SptSessionManager.Shutdown();
                         OnProcessStopped();
                     }
                 }
@@ -276,6 +287,10 @@ namespace LoneEftDmaRadar.DMA
                         OnRaidStarted();
                         game.Start();
 
+                        // Start LOS visibility manager if enabled
+                        if (App.Config.Visibility.Enabled)
+                            LOS.VisibilityManager.Start();
+
                         // Camera init timing
                         var nextCameraAttempt = DateTime.UtcNow.AddSeconds(5); // short delay to avoid stale cameras
                         var retryInterval = TimeSpan.FromSeconds(3);
@@ -337,7 +352,9 @@ namespace LoneEftDmaRadar.DMA
                 }
                 finally
                 {
+                    LOS.VisibilityManager.Stop();
                     OnRaidStopped();
+                    DetectedMapID = null;
                     CameraManager.Reset();
                     CameraManager = null;
                     Thread.Sleep(100);
@@ -412,6 +429,12 @@ namespace LoneEftDmaRadar.DMA
         /// </summary>
         public static event EventHandler<EventArgs> ProcessStopped;
         /// <summary>
+        /// Raised early during loading when the map name is first detected,
+        /// before the full GameWorld is initialized. Allows SPT to start loading
+        /// the same map in parallel with the live game.
+        /// </summary>
+        public static event EventHandler<MapDetectedEventArgs> MapDetected;
+        /// <summary>
         /// Raised when a raid starts.
         /// Outside Subscribers should handle exceptions!
         /// </summary>
@@ -444,6 +467,20 @@ namespace LoneEftDmaRadar.DMA
         private static void OnProcessStopped()
         {
             ProcessStopped?.Invoke(null, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// The map ID detected early during loading (before full raid start).
+        /// </summary>
+        public string DetectedMapID { get; private set; }
+
+        /// <summary>
+        /// Raises the MapDetected event (early detection during loading).
+        /// </summary>
+        internal static void OnMapDetected(string mapId)
+        {
+            Memory.DetectedMapID = mapId;
+            MapDetected?.Invoke(null, new MapDetectedEventArgs(mapId));
         }
 
         /// <summary>
