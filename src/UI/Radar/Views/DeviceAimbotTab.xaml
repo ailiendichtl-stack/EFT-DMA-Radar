@@ -261,6 +261,7 @@
                                           ShowRecentColors="False"
                                           ToolTip="Color when aimbot is not engaged" />
                     </WrapPanel>
+
                 </StackPanel>
             </GroupBox>
 

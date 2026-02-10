@@ -38,7 +38,7 @@ namespace LoneEftDmaRadar.UI.Misc
 
         // Sanity check constants
         private const float MAX_SCREEN_DELTA = 2000f; // Max reasonable screen delta before considering data corrupt
-        private const float DEADZONE_PIXELS = 0.5f; // Minimum movement threshold
+        private const float DEADZONE_PIXELS = 0.1f; // Minimum movement threshold (reduced from 0.5 to allow convergence at long range)
         private const int MAX_ATTACHMENT_SLOTS = 100; // Sanity limit for attachment recursion
 
         #endregion
@@ -86,6 +86,13 @@ namespace LoneEftDmaRadar.UI.Misc
 
         // Fractional accumulators - track sub-pixel movement to prevent rounding loss
         private float _accumX, _accumY;
+
+        // Dead-reckoning: track cumulative mouse counts sent since last DMA camera update
+        // This compensates for the DMA feedback lag — the aimbot can't see its own mouse
+        // movement until the next DMA camera read, so we subtract what we've already sent.
+        private float _deadReckonX, _deadReckonY;
+        private Vector2 _lastDmaScreenPos; // Last screen position from DMA (to detect camera updates)
+        private bool _hasLastDmaScreenPos;
 
         // Velocity tracking for PD control (screen-space)
         private Vector2 _lastTargetScreenPos;
@@ -663,6 +670,10 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             // Clear fractional accumulators to prevent carryover
             _accumX = 0;
             _accumY = 0;
+            // Reset dead-reckoning
+            _deadReckonX = 0;
+            _deadReckonY = 0;
+            _hasLastDmaScreenPos = false;
             // Reset velocity tracking
             ResetVelocityTracking();
         }
@@ -746,7 +757,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             if (!TryGetTargetBone(target, selectedBone, out var boneTransform))
                 return;
 
-            Vector3 targetPos = boneTransform.Position;
+            Vector3 rawTargetPos = boneTransform.Position;
+            Vector3 targetPos = rawTargetPos;
 
             // Apply ballistics prediction if enabled
             if (Config.EnablePrediction && localPlayer.FirearmManager != null && fireportPos.HasValue && _lastBallistics?.IsAmmoValid == true)
@@ -754,7 +766,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 targetPos = PredictHitPoint(localPlayer, target, fireportPos.Value, targetPos);
             }
 
-            // ? Check if MemoryAim is enabled
+            // Check if MemoryAim is enabled
             if (App.Config.MemWrites.Enabled && App.Config.MemWrites.MemoryAimEnabled)
             {
                 LoneEftDmaRadar.Tarkov.Features.MemWrites.MemoryAim.Instance.SetTargetPosition(targetPos);
@@ -763,17 +775,44 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             }
 
             // Original DeviceAimbot device aiming (only if MemoryAim is disabled)
-            // Convert to screen space
+            // Convert to screen space — both predicted (for aiming) and raw (for velocity tracking)
             if (!CameraManager.WorldToScreen(ref targetPos, out var screenPos, false))
                 return;
 
-            // Update target screen velocity for PD control
-            UpdateTargetScreenVelocity(screenPos);
+            // Also W2S the raw bone position for velocity tracking (prevents prediction offset
+            // from being misinterpreted as target movement)
+            Vector3 rawForW2S = rawTargetPos;
+            if (!CameraManager.WorldToScreen(ref rawForW2S, out var rawScreenPos, false))
+                rawScreenPos = screenPos; // Fallback if raw W2S fails
+
+            // Update target screen velocity using RAW bone position (Fix #2)
+            // This prevents prediction offset changes from inflating velocity
+            UpdateTargetScreenVelocity(rawScreenPos);
 
             // Calculate delta from center
             var center = CameraManager.ViewportCenter;
             float deltaX = screenPos.X - center.X;
             float deltaY = screenPos.Y - center.Y;
+
+            // Dead-reckoning: compensate for mouse movement already sent but not yet
+            // reflected in the DMA camera read (Fix #1)
+            if (_hasLastDmaScreenPos)
+            {
+                // Detect if DMA camera has updated by checking if screen position changed
+                float dmaShift = Vector2.Distance(screenPos, _lastDmaScreenPos);
+                if (dmaShift > 0.01f)
+                {
+                    // Camera updated — reset dead-reckoning
+                    _deadReckonX = 0;
+                    _deadReckonY = 0;
+                }
+            }
+            _lastDmaScreenPos = screenPos;
+            _hasLastDmaScreenPos = true;
+
+            // Subtract already-sent mouse movement from the delta
+            deltaX -= _deadReckonX;
+            deltaY -= _deadReckonY;
 
             // Check if player is aiming down sights
             bool isAiming = localPlayer.CheckIfADS();
@@ -781,11 +820,15 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             // Calculate smooth movement with fractional accumulation
             var (moveX, moveY) = CalculateSmoothMovement(deltaX, deltaY, isAiming);
 
-            // Apply movement
+            // Apply movement and update dead-reckoning
             if (moveX != 0 || moveY != 0)
             {
                 SendDeviceMove(moveX, moveY);
             }
+            // Always accumulate dead-reckoning (even if 0 was sent this tick,
+            // the accumulators still track intent)
+            _deadReckonX += moveX;
+            _deadReckonY += moveY;
         }
 
         /// <summary>
@@ -844,22 +887,17 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
 
             // === Aim Settling (soft dead zone) ===
             // When very close to target, reduce correction strength to prevent micro-oscillation
-            // This gives smooth "settling" without losing accuracy during acquisition
+            // Uses linear falloff with a floor to ensure convergence at all ranges
             float errorDistance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
-            const float settleRadius = 3.0f;  // Pixels - start settling within this radius
+            const float settleRadius = 2.0f;  // Pixels - start settling within this radius
+            const float settleFloor = 0.15f;   // Minimum settle factor - ensures we always make SOME correction
             float settleFactor = 1.0f;
 
-            if (errorDistance < settleRadius && errorDistance > 0.1f)
+            if (errorDistance < settleRadius)
             {
-                // Quadratic falloff: corrections get weaker as we get closer
-                // At edge of radius: factor = 1.0, at center: factor approaches 0
+                // Linear falloff with floor: corrections reduce near target but never fully stop
                 float t = errorDistance / settleRadius;
-                settleFactor = t * t;  // Quadratic for smooth feel
-            }
-            else if (errorDistance <= 0.1f)
-            {
-                // Essentially on target - no correction needed
-                settleFactor = 0f;
+                settleFactor = settleFloor + t * (1.0f - settleFloor);
             }
 
             // Control output: P term + D term (velocity feed-forward), with settling
@@ -1132,7 +1170,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                         float latencySeconds = Config.DmaLatencyMs / 1000f;
                         Vector3 latencyLead = targetVelocity * latencySeconds;
 
-                        predictedPos += ballisticLead + latencyLead;
+                        Vector3 totalLead = ballisticLead + latencyLead;
+                        predictedPos += totalLead;
                     }
                 }
 
