@@ -120,24 +120,40 @@ namespace LoneEftDmaRadar.UI.Skia
         /// </summary>
         public static void ClearExpanded() => ExpandedItem = null;
 
-        // Fonts
-        private static SKFont HeaderFont => new(CustomFonts.NeoSansStdRegular ?? SKTypeface.Default, 13f)
-        {
-            Subpixel = true,
-            Edging = SKFontEdging.SubpixelAntialias
-        };
+        // Cached fonts (created once on first use, sizes set before each draw call)
+        private const float HeaderFontSize = 13f;
+        private const float SubHeaderFontSize = 11f;
+        private const float RowFontSize = 11f;
 
-        private static SKFont SubHeaderFont => new(CustomFonts.NeoSansStdRegular ?? SKTypeface.Default, 11f)
-        {
-            Subpixel = true,
-            Edging = SKFontEdging.SubpixelAntialias
-        };
+        private static SKFont _headerFont;
+        private static SKFont _subHeaderFont;
+        private static SKFont _rowFont;
 
-        private static SKFont RowFont => new(CustomFonts.NeoSansStdRegular ?? SKTypeface.Default, 11f)
+        private static void EnsureFonts()
         {
-            Subpixel = true,
-            Edging = SKFontEdging.SubpixelAntialias
-        };
+            if (_headerFont != null) return;
+            var typeface = CustomFonts.NeoSansStdRegular ?? SKTypeface.Default;
+            _headerFont = new SKFont(typeface, HeaderFontSize) { Subpixel = true, Edging = SKFontEdging.SubpixelAntialias };
+            _subHeaderFont = new SKFont(typeface, SubHeaderFontSize) { Subpixel = true, Edging = SKFontEdging.SubpixelAntialias };
+            _rowFont = new SKFont(typeface, RowFontSize) { Subpixel = true, Edging = SKFontEdging.SubpixelAntialias };
+        }
+
+        // Cached paints - static (never change)
+        private static readonly SKPaint _bgPaint = new() { Color = BackgroundColor, Style = SKPaintStyle.Fill, IsAntialias = true };
+        private static readonly SKPaint _headerPaint = new() { Color = SKColors.White, IsAntialias = true };
+        private static readonly SKPaint _subHeaderPaint = new() { Color = LabelColor, IsAntialias = true };
+        private static readonly SKPaint _separatorPaint = new() { Color = new SKColor(60, 70, 90, 180), StrokeWidth = 1f, IsAntialias = true };
+        private static readonly SKPaint _labelPaint = new() { Color = LabelColor, IsAntialias = true };
+
+        // Reusable paints - properties mutated before each use (single-threaded render)
+        private static readonly SKPaint _glowPaint = new() { Style = SKPaintStyle.Stroke, IsAntialias = true };
+        private static readonly SKPaint _borderPaint = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, IsAntialias = true };
+        private static readonly SKPaint _accentPaint = new() { Style = SKPaintStyle.Fill, IsAntialias = true };
+        private static readonly SKPaint _valuePaint = new() { IsAntialias = true };
+
+        // Cached MaskFilter for glow (recreated only when scale changes)
+        private static float _lastGlowScale;
+        private static SKMaskFilter _glowMaskFilter;
 
         /// <summary>
         /// Draws a styled tooltip card at the specified position.
@@ -168,26 +184,23 @@ namespace LoneEftDmaRadar.UI.Skia
 
         private static (float width, float height) MeasureCard(TooltipData data, float scale)
         {
-            using var headerFont = HeaderFont;
-            using var subHeaderFont = SubHeaderFont;
-            using var rowFont = RowFont;
+            EnsureFonts();
+            _headerFont.Size = HeaderFontSize * scale;
+            _subHeaderFont.Size = SubHeaderFontSize * scale;
+            _rowFont.Size = RowFontSize * scale;
 
-            headerFont.Size *= scale;
-            subHeaderFont.Size *= scale;
-            rowFont.Size *= scale;
-
-            float maxWidth = headerFont.MeasureText(data.Header);
+            float maxWidth = _headerFont.MeasureText(data.Header);
 
             if (!string.IsNullOrEmpty(data.SubHeader))
             {
-                var subWidth = subHeaderFont.MeasureText(data.SubHeader);
+                var subWidth = _subHeaderFont.MeasureText(data.SubHeader);
                 maxWidth = Math.Max(maxWidth, subWidth);
             }
 
             foreach (var row in data.Rows)
             {
-                var labelWidth = rowFont.MeasureText(row.Label);
-                var valueWidth = rowFont.MeasureText(row.Value);
+                var labelWidth = _rowFont.MeasureText(row.Label);
+                var valueWidth = _rowFont.MeasureText(row.Value);
                 var rowWidth = labelWidth + (LabelValueGap * scale) + valueWidth;
                 maxWidth = Math.Max(maxWidth, rowWidth);
             }
@@ -195,8 +208,8 @@ namespace LoneEftDmaRadar.UI.Skia
             float width = maxWidth + (PaddingX * 2 * scale);
             float height = (AccentBarHeight * scale) +
                            (PaddingY * scale) +
-                           headerFont.Size +
-                           (string.IsNullOrEmpty(data.SubHeader) ? 0 : (HeaderSpacing * scale) + subHeaderFont.Size) +
+                           _headerFont.Size +
+                           (string.IsNullOrEmpty(data.SubHeader) ? 0 : (HeaderSpacing * scale) + _subHeaderFont.Size) +
                            (data.Rows.Count > 0 ? (HeaderSpacing * scale) : 0) +
                            (data.Rows.Count * RowHeight * scale) +
                            (PaddingY * scale);
@@ -231,35 +244,24 @@ namespace LoneEftDmaRadar.UI.Skia
             var rect = new SKRect(pos.X, pos.Y, pos.X + width, pos.Y + height);
             var roundRect = new SKRoundRect(rect, CornerRadius * scale);
 
-            // Draw glow/shadow
-            using var glowPaint = new SKPaint
+            // Draw glow/shadow (update cached MaskFilter only when scale changes)
+            if (_lastGlowScale != scale)
             {
-                Color = accentColor.WithAlpha(GlowAlpha),
-                Style = SKPaintStyle.Stroke,
-                StrokeWidth = GlowRadius * scale,
-                IsAntialias = true,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, GlowRadius * scale * 0.5f)
-            };
-            canvas.DrawRoundRect(roundRect, glowPaint);
+                _glowMaskFilter?.Dispose();
+                _glowMaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, GlowRadius * scale * 0.5f);
+                _lastGlowScale = scale;
+            }
+            _glowPaint.Color = accentColor.WithAlpha(GlowAlpha);
+            _glowPaint.StrokeWidth = GlowRadius * scale;
+            _glowPaint.MaskFilter = _glowMaskFilter;
+            canvas.DrawRoundRect(roundRect, _glowPaint);
 
             // Draw background
-            using var bgPaint = new SKPaint
-            {
-                Color = BackgroundColor,
-                Style = SKPaintStyle.Fill,
-                IsAntialias = true
-            };
-            canvas.DrawRoundRect(roundRect, bgPaint);
+            canvas.DrawRoundRect(roundRect, _bgPaint);
 
             // Draw border
-            using var borderPaint = new SKPaint
-            {
-                Color = accentColor.WithAlpha(120),
-                Style = SKPaintStyle.Stroke,
-                StrokeWidth = 1f,
-                IsAntialias = true
-            };
-            canvas.DrawRoundRect(roundRect, borderPaint);
+            _borderPaint.Color = accentColor.WithAlpha(120);
+            canvas.DrawRoundRect(roundRect, _borderPaint);
 
             // Draw accent bar at top
             var accentRect = new SKRect(pos.X, pos.Y, pos.X + width, pos.Y + (AccentBarHeight * scale));
@@ -271,85 +273,50 @@ namespace LoneEftDmaRadar.UI.Skia
                 new SKPoint(0, 0)  // bottom-left
             });
 
-            using var accentPaint = new SKPaint
-            {
-                Color = accentColor,
-                Style = SKPaintStyle.Fill,
-                IsAntialias = true
-            };
-            canvas.DrawRoundRect(accentRoundRect, accentPaint);
+            _accentPaint.Color = accentColor;
+            canvas.DrawRoundRect(accentRoundRect, _accentPaint);
         }
 
         private static void DrawCardContent(SKCanvas canvas, SKPoint pos, TooltipData data,
             float cardWidth, float scale)
         {
-            using var headerFont = HeaderFont;
-            using var subHeaderFont = SubHeaderFont;
-            using var rowFont = RowFont;
-
-            headerFont.Size *= scale;
-            subHeaderFont.Size *= scale;
-            rowFont.Size *= scale;
+            EnsureFonts();
+            _headerFont.Size = HeaderFontSize * scale;
+            _subHeaderFont.Size = SubHeaderFontSize * scale;
+            _rowFont.Size = RowFontSize * scale;
 
             float x = pos.X + (PaddingX * scale);
-            float y = pos.Y + (AccentBarHeight * scale) + (PaddingY * scale) + headerFont.Size;
+            float y = pos.Y + (AccentBarHeight * scale) + (PaddingY * scale) + _headerFont.Size;
 
             // Draw header
-            using var headerPaint = new SKPaint
-            {
-                Color = SKColors.White,
-                IsAntialias = true
-            };
-            canvas.DrawText(data.Header, x, y, SKTextAlign.Left, headerFont, headerPaint);
+            canvas.DrawText(data.Header, x, y, SKTextAlign.Left, _headerFont, _headerPaint);
 
             // Draw subheader if present
             if (!string.IsNullOrEmpty(data.SubHeader))
             {
-                y += (HeaderSpacing * scale) + subHeaderFont.Size;
-                using var subHeaderPaint = new SKPaint
-                {
-                    Color = LabelColor,
-                    IsAntialias = true
-                };
-                canvas.DrawText(data.SubHeader, x, y, SKTextAlign.Left, subHeaderFont, subHeaderPaint);
+                y += (HeaderSpacing * scale) + _subHeaderFont.Size;
+                canvas.DrawText(data.SubHeader, x, y, SKTextAlign.Left, _subHeaderFont, _subHeaderPaint);
             }
 
             // Draw separator line after header
             if (data.Rows.Count > 0)
             {
                 y += (HeaderSpacing * scale);
-                using var separatorPaint = new SKPaint
-                {
-                    Color = new SKColor(60, 70, 90, 180),
-                    StrokeWidth = 1f,
-                    IsAntialias = true
-                };
-                canvas.DrawLine(x, y, pos.X + cardWidth - (PaddingX * scale), y, separatorPaint);
+                canvas.DrawLine(x, y, pos.X + cardWidth - (PaddingX * scale), y, _separatorPaint);
             }
 
             // Draw rows
-            using var labelPaint = new SKPaint
-            {
-                Color = LabelColor,
-                IsAntialias = true
-            };
-
             foreach (var row in data.Rows)
             {
                 y += (RowHeight * scale);
 
                 // Draw label
-                canvas.DrawText(row.Label, x, y, SKTextAlign.Left, rowFont, labelPaint);
+                canvas.DrawText(row.Label, x, y, SKTextAlign.Left, _rowFont, _labelPaint);
 
-                // Draw value (right-aligned)
-                var valueColor = row.ValueColor ?? SKColors.White;
-                using var valuePaint = new SKPaint
-                {
-                    Color = valueColor,
-                    IsAntialias = true
-                };
+                // Draw value (right-aligned) — mutate cached paint color
+                _valuePaint.Color = row.ValueColor ?? SKColors.White;
                 var valueX = pos.X + cardWidth - (PaddingX * scale);
-                canvas.DrawText(row.Value, valueX, y, SKTextAlign.Right, rowFont, valuePaint);
+                canvas.DrawText(row.Value, valueX, y, SKTextAlign.Right, _rowFont, _valuePaint);
             }
         }
     }

@@ -25,14 +25,14 @@ namespace SDK
 
         public readonly partial struct ExfiltrationPoint
         {
-            public const uint Status = 0xC8; // EExfiltrationStatus (updated offset)
-            public const uint Settings = 0x58; // ExitSettings
-            public const uint PlayersMetAllRequirements = 0xB8; // List<string>
+            public const uint Status = 0x58; // EExfiltrationStatus
+            public const uint Settings = 0x98; // ExitTriggerSettings
+            public const uint PlayersMetAllRequirements = 0x50; // List<string>
         }
 
         public readonly partial struct ExitSettings
         {
-            public const uint Name = 0x10; // string
+            public const uint Name = 0x18; // string
         }
 
         public readonly partial struct SynchronizableObject
@@ -86,14 +86,14 @@ namespace SDK
             public const uint ProceduralWeaponAnimation = 0x338; // EFT.Animations.ProceduralWeaponAnimation
             public const uint _inventoryController = 0x978; // EFT.PlayerInventoryController update
             public const uint _handsController = 0x980; // EFT.PlayerHands update
-            public const uint _playerLookRaycastTransform = 0xA08; // UnityEngine.Transform
+            public const uint _playerLookRaycastTransform = 0xA10; // UnityEngine.Transform
         }
 
         public readonly partial struct ObservedPlayerView
         {
 			public const uint ObservedPlayerController = 0x28; // EFT.NextObservedPlayer.ObservedPlayerController
 			public const uint Voice = 0x40; // string
-			public const uint AIData = 0x68; // Pointer to AIData (for SpawnType detection)
+			public const uint AIData = 0x70; // Pointer to AIData (for SpawnType detection)
 			public const uint Id = 0x7C; // int32_t - Player's unique in-memory ID
 			public const uint GroupID = 0x80; // string
 			public const uint Side = 0x94; // EFT.EPlayerSide
@@ -456,7 +456,7 @@ namespace SDK
 
         public readonly partial struct BotOwner
         {
-            public const uint SpawnProfileData = 0x3C8; // Pointer to SpawnProfileData (fixed offset)
+            public const uint SpawnProfileData = 0x3D0; // Pointer to SpawnProfileData
         }
 
         public readonly partial struct SpawnProfileData

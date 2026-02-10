@@ -527,18 +527,25 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
             }
         }
 
+        // Pre-allocated list to avoid LINQ allocations in ValidatePlayerTransforms
+        private readonly List<AbstractPlayer> _validatePlayersCache = new(32);
+
         public void ValidatePlayerTransforms()
         {
             try
             {
-                var players = _rgtPlayers
-                    .Where(x => x.IsActive && x.IsAlive && x is not BtrPlayer);
-                if (players.Any()) // at least 1 player
+                _validatePlayersCache.Clear();
+                foreach (var player in _rgtPlayers)
+                {
+                    if (player.IsActive && player.IsAlive && player is not BtrPlayer)
+                        _validatePlayersCache.Add(player);
+                }
+                if (_validatePlayersCache.Count > 0)
                 {
                     using var map = Memory.CreateScatterMap();
                     var round1 = map.AddRound();
                     var round2 = map.AddRound();
-                    foreach (var player in players)
+                    foreach (var player in _validatePlayersCache)
                     {
                         player.OnValidateTransforms(round1, round2);
                     }

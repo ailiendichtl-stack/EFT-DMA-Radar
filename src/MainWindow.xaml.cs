@@ -35,6 +35,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Windows.Input;
 using LoneEftDmaRadar.UI.ESP;
 using LoneEftDmaRadar.UI.Misc;
+using LoneEftDmaRadar.LOS;
 
 namespace LoneEftDmaRadar
 {
@@ -56,6 +57,10 @@ namespace LoneEftDmaRadar
                 this.WindowState = WindowState.Normal;
             DataContext = ViewModel = new MainWindowViewModel(this);
             Instance = this;
+
+            // Start visibility worker if enabled
+            if (App.Config.Visibility.Enabled)
+                VisibilityManager.Start();
         }
 
         private void BtnToggleESP_Click(object sender, RoutedEventArgs e)
@@ -93,12 +98,14 @@ namespace LoneEftDmaRadar
                     case "MemWritesPanel": pm.MemWritesPanel.IsOpen = false; break;
                     case "WebRadarPanel": pm.WebRadarPanel.IsOpen = false; break;
                     case "DebugPanel": pm.DebugPanel.IsOpen = false; break;
+                    case "VisibilityPanel": pm.VisibilityPanel.IsOpen = false; break;
                 }
             }
         }
 
         protected override void OnClosed(EventArgs e)
         {
+            VisibilityManager.Stop();
             ESPManager.CloseESP();
             DebugLogger.Close();
             base.OnClosed(e);

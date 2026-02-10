@@ -26,6 +26,7 @@ SOFTWARE.
  *
 */
 
+using System.Diagnostics;
 using Collections.Pooled;
 using LoneEftDmaRadar.Misc;
 using LoneEftDmaRadar.Tarkov.GameWorld.Player;
@@ -36,6 +37,11 @@ namespace LoneEftDmaRadar.UI.Skia
 {
     public sealed class PlayerInfoWidget : AbstractSKWidget
     {
+        // Cached sorted player list — refreshed every 500ms, swapped atomically
+        private PooledList<AbstractPlayer> _cachedPlayers;
+        private long _lastSortTicks;
+        private static readonly long SortIntervalTicks = Stopwatch.Frequency / 2; // 500ms
+
         /// <summary>
         /// Constructs a Player Info Overlay.
         /// </summary>
@@ -94,12 +100,27 @@ namespace LoneEftDmaRadar.UI.Skia
                 pos += width;
             }
 
-            // Sort & filter
+            // Sort & filter — cached with 500ms refresh gate, swapped atomically
             var localPos = localPlayer.Position;
-            using var filteredPlayers = players
-                .Where(p => p.IsHumanHostileActive)
-                .OrderBy(p => Vector3.Distance(localPos, p.Position))
-                .ToPooledList();
+            long now = Stopwatch.GetTimestamp();
+            if (_cachedPlayers == null || now - _lastSortTicks >= SortIntervalTicks)
+            {
+                _lastSortTicks = now;
+                var newList = players
+                    .Where(p => p.IsHumanHostileActive)
+                    .OrderBy(p => Vector3.Distance(localPos, p.Position))
+                    .ToPooledList();
+                var old = _cachedPlayers;
+                _cachedPlayers = newList;
+                old?.Dispose();
+            }
+            var filteredPlayers = _cachedPlayers;
+            if (filteredPlayers == null || filteredPlayers.Count == 0)
+            {
+                Size = new SKSize(0, 0);
+                Draw(canvas);
+                return;
+            }
 
             // Setup Frame and Draw Header
             var font = SKFonts.InfoWidgetFont;

@@ -380,8 +380,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             
             if (PlayerBones.Count > 0)
             {
-                 _verticesCount = PlayerBones.Values.Max(x => x.Count);
-                 _verticesCount = Math.Max(_verticesCount, SkeletonRoot.Count);
+                 CacheBoneData();
+                 _verticesCount = Math.Max(_cachedMaxBoneRequirement, SkeletonRoot.Count);
             }
             Skeleton = new PlayerSkeleton(SkeletonRoot, PlayerBones);
         }

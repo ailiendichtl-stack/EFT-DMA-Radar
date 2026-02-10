@@ -227,8 +227,11 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                     : Enumerable.Empty<IMouseoverEntity>();
 
                 if (FilterIsSet && !(MainWindow.Instance?.Radar?.Overlay?.ViewModel?.HideCorpses ?? false)) // Item Search
+                {
+                    var lootSet = new HashSet<IMouseoverEntity>(loot); // O(1) contains instead of O(n)
                     players = players.Where(x =>
-                        x.LootObject is null || !loot.Contains(x.LootObject)); // Don't show both corpse objects
+                        x.LootObject is null || !lootSet.Contains(x.LootObject)); // Don't show both corpse objects
+                }
 
                 // Return enumerable directly - removed .Any() which forced expensive enumeration
                 // The caller's foreach handles empty case gracefully (closest will be null)

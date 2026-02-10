@@ -230,6 +230,25 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         protected int _verticesCount;
         protected Vector3 _cachedPosition; // Fallback position cache
 
+        // Cached bone data — avoids ConcurrentDictionary enumerator allocations in hot path
+        private KeyValuePair<Bones, UnityTransform>[] _cachedBoneArray;
+        protected int _cachedMaxBoneRequirement;
+
+        /// <summary>
+        /// Snapshots PlayerBones into a cached array for fast iteration. Call after bones are populated.
+        /// </summary>
+        protected void CacheBoneData()
+        {
+            _cachedBoneArray = PlayerBones.ToArray();
+            int max = 0;
+            foreach (var kvp in _cachedBoneArray)
+            {
+                if (kvp.Value.Count > max)
+                    max = kvp.Value.Count;
+            }
+            _cachedMaxBoneRequirement = max;
+        }
+
         // Frame counter for distance-based update throttling
         private int _realtimeFrameCounter;
 
@@ -602,17 +621,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             bool needFullSkeleton = this is LocalPlayer ||
                 (IsAI ? App.Config.UI.EspAISkeletons : App.Config.UI.EspPlayerSkeletons);
 
-            // Calculate actual vertex requirements including all bones
-            int maxBoneRequirement = 0;
-            if (needFullSkeleton)
-            {
-                foreach (var bone in PlayerBones.Values)
-                {
-                    if (bone.Count > maxBoneRequirement)
-                        maxBoneRequirement = bone.Count;
-                }
-            }
-
+            // Use cached max bone requirement (computed once at allocation)
+            int maxBoneRequirement = needFullSkeleton ? _cachedMaxBoneRequirement : 0;
             int actualRequired = needFullSkeleton ? Math.Max(vertexCount, maxBoneRequirement) : vertexCount;
 
             if (actualRequired <= 0 || actualRequired > 10000)
@@ -626,17 +636,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     }
 
                     Skeleton = new PlayerSkeleton(SkeletonRoot, PlayerBones);
+                    CacheBoneData(); // Refresh cached array after reset
 
                     vertexCount = SkeletonRoot.Count;
-                    maxBoneRequirement = 0;
-                    if (needFullSkeleton)
-                    {
-                        foreach (var bone in PlayerBones.Values)
-                        {
-                            if (bone.Count > maxBoneRequirement)
-                                maxBoneRequirement = bone.Count;
-                        }
-                    }
+                    maxBoneRequirement = needFullSkeleton ? _cachedMaxBoneRequirement : 0;
                     actualRequired = needFullSkeleton ? Math.Max(vertexCount, maxBoneRequirement) : vertexCount;
                 }
                 catch { }
@@ -680,9 +683,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                                 }
 
                                 // Only update individual bones if skeleton rendering is enabled
-                                if (needFullSkeleton)
+                                if (needFullSkeleton && _cachedBoneArray != null)
                                 {
-                                    foreach (var bonePair in PlayerBones)
+                                    foreach (var bonePair in _cachedBoneArray)
                                     {
                                         try
                                         {
@@ -775,6 +778,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                                     }
 
                                     Skeleton = new PlayerSkeleton(SkeletonRoot, PlayerBones);
+                                    CacheBoneData();
                                 }
                                 catch { }
                             }

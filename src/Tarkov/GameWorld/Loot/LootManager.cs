@@ -51,6 +51,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         private readonly HashSet<ulong> _persistentContainerCache = new();
 
         /// <summary>
+        /// Cached list of static containers — updated during ProcessLootIndex/removal, avoids .OfType enumeration.
+        /// </summary>
+        private readonly List<StaticLootContainer> _staticContainers = new();
+
+        /// <summary>
         /// All loot (with filter applied).
         /// </summary>
         public IReadOnlyList<LootItem> FilteredLoot { get; private set; }
@@ -58,7 +63,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// <summary>
         /// All Static Containers on the map.
         /// </summary>
-        public IEnumerable<StaticLootContainer> StaticContainers => _loot.Values.OfType<StaticLootContainer>();
+        public IReadOnlyList<StaticLootContainer> StaticContainers => _staticContainers;
 
         public LootManager(ulong localGameWorld)
         {
@@ -73,6 +78,13 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// Force a filter refresh.
         /// Thread Safe.
         /// </summary>
+        private static readonly Comparison<LootItem> _filterSortComparison = (a, b) =>
+        {
+            int cmp = a.Important.CompareTo(b.Important);
+            if (cmp != 0) return cmp;
+            return (a?.Price ?? 0).CompareTo(b?.Price ?? 0);
+        };
+
         public void RefreshFilter()
         {
             if (_filterSync.TryEnter())
@@ -80,11 +92,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 try
                 {
                     var filter = LootFilter.Create();
-                    FilteredLoot = _loot.Values?
-                        .Where(x => filter(x))
-                        .OrderBy(x => x.Important)
-                        .ThenBy(x => x?.Price ?? 0)
-                        .ToList();
+                    var buffer = new List<LootItem>();
+                    foreach (var item in _loot.Values)
+                    {
+                        if (filter(item))
+                            buffer.Add(item);
+                    }
+                    buffer.Sort(_filterSortComparison);
+                    FilteredLoot = buffer; // Atomic ref swap — UI reads old list until this assignment
                 }
                 catch { }
                 finally
@@ -137,7 +152,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                     // Don't remove if persistent caching is enabled and it's a cached container
                     if (persistentCacheEnabled && _persistentContainerCache.Contains(existing))
                         continue;
-                    _ = _loot.TryRemove(existing, out _);
+                    if (_loot.TryRemove(existing, out var removed) && removed is StaticLootContainer removedContainer)
+                        _staticContainers.Remove(removedContainer);
                 }
             }
             // Update container status and batch refresh contents
@@ -315,8 +331,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                             var ownerItemTemplate = Memory.ReadPtr(ownerItemBase + Offsets.LootItem.Template);
                             var ownerItemMongoId = Memory.ReadValue<MongoID>(ownerItemTemplate + Offsets.ItemTemplate._id);
                             var ownerItemId = ownerItemMongoId.ReadString();
-                            if (_loot.TryAdd(p.ItemBase, new StaticLootContainer(ownerItemId, pos, interactiveClass)))
+                            var container = new StaticLootContainer(ownerItemId, pos, interactiveClass);
+                            if (_loot.TryAdd(p.ItemBase, container))
                             {
+                                _staticContainers.Add(container);
                                 // Add to persistent cache so container isn't removed when out of range
                                 _persistentContainerCache.Add(p.ItemBase);
                             }

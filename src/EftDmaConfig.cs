@@ -166,6 +166,13 @@ namespace LoneEftDmaRadar
         public MiscConfig Misc { get; private set; } = new();
 
         /// <summary>
+        /// LOS Visibility Config.
+        /// </summary>
+        [JsonPropertyName("visibility")]
+        [JsonInclude]
+        public VisibilityConfig Visibility { get; private set; } = new();
+
+        /// <summary>
         /// Panel Layout Config (floating panel positions/sizes).
         /// </summary>
         [JsonPropertyName("panelLayout")]
@@ -1424,6 +1431,30 @@ namespace LoneEftDmaRadar
     /// Persistent Cache that stores data between sessions for the same Process ID.
     /// Not serialized to config file - runtime only.
     /// </summary>
+    public sealed class VisibilityConfig
+    {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = false;
+
+        [JsonPropertyName("perBoneColoring")]
+        public bool PerBoneColoring { get; set; } = true;
+
+        [JsonPropertyName("dualCheck")]
+        public bool DualCheck { get; set; } = true;
+
+        [JsonPropertyName("noFoliage")]
+        public bool NoFoliage { get; set; } = false;
+
+        [JsonPropertyName("boneMask")]
+        public uint BoneMask { get; set; } = 0x3FFFF; // All 18 bones
+
+        [JsonPropertyName("visibleColor")]
+        public string VisibleColor { get; set; } = "#FF00FF00"; // Green
+
+        [JsonPropertyName("hitscanOnlyColor")]
+        public string HitscanOnlyColor { get; set; } = "#FFFFAA00"; // Orange
+    }
+
     public sealed class PersistentCache
     {
         /// <summary>

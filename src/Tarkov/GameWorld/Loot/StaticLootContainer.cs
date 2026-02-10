@@ -185,11 +185,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             if (_contents.Count > 0)
             {
                 _contentsLoaded = true;
+                _contents.Sort((a, b) => b.Price.CompareTo(a.Price)); // Sort descending by price once
                 // Cache filter color from highest value important item
                 _cachedFilterColor = _contents
                     .Where(x => x.IsImportant && !string.IsNullOrEmpty(x.FilterColor))
-                    .OrderByDescending(x => x.Price)
-                    .FirstOrDefault()?.FilterColor;
+                    .FirstOrDefault()?.FilterColor; // Already sorted by price desc
             }
         }
 
@@ -204,11 +204,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
             _contents = contents;
             _contentsLoaded = true;
+            _contents.Sort((a, b) => b.Price.CompareTo(a.Price)); // Sort descending by price once
             // Cache filter color from highest value important item
             _cachedFilterColor = _contents
                 .Where(x => x.IsImportant && !string.IsNullOrEmpty(x.FilterColor))
-                .OrderByDescending(x => x.Price)
-                .FirstOrDefault()?.FilterColor;
+                .FirstOrDefault()?.FilterColor; // Already sorted by price desc
         }
 
         public override void Draw(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
@@ -259,14 +259,21 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             }
         }
 
+        // Cached label — value doesn't change mid-raid
+        private string _cachedLabel;
+
         /// <summary>
         /// Gets the display label for this container (with value if available).
         /// </summary>
         private string GetContainerLabel()
         {
-            if (TotalValue > 0)
-                return $"[{Utilities.FormatNumberKM(TotalValue)}] {Name}";
-            return Name;
+            if (_cachedLabel != null)
+                return _cachedLabel;
+
+            _cachedLabel = TotalValue > 0
+                ? $"[{Utilities.FormatNumberKM(TotalValue)}] {Name}"
+                : Name;
+            return _cachedLabel;
         }
 
         /// <summary>
@@ -332,9 +339,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
                 // Show items - more when expanded
                 var itemLimit = isExpanded ? 15 : 5;
-                var topItems = _contents.OrderByDescending(x => x.Price).Take(itemLimit);
-                foreach (var item in topItems)
+                // _contents is pre-sorted descending by price — just take the first N
+                var count = Math.Min(itemLimit, _contents.Count);
+                for (int i = 0; i < count; i++)
                 {
+                    var item = _contents[i];
                     var itemColor = item.IsQuestItem ? TooltipColors.LootQuest
                         : item.IsHideoutItem ? TooltipColors.LootHideout
                         : (SKColor?)null;

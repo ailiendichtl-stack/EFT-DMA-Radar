@@ -26,6 +26,7 @@ using DxColor = SharpDX.Mathematics.Interop.RawColorBGRA;
 using LoneEftDmaRadar.Tarkov.GameWorld.Camera;
 using LoneEftDmaRadar.UI.Radar;
 using LoneEftDmaRadar.UI.Radar.Maps;
+using LoneEftDmaRadar.LOS;
 
 namespace LoneEftDmaRadar.UI.ESP
 {
@@ -86,6 +87,9 @@ namespace LoneEftDmaRadar.UI.ESP
         private AmmoCounterWidget _ammoWidget;
         private float _mouseX;
         private float _mouseY;
+
+        // Reusable point buffer for grenade blast/trail rendering (avoids per-frame allocation)
+        private readonly List<SKPoint> _grenadePointBuffer = new(64);
 
         /// <summary>
         /// LocalPlayer (who is running Radar) 'Player' object.
@@ -711,7 +715,7 @@ namespace LoneEftDmaRadar.UI.ESP
                         const int segments = 32;
                         var blastColor = new DxColor(grenadeColor.R, grenadeColor.G, grenadeColor.B, 255);
 
-                        var circlePoints = new List<SKPoint>();
+                        _grenadePointBuffer.Clear();
                         for (int i = 0; i <= segments; i++)
                         {
                             float angle = (i / (float)segments) * MathF.PI * 2;
@@ -723,14 +727,14 @@ namespace LoneEftDmaRadar.UI.ESP
 
                             if (WorldToScreen2WithScale(worldPos, out var screenPos, out _, screenWidth, screenHeight))
                             {
-                                circlePoints.Add(screenPos);
+                                _grenadePointBuffer.Add(screenPos);
                             }
                         }
 
                         // Draw line segments between points
-                        for (int i = 0; i < circlePoints.Count - 1; i++)
+                        for (int i = 0; i < _grenadePointBuffer.Count - 1; i++)
                         {
-                            ctx.DrawLine(ToRaw(circlePoints[i]), ToRaw(circlePoints[i + 1]), blastColor, 2f);
+                            ctx.DrawLine(ToRaw(_grenadePointBuffer[i]), ToRaw(_grenadePointBuffer[i + 1]), blastColor, 2f);
                         }
                     }
 
@@ -739,24 +743,24 @@ namespace LoneEftDmaRadar.UI.ESP
                     {
                         var trailColor = new DxColor(grenadeColor.R, grenadeColor.G, grenadeColor.B, 255);
 
-                        var screenPoints = new List<SKPoint>();
+                        _grenadePointBuffer.Clear();
                         foreach (var pos in grenade.PositionHistory)
                         {
                             if (pos == Vector3.Zero)
                                 continue;
                             if (WorldToScreen2WithScale(pos, out var posScreen, out _, screenWidth, screenHeight))
                             {
-                                screenPoints.Add(posScreen);
+                                _grenadePointBuffer.Add(posScreen);
                             }
                         }
 
                         // Draw trail segments with increasing thickness
-                        for (int i = 0; i < screenPoints.Count - 1; i++)
+                        for (int i = 0; i < _grenadePointBuffer.Count - 1; i++)
                         {
-                            float progress = (float)i / (screenPoints.Count - 1);
+                            float progress = (float)i / (_grenadePointBuffer.Count - 1);
                             float thickness = 0.5f + (progress * 3.5f); // 0.5f to 4f
 
-                            ctx.DrawLine(ToRaw(screenPoints[i]), ToRaw(screenPoints[i + 1]), trailColor, thickness);
+                            ctx.DrawLine(ToRaw(_grenadePointBuffer[i]), ToRaw(_grenadePointBuffer[i + 1]), trailColor, thickness);
                         }
                     }
 
@@ -861,10 +865,27 @@ namespace LoneEftDmaRadar.UI.ESP
             bool drawGroupId = isAI ? App.Config.UI.EspAIGroupIds : App.Config.UI.EspGroupIds;
             bool drawLabel = drawName || drawDistance || drawHealth || drawGroupId;
 
+            // LOS visibility — compute entity-level color override
+            var visCfg = App.Config.Visibility;
+            var visMgr = VisibilityManager.Instance;
+            PlayerVisibility? losVis = null;
+            DxColor boxColor = color;
+            if (visCfg.Enabled && visMgr != null && !isDeviceAimbotLocked)
+            {
+                losVis = visMgr.GetVisibility(player);
+                if (losVis.HasValue)
+                {
+                    if (losVis.Value.VisibleMask != 0)
+                        boxColor = ToColor(ColorFromHex(visCfg.VisibleColor));
+                    else if (losVis.Value.HitscanMask != 0)
+                        boxColor = ToColor(ColorFromHex(visCfg.HitscanOnlyColor));
+                }
+            }
+
             // Draw Skeleton (only if not in error state to avoid frozen bones)
             if (drawSkeleton && !player.IsError)
             {
-                DrawSkeleton(ctx, player, screenWidth, screenHeight, color, _skeletonPaint.StrokeWidth);
+                DrawSkeleton(ctx, player, screenWidth, screenHeight, color, _skeletonPaint.StrokeWidth, losVis);
             }
 
             RectangleF bbox = default;
@@ -874,24 +895,24 @@ namespace LoneEftDmaRadar.UI.ESP
                 hasBox = TryGetBoundingBox(player, screenWidth, screenHeight, out bbox);
             }
 
-            // Draw Box based on selected style
+            // Draw Box based on selected style (uses LOS-overridden boxColor)
             if (drawBox && hasBox)
             {
                 switch (boxStyle)
                 {
                     case EspBoxStyle.Box2D:
-                        DrawBoundingBox(ctx, bbox, color, _boxPaint.StrokeWidth);
+                        DrawBoundingBox(ctx, bbox, boxColor, _boxPaint.StrokeWidth);
                         break;
                     case EspBoxStyle.Corner2D:
-                        Draw2DCorners(ctx, bbox, color, _boxPaint.StrokeWidth);
+                        Draw2DCorners(ctx, bbox, boxColor, _boxPaint.StrokeWidth);
                         break;
                     case EspBoxStyle.Corner3D:
                         if (TryGet3DCorners(player, screenWidth, screenHeight, out var corners3dc))
-                            Draw3DCorners(ctx, corners3dc, color, _boxPaint.StrokeWidth);
+                            Draw3DCorners(ctx, corners3dc, boxColor, _boxPaint.StrokeWidth);
                         break;
                     case EspBoxStyle.Box3D:
                         if (TryGet3DCorners(player, screenWidth, screenHeight, out var corners3db))
-                            Draw3DBox(ctx, corners3db, color, _boxPaint.StrokeWidth);
+                            Draw3DBox(ctx, corners3db, boxColor, _boxPaint.StrokeWidth);
                         break;
                 }
             }
@@ -921,7 +942,17 @@ namespace LoneEftDmaRadar.UI.ESP
                     }
 
                     radius = Math.Clamp(radius, 2f, 12f);
-                    ctx.DrawCircle(ToRaw(headScreen), radius, color, filled: false);
+
+                    // Per-bone head color
+                    var headColor = color;
+                    if (visCfg.Enabled && losVis.HasValue)
+                    {
+                        if (BoneMappings.IsBoneSet(losVis.Value.VisibleMask, Bones.HumanHead))
+                            headColor = ToColor(ColorFromHex(visCfg.VisibleColor));
+                        else if (BoneMappings.IsBoneSet(losVis.Value.HitscanMask, Bones.HumanHead))
+                            headColor = ToColor(ColorFromHex(visCfg.HitscanOnlyColor));
+                    }
+                    ctx.DrawCircle(ToRaw(headScreen), radius, headColor, filled: false);
                 }
             }
 
@@ -1294,20 +1325,48 @@ namespace LoneEftDmaRadar.UI.ESP
              }
         }
 
-        private void DrawSkeleton(Dx9RenderContext ctx, AbstractPlayer player, float w, float h, DxColor color, float thickness)
+        private void DrawSkeleton(Dx9RenderContext ctx, AbstractPlayer player, float w, float h,
+            DxColor color, float thickness, PlayerVisibility? vis = null)
         {
+            var visCfg = App.Config.Visibility;
+            bool perBone = visCfg.Enabled && visCfg.PerBoneColoring && vis.HasValue;
+
+            DxColor visColor = default, hitscanColor = default;
+            if (perBone)
+            {
+                visColor = ToColor(ColorFromHex(visCfg.VisibleColor));
+                hitscanColor = ToColor(ColorFromHex(visCfg.HitscanOnlyColor));
+            }
+
             foreach (var (from, to) in _boneConnections)
             {
                 var p1 = player.GetBonePos(from);
                 var p2 = player.GetBonePos(to);
 
-                // Skip if either bone position is invalid (zero or NaN)
                 if (p1 == Vector3.Zero || p2 == Vector3.Zero)
                     continue;
 
+                var segColor = color;
+                if (perBone)
+                {
+                    bool fVis = BoneMappings.IsBoneSet(vis.Value.VisibleMask, from);
+                    bool tVis = BoneMappings.IsBoneSet(vis.Value.VisibleMask, to);
+                    if (fVis || tVis)
+                    {
+                        segColor = visColor;
+                    }
+                    else
+                    {
+                        bool fHit = BoneMappings.IsBoneSet(vis.Value.HitscanMask, from);
+                        bool tHit = BoneMappings.IsBoneSet(vis.Value.HitscanMask, to);
+                        if (fHit || tHit)
+                            segColor = hitscanColor;
+                    }
+                }
+
                 if (TryProject(p1, w, h, out var s1) && TryProject(p2, w, h, out var s2))
                 {
-                    ctx.DrawLine(ToRaw(s1), ToRaw(s2), color, thickness);
+                    ctx.DrawLine(ToRaw(s1), ToRaw(s2), segColor, thickness);
                 }
             }
         }
@@ -1746,6 +1805,16 @@ namespace LoneEftDmaRadar.UI.ESP
         {
             var fpsText = $"FPS: {_fps}";
             ctx.DrawText(fpsText, 10, 10, new DxColor(255, 255, 255, 255), DxTextSize.Small);
+
+            // LOS diagnostic overlay
+            var visMgr = VisibilityManager.Instance;
+            if (App.Config.Visibility.Enabled && visMgr != null)
+            {
+                string status = visMgr.IsReady
+                    ? $"LOS: {visMgr.EnemiesTracked} tracked | {visMgr.LatencyMs:F1}ms | {visMgr.FramesPerSecond}fps"
+                    : $"LOS: {visMgr.MeshStatus}";
+                ctx.DrawText(status, 10, 26, new DxColor(255, 255, 255, 200), DxTextSize.Small);
+            }
         }
 
         private static RawVector2 ToRaw(SKPoint point) => new(point.X, point.Y);

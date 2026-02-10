@@ -170,6 +170,19 @@
                 <tabs:WebRadarTab/>
             </controls:DraggablePanel>
 
+            <!-- Visibility Panel -->
+            <controls:DraggablePanel
+                x:Name="VisibilityPanel"
+                Title="LOS Settings"
+                Visibility="{Binding PanelManager.VisibilityPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.VisibilityPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.VisibilityPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.VisibilityPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.VisibilityPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:VisibilityTab/>
+            </controls:DraggablePanel>
+
             <!-- Debug Panel -->
             <controls:DraggablePanel
                 x:Name="DebugPanel"

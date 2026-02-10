@@ -317,12 +317,18 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             TooltipCard.Draw(canvas, pos, tooltip, canvasWidth, canvasHeight);
         }
 
+        // Cached label string — computed once, price/name don't change mid-raid
+        private string _cachedUILabel;
+
         /// <summary>
         /// Gets a UI Friendly Label.
         /// </summary>
         /// <returns>Item Label string cleaned up for UI usage.</returns>
         public string GetUILabel()
         {
+            if (_cachedUILabel != null)
+                return _cachedUILabel;
+
             var label = "";
             if (IsImportant)
                 label += "";
@@ -332,6 +338,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
 
             if (string.IsNullOrEmpty(label))
                 label = "Item";
+
+            _cachedUILabel = label;
             return label;
         }
 

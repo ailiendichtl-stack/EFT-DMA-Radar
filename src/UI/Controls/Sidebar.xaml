@@ -44,10 +44,17 @@
                             Style="{StaticResource SidebarButton}"
                             Command="{Binding ToggleSettingsPanelCommand}"
                             Tag="{Binding SettingsPanel.IsOpen, Mode=OneWay}"/>
-                    <Button Content="👁 ESP Fuser"
+
+                    <!-- ESP section -->
+                    <TextBlock Text="ESP" Style="{StaticResource SidebarGroupHeader}"/>
+                    <Button Content="👁 Fuser"
                             Style="{StaticResource SidebarButton}"
                             Command="{Binding ToggleEspPanelCommand}"
                             Tag="{Binding EspPanel.IsOpen, Mode=OneWay}"/>
+                    <Button Content="🔍 Visibility"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleVisibilityPanelCommand}"
+                            Tag="{Binding VisibilityPanel.IsOpen, Mode=OneWay}"/>
 
                     <!-- LOOT section -->
                     <TextBlock Text="LOOT" Style="{StaticResource SidebarGroupHeader}"/>
