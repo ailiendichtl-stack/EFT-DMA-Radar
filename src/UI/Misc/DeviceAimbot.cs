@@ -760,6 +760,10 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             Vector3 rawTargetPos = boneTransform.Position;
             Vector3 targetPos = rawTargetPos;
 
+            // Always update world-space velocity tracking (needed for adaptive smoothing + prediction)
+            string targetId = target.Base.ToString();
+            UpdateTargetWorldVelocity(rawTargetPos, targetId);
+
             // Apply ballistics prediction if enabled
             if (Config.EnablePrediction && localPlayer.FirearmManager != null && fireportPos.HasValue && _lastBallistics?.IsAmmoValid == true)
             {
@@ -868,9 +872,9 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 ? 1f
                 : Config.Smoothing * rateScale;
 
-            // Adaptive smoothing based on target movement speed
-            float targetSpeed = _targetScreenVelocity.Length();
-            float effectiveSmoothing = GetAdaptiveSmoothing(baseSmoothing, targetSpeed);
+            // Adaptive smoothing based on target world-space speed (distance-invariant)
+            float worldSpeed = _targetWorldVelocity.Length();
+            float effectiveSmoothing = GetAdaptiveSmoothing(baseSmoothing, worldSpeed);
 
             // Apply hipfire speed reduction when not aiming down sights
             // This prevents massive overshoots in hipfire where screen delta is much larger
@@ -1058,24 +1062,25 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
         }
 
         /// <summary>
-        /// Calculates adaptive smoothing based on target movement speed.
-        /// Stationary targets get faster lock, moving targets get smoother tracking.
+        /// Calculates adaptive smoothing based on target world-space speed (m/s).
+        /// Uses world speed so the result is distance-invariant — a target walking at
+        /// 2 m/s gets the same treatment at 5m and 200m, fixing close-range sluggishness.
         /// </summary>
-        private float GetAdaptiveSmoothing(float baseSmoothing, float targetSpeed)
+        private float GetAdaptiveSmoothing(float baseSmoothing, float worldSpeed)
         {
             if (!Config.AdaptiveSmoothing)
                 return baseSmoothing;
 
-            // targetSpeed is in pixels/second
-            const float stationaryThreshold = 50f;   // pixels/sec
-            const float fastThreshold = 500f;        // pixels/sec
+            // World-space thresholds (m/s) — distance-invariant
+            const float stationaryThreshold = 1.5f;  // standing / turning
+            const float fastThreshold = 5.0f;        // sprinting
 
-            if (targetSpeed < stationaryThreshold)
+            if (worldSpeed < stationaryThreshold)
             {
                 // Stationary: reduce smoothing for faster lock (50% of base)
                 return baseSmoothing * 0.5f;
             }
-            else if (targetSpeed > fastThreshold)
+            else if (worldSpeed > fastThreshold)
             {
                 // Fast moving: increase smoothing for stability (150% of base)
                 return baseSmoothing * 1.5f;
@@ -1083,7 +1088,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             else
             {
                 // Linear interpolation
-                float t = (targetSpeed - stationaryThreshold) / (fastThreshold - stationaryThreshold);
+                float t = (worldSpeed - stationaryThreshold) / (fastThreshold - stationaryThreshold);
                 return baseSmoothing * (0.5f + t * 1.0f);
             }
         }
@@ -1096,11 +1101,6 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 var ballistics = GetBallisticsInfo(localPlayer);
                 if (ballistics == null || !ballistics.IsAmmoValid)
                     return targetPos;
-
-                // Update world-space velocity tracking (works for ALL target types)
-                // This calculates velocity from position changes over time
-                string targetId = target.Base.ToString();
-                UpdateTargetWorldVelocity(targetPos, targetId);
 
                 // Get target velocity - prefer calculated velocity as it works for all targets
                 // Memory-read velocity only works for ObservedPlayer types
