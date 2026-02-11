@@ -42,7 +42,7 @@ namespace SDK
 
         public readonly partial struct SynchronizableObjectLogicProcessor
         {
-            public const uint SynchronizableObjects = 0x18; // System.Collections.Generic.List<SynchronizableObject>
+            public const uint SynchronizableObjects = 0x10; // _activeSynchronizableObjects (active airdrops/tripwires; 0x18 = static only)
         }
 
         public readonly partial struct TripwireSynchronizableObject
@@ -176,16 +176,16 @@ namespace SDK
 
         public readonly partial struct TriggerWithId
         {
-            public const uint Id = 0x18; // String
-            public const uint Description = 0x20; // String
+            public const uint Id = 0x20; // String
+            public const uint Description = 0x28; // String
         }
 
         public readonly partial struct PlayerInfo // EFT, class: ProfileInfo
         {
             public const uint Nickname = 0x10; // String
             public const uint EntryPoint = 0x28; // String
-            public const uint Voice = 0x30; // String (for offline AI voice detection)
-            public const uint Settings = 0x38; // WildSpawnSettings (for offline AI role/type)
+            // Voice field removed in game update
+            public const uint Settings = 0x78; // WildSpawnSettings (for offline AI role/type)
             public const uint Side = 0x48; // [HUMAN] Int32
             public const uint RegistrationDate = 0x4C; // Int32
             public const uint GroupId = 0x50; // String
@@ -250,7 +250,7 @@ namespace SDK
         public readonly partial struct LootItem
         {
             public const uint Template = 0x60; // EFT.InventoryLogic.ItemTemplate
-            public const uint Version = 0x7C; // Int32
+            public const uint Version = 0x28; // Int32
         }
 
         public readonly partial struct Item // EFT.InventoryLogic.Item - Ammo counter offsets
@@ -273,9 +273,9 @@ namespace SDK
 
         public readonly partial struct FirearmController
         {
-            public const uint WeaponAnimation = 0x198; // EFT.Animations.ProceduralWeaponAnimation
+            // WeaponAnimation removed - use Player.ProceduralWeaponAnimation (0x338) instead
             public const uint Fireport = 0x150; // EFT.BifacialTransform <Fireport> Fireport
-            public const uint TotalCenterOfImpact = 0x2a0; // Single
+            public const uint COI = 0xF0; // Single (was TotalCenterOfImpact at 0x2A0)
             public static readonly uint[] To_FirePortTransformInternal = new uint[] { Fireport, 0x10, 0x10 };
             public static readonly uint[] To_FirePortVertices = To_FirePortTransformInternal.Concat(new uint[] { UnityOffsets.TransformInternal_TransformAccessOffset, UnityOffsets.Hierarchy_VerticesOffset }).ToArray();
         }
@@ -377,8 +377,8 @@ namespace SDK
 
         public readonly partial struct StackSlot //Class: EFT.InventoryLogic.StackSlot
         {
-            public const uint _items = 0x10; // System.Collections.Generic.List<Item>
-            public const uint MaxCount = 0x38; // Int32
+            public const uint _items = 0x18; // System.Collections.Generic.List<Item>
+            public const uint MaxCount = 0x10; // Int32
 
             // Ammo counter offsets (from CyNickal - used when reading via Item.Cartridges path)
             public const uint Max = 0x10; // Max capacity (Int32)
@@ -405,7 +405,7 @@ namespace SDK
 
         public readonly partial struct GridItemCollection // Grid's ItemCollection wrapper
         {
-            public const uint Items = 0x18; // System.Collections.Generic.List<Item> - VERIFIED via debug
+            public const uint Items = 0x10; // System.Collections.Generic.List<Item>
         }
 
         public readonly partial struct ModTemplate //Class: EFT.InventoryLogic.ModTemplate

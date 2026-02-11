@@ -276,10 +276,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         {
             try
             {
-                var hands = Memory.ReadPtr(Base + Offsets.Player._handsController);
-                if (hands == 0) return 0f;
-                
-                var anim = Memory.ReadPtr(hands + Offsets.FirearmController.WeaponAnimation);
+                var anim = Memory.ReadPtr(Base + Offsets.Player.ProceduralWeaponAnimation);
                 if (anim == 0) return 0f;
 
                 return Memory.ReadValue<float>(anim + Offsets.ProceduralWeaponAnimation._fieldOfView);
