@@ -7,6 +7,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+             xmlns:controls="clr-namespace:LoneEftDmaRadar.UI.Controls"
              mc:Ignorable="d"
              Padding="10">
 
@@ -23,68 +24,57 @@
         <StackPanel Orientation="Vertical"
                     Margin="0,0,0,10">
 
-            <!-- General Settings -->
-            <GroupBox Header="ESP Fuser General Settings"
-                      Margin="0,0,0,12">
-                <StackPanel>
-                    <WrapPanel>
-                        <Button Content="Start Fuser"
-                                Command="{Binding StartEspCommand}"
-                                Width="120"
-                                Height="32"
-                                Margin="0,0,16,8"
-                                ToolTip="Opens the ESP Window in Fullscreen Mode."/>
-                    </WrapPanel>
+            <Button Content="Start Fuser"
+                    Command="{Binding StartEspCommand}"
+                    Padding="15,8"
+                    Margin="0,4,0,8"
+                    ToolTip="Opens the ESP Window in Fullscreen Mode."/>
 
-                    <WrapPanel Margin="0,4,0,0">
-                        <TextBlock Text="Target Screen:" VerticalAlignment="Center" Margin="0,0,8,0" Width="100"/>
+            <!-- General card -->
+            <GroupBox Header="General" Margin="0,0,0,8">
+                <StackPanel>
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="Target Screen:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <ComboBox Width="300"
                                   ItemsSource="{Binding AvailableScreens}"
                                   SelectedValue="{Binding EspTargetScreen, Mode=TwoWay}"
                                   SelectedValuePath="Index"
                                   DisplayMemberPath="DisplayName"
-                                  ToolTip="Select which monitor to display the ESP window on when using Start Fuser"/>
+                                  ToolTip="Select which monitor to display the ESP window on"/>
                     </WrapPanel>
-
-                    <WrapPanel Margin="0,4,0,0">
-                        <TextBlock Text="Resolution Override (0 = Auto): " VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBox Width="65" Text="{Binding EspScreenWidth, Mode=TwoWay}" Margin="0,0,8,0" ToolTip="Width (e.g. 1920, 2560). Set to 0 to auto-detect selected monitor resolution."/>
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="Resolution Override:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox Width="65" Text="{Binding EspScreenWidth, Mode=TwoWay}" Margin="0,0,8,0" ToolTip="Width (e.g. 1920, 2560). Set to 0 to auto-detect."/>
                         <TextBlock Text="x" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBox Width="65" Text="{Binding EspScreenHeight, Mode=TwoWay}" Margin="0,0,16,0" ToolTip="Height (e.g. 1080, 1440). Set to 0 to auto-detect selected monitor resolution."/>
+                        <TextBox Width="65" Text="{Binding EspScreenHeight, Mode=TwoWay}" ToolTip="Height (e.g. 1080, 1440). Set to 0 to auto-detect."/>
+                        <TextBlock Text="(0 = Auto)" VerticalAlignment="Center" Margin="8,0,0,0"
+                                   Foreground="{DynamicResource App.TextMutedBrush}" FontSize="11"/>
                     </WrapPanel>
-
-                    <GroupBox Header="Text Style" Margin="0,8,0,0">
-                        <StackPanel>
-                            <WrapPanel Margin="0,4,0,0">
-                                <TextBlock Text="Font Family:" VerticalAlignment="Center" Width="90"/>
-                                <TextBox Width="180"
-                                         Text="{Binding EspFontFamily, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         ToolTip="Use any installed font family name (e.g. Segoe UI, Arial, Consolas)"/>
-                            </WrapPanel>
-                            <WrapPanel Margin="0,4,0,0">
-                                <TextBlock Text="Sizes (S/M/L):" VerticalAlignment="Center" Width="90"/>
-                                <TextBox Width="50"
-                                         Text="{Binding EspFontSizeSmall, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         ToolTip="Small text size (loot labels)"/>
-                                <TextBlock Text="/" VerticalAlignment="Center" Margin="6,0"/>
-                                <TextBox Width="50"
-                                         Text="{Binding EspFontSizeMedium, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         ToolTip="Medium text size (names, exfils)"/>
-                                <TextBlock Text="/" VerticalAlignment="Center" Margin="6,0"/>
-                                <TextBox Width="50"
-                                         Text="{Binding EspFontSizeLarge, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         ToolTip="Large text size (status text)"/>
-                            </WrapPanel>
-                            <TextBlock Text="Changes apply instantly to the ESP overlay"
-                                       Foreground="Gray"
-                                       FontSize="10"
-                                       Margin="0,4,0,0"/>
-                        </StackPanel>
-                    </GroupBox>
+                    <WrapPanel Margin="0,0,0,4">
+                        <TextBlock Text="Font Family:" VerticalAlignment="Center" Width="90"/>
+                        <TextBox Width="180"
+                                 Text="{Binding EspFontFamily, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Use any installed font family name (e.g. Segoe UI, Arial, Consolas)"/>
+                    </WrapPanel>
+                    <WrapPanel Margin="0,4,0,0">
+                        <TextBlock Text="Sizes (S/M/L):" VerticalAlignment="Center" Width="90"/>
+                        <TextBox Width="50"
+                                 Text="{Binding EspFontSizeSmall, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Small text size (loot labels)"/>
+                        <TextBlock Text="/" VerticalAlignment="Center" Margin="6,0"/>
+                        <TextBox Width="50"
+                                 Text="{Binding EspFontSizeMedium, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Medium text size (names, exfils)"/>
+                        <TextBlock Text="/" VerticalAlignment="Center" Margin="6,0"/>
+                        <TextBox Width="50"
+                                 Text="{Binding EspFontSizeLarge, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Large text size (status text)"/>
+                    </WrapPanel>
                 </StackPanel>
             </GroupBox>
 
-            <GroupBox Header="Player ESP" Margin="0,0,0,12">
+            <!-- Player ESP card -->
+            <GroupBox Header="Player ESP" Margin="0,0,0,8">
                 <StackPanel>
                     <WrapPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
@@ -100,7 +90,7 @@
                         <CheckBox Content="Health Status" IsChecked="{Binding EspPlayerHealth, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Distance" IsChecked="{Binding EspPlayerDistance, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Weapons" IsChecked="{Binding EspPlayerWeapons, Mode=TwoWay}" Margin="0,0,16,8" />
-                        <CheckBox Content="Head Circle" IsChecked="{Binding EspHeadCirclePlayers, Mode=TwoWay}" Margin="0,0,16,8" />
+                        <CheckBox Content="Head Circle" IsChecked="{Binding EspHeadCirclePlayers, Mode=TwoWay}" Margin="0,0,16,8" ToolTip="Head circles inherit the entity color" />
                      </WrapPanel>
                      <WrapPanel Margin="0,4,0,0">
                         <TextBlock Text="Max Distance (0 = Unlimited):" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -124,28 +114,23 @@
                                   ToolTip="Choose where the player label is drawn relative to the bounding box."/>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorPlayers, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorPlayers, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,4,0,0" VerticalAlignment="Center">
                             <TextBlock Text="BEAR Faction:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorFactionBear, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorFactionBear, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                             <TextBlock Text="USEC:" VerticalAlignment="Center" Margin="10,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorFactionUsec, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorFactionUsec, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                     </WrapPanel>
                 </StackPanel>
             </GroupBox>
-            
-            <GroupBox Header="AI ESP" Margin="0,0,0,12">
+
+            <!-- AI ESP card -->
+            <GroupBox Header="AI ESP" Margin="0,0,0,8">
                 <StackPanel>
                     <WrapPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
@@ -157,7 +142,7 @@
                         <CheckBox Content="Health Status" IsChecked="{Binding EspAIHealth, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Distance" IsChecked="{Binding EspAIDistance, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Weapons" IsChecked="{Binding EspAIWeapons, Mode=TwoWay}" Margin="0,0,16,8" />
-                        <CheckBox Content="Head Circle" IsChecked="{Binding EspHeadCircleAI, Mode=TwoWay}" Margin="0,0,16,8" />
+                        <CheckBox Content="Head Circle" IsChecked="{Binding EspHeadCircleAI, Mode=TwoWay}" Margin="0,0,16,8" ToolTip="Head circles inherit the entity color" />
                      </WrapPanel>
                     <WrapPanel Margin="0,8,0,0">
                         <TextBlock Text="Label Position (AI/Scav):" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -167,31 +152,23 @@
                                   ToolTip="Choose where the AI/scav label is drawn relative to the bounding box."/>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="AI/Scav Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorAI, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorAI, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Player Scav Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorPlayerScavs, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorPlayerScavs, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Raider Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorRaiders, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorRaiders, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Boss Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorBosses, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorBosses, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                      </WrapPanel>
                      <WrapPanel Margin="0,4,0,0">
@@ -208,14 +185,11 @@
                                    VerticalAlignment="Center"
                                    MinWidth="50"/>
                      </WrapPanel>
-                    <TextBlock Text="Head circles inherit the entity color (players, scavs, raiders, bosses)."
-                               Foreground="Gray"
-                               FontSize="10"
-                               Margin="0,8,0,0"/>
                 </StackPanel>
             </GroupBox>
-            
-            <GroupBox Header="Loot, Exfils &amp; Explosives" Margin="0,0,0,12">
+
+            <!-- Loot, Exfils & Explosives card -->
+            <GroupBox Header="Loot, Exfils &amp; Explosives" Margin="0,0,0,8">
                 <StackPanel>
                      <WrapPanel>
                         <CheckBox Content="Show Loot" IsChecked="{Binding EspLoot, Mode=TwoWay}" Margin="0,0,16,8" />
@@ -227,7 +201,7 @@
                                   IsChecked="{Binding EspLootConeEnabled, Mode=TwoWay}"
                                   Margin="0,0,16,8" />
                      </WrapPanel>
-                     <WrapPanel Margin="0,4,0,0" IsEnabled="{Binding EspGrenades}">
+                     <WrapPanel Margin="0,4,0,0" Visibility="{Binding EspGrenades, Converter={StaticResource BoolToVis}}">
                         <CheckBox Content="Show Grenade Trail"
                                   IsChecked="{Binding EspGrenadeTrail, Mode=TwoWay}"
                                   Margin="0,0,16,0" />
@@ -259,37 +233,39 @@
                         <CheckBox Content="Show Corpses" IsChecked="{Binding EspCorpses, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Show Containers" IsChecked="{Binding EspContainers, Mode=TwoWay}" Margin="0,0,16,8" />
                      </WrapPanel>
-                     <WrapPanel Margin="0,4,0,0" IsEnabled="{Binding EspContainers}">
-                        <TextBlock Text="Container Distance (ESP)"
-                                   VerticalAlignment="Center" />
-                        <Slider x:Name="EspContainerDistanceSlider"
-                                Width="150"
-                                Margin="8,0"
-                                Minimum="0"
-                                Maximum="1000"
-                                SmallChange="10"
-                                LargeChange="100"
-                                Value="{Binding EspContainerDistance, Mode=TwoWay}" />
-                        <TextBlock Text="{Binding Value, ElementName=EspContainerDistanceSlider, StringFormat='{}{0:F0}'}"
-                                   VerticalAlignment="Center"
-                                   Margin="8,0,0,0" />
-                     </WrapPanel>
-                     <WrapPanel Margin="0,4,0,0" IsEnabled="{Binding EspContainers}">
-                        <TextBlock Text="Min Value (0=All)"
-                                   VerticalAlignment="Center" />
-                        <Slider x:Name="EspContainerMinValueSlider"
-                                Width="150"
-                                Margin="8,0"
-                                Minimum="0"
-                                Maximum="500000"
-                                SmallChange="10000"
-                                LargeChange="50000"
-                                Value="{Binding EspContainerMinValue, Mode=TwoWay}" />
-                        <TextBlock Text="{Binding Value, ElementName=EspContainerMinValueSlider, StringFormat='{}{0:N0}'}"
-                                   VerticalAlignment="Center"
-                                   Margin="8,0,0,0" />
-                     </WrapPanel>
-                     <WrapPanel Margin="0,4,0,0" IsEnabled="{Binding EspLootConeEnabled}">
+                     <StackPanel Visibility="{Binding EspContainers, Converter={StaticResource BoolToVis}}">
+                         <WrapPanel Margin="0,4,0,0">
+                            <TextBlock Text="Container Distance (ESP)"
+                                       VerticalAlignment="Center" />
+                            <Slider x:Name="EspContainerDistanceSlider"
+                                    Width="150"
+                                    Margin="8,0"
+                                    Minimum="0"
+                                    Maximum="1000"
+                                    SmallChange="10"
+                                    LargeChange="100"
+                                    Value="{Binding EspContainerDistance, Mode=TwoWay}" />
+                            <TextBlock Text="{Binding Value, ElementName=EspContainerDistanceSlider, StringFormat='{}{0:F0}'}"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0" />
+                         </WrapPanel>
+                         <WrapPanel Margin="0,4,0,0">
+                            <TextBlock Text="Min Value (0=All)"
+                                       VerticalAlignment="Center" />
+                            <Slider x:Name="EspContainerMinValueSlider"
+                                    Width="150"
+                                    Margin="8,0"
+                                    Minimum="0"
+                                    Maximum="500000"
+                                    SmallChange="10000"
+                                    LargeChange="50000"
+                                    Value="{Binding EspContainerMinValue, Mode=TwoWay}" />
+                            <TextBlock Text="{Binding Value, ElementName=EspContainerMinValueSlider, StringFormat='{}{0:N0}'}"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0" />
+                         </WrapPanel>
+                     </StackPanel>
+                     <WrapPanel Margin="0,4,0,0" Visibility="{Binding EspLootConeEnabled, Converter={StaticResource BoolToVis}}">
                         <TextBlock Text="Cone Angle"
                                    VerticalAlignment="Center" />
                         <Slider x:Name="LootConeSlider"
@@ -319,102 +295,86 @@
                                    MinWidth="50"/>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Loot Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorLoot, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorLoot, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Container Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorContainers, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorContainers, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Exfil Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorExfil, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorExfil, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Tripwire Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorTripwire, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorTripwire, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Grenade Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorGrenade, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding EspColorGrenade, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                     </WrapPanel>
                 </StackPanel>
             </GroupBox>
 
-            <!-- Mini Radar Settings -->
-            <GroupBox Header="Mini Radar" Margin="0,0,0,12">
+            <!-- Mini Radar card -->
+            <GroupBox Header="Mini Radar" Margin="0,0,0,8">
                 <StackPanel>
                     <CheckBox Content="Enable Mini Radar" IsChecked="{Binding MiniRadarEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
 
-                    <WrapPanel Margin="0,0,0,8" IsEnabled="{Binding MiniRadarEnabled}">
-                         <TextBlock Text="Size:" VerticalAlignment="Center" Width="60"/>
-                         <Slider Width="150" Minimum="150" Maximum="512" Value="{Binding MiniRadarSize, Mode=TwoWay}" SmallChange="10" LargeChange="50"/>
-                         <TextBlock Text="{Binding MiniRadarSize, StringFormat='{}{0} px'}" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                    </WrapPanel>
+                    <StackPanel Visibility="{Binding MiniRadarEnabled, Converter={StaticResource BoolToVis}}">
+                        <WrapPanel Margin="0,0,0,8">
+                             <TextBlock Text="Size:" VerticalAlignment="Center" Width="60"/>
+                             <Slider Width="150" Minimum="150" Maximum="512" Value="{Binding MiniRadarSize, Mode=TwoWay}" SmallChange="10" LargeChange="50"/>
+                             <TextBlock Text="{Binding MiniRadarSize, StringFormat='{}{0} px'}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        </WrapPanel>
 
-                    <WrapPanel Margin="0,0,0,8" IsEnabled="{Binding MiniRadarEnabled}">
-                        <TextBlock Text="Position:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                        <TextBox Width="50" Text="{Binding MiniRadarScreenX, Mode=TwoWay}" ToolTip="-1 = Auto (Right)"/>
-                        <TextBlock Text="Y" VerticalAlignment="Center" Margin="8,0,4,0"/>
-                        <TextBox Width="50" Text="{Binding MiniRadarScreenY, Mode=TwoWay}"/>
-                        <TextBlock Text="(-1 X = Auto Top-Right)" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="Gray" FontSize="10"/>
-                    </WrapPanel>
+                        <WrapPanel Margin="0,0,0,8">
+                            <TextBlock Text="Position:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBox Width="50" Text="{Binding MiniRadarScreenX, Mode=TwoWay}" ToolTip="-1 = Auto (Right)"/>
+                            <TextBlock Text="Y" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                            <TextBox Width="50" Text="{Binding MiniRadarScreenY, Mode=TwoWay}"/>
+                        </WrapPanel>
 
-                    <TextBlock Text="Visibility Layers" FontWeight="SemiBold" Margin="0,4,0,4" IsEnabled="{Binding MiniRadarEnabled}"/>
-                    <WrapPanel IsEnabled="{Binding MiniRadarEnabled}">
-                         <CheckBox Content="Players" IsChecked="{Binding MiniRadarShowPlayers, Mode=TwoWay}" Margin="0,0,12,0"/>
-                         <CheckBox Content="Loot" IsChecked="{Binding MiniRadarShowLoot, Mode=TwoWay}" Margin="0,0,12,0"/>
-                         <CheckBox Content="Containers" IsChecked="{Binding MiniRadarShowContainers, Mode=TwoWay}" Margin="0,0,12,0"/>
-                         <CheckBox Content="Exits" IsChecked="{Binding MiniRadarShowExits, Mode=TwoWay}" Margin="0,0,12,0"/>
-                         <CheckBox Content="Grenades" IsChecked="{Binding MiniRadarShowGrenades, Mode=TwoWay}" Margin="0,0,12,0"/>
-                    </WrapPanel>
-                    <CheckBox Content="Invert Map Colors (Dark)" IsChecked="{Binding MiniRadarInvertColors, Mode=TwoWay}" IsEnabled="{Binding MiniRadarEnabled}" Margin="0,8,0,0"/>
+                        <TextBlock Text="Visibility Layers" FontWeight="SemiBold" Margin="0,4,0,4"/>
+                        <WrapPanel>
+                             <CheckBox Content="Players" IsChecked="{Binding MiniRadarShowPlayers, Mode=TwoWay}" Margin="0,0,12,0"/>
+                             <CheckBox Content="Loot" IsChecked="{Binding MiniRadarShowLoot, Mode=TwoWay}" Margin="0,0,12,0"/>
+                             <CheckBox Content="Containers" IsChecked="{Binding MiniRadarShowContainers, Mode=TwoWay}" Margin="0,0,12,0"/>
+                             <CheckBox Content="Exits" IsChecked="{Binding MiniRadarShowExits, Mode=TwoWay}" Margin="0,0,12,0"/>
+                             <CheckBox Content="Grenades" IsChecked="{Binding MiniRadarShowGrenades, Mode=TwoWay}" Margin="0,0,12,0"/>
+                        </WrapPanel>
+                        <CheckBox Content="Invert Map Colors (Dark)" IsChecked="{Binding MiniRadarInvertColors, Mode=TwoWay}" Margin="0,8,0,0"/>
+                    </StackPanel>
                 </StackPanel>
             </GroupBox>
 
-            <!-- Ammo Counter Settings -->
-            <GroupBox Header="Ammo Counter" Margin="0,0,0,12">
+            <!-- Ammo Counter card -->
+            <GroupBox Header="Ammo Counter" Margin="0,0,0,8">
                 <StackPanel>
                     <WrapPanel>
                         <CheckBox Content="Enable Ammo Counter" IsChecked="{Binding AmmoCounterEnabled, Mode=TwoWay}" Margin="0,0,16,8"
-                                  ToolTip="Displays your current ammo count (XX/XX) on the ESP overlay. Drag to reposition, drag corner to resize."/>
+                                  ToolTip="Displays ammo count on ESP. Drag to reposition, drag corner to resize. Shows ammo type below count."/>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="Text Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding AmmoCounterTextColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                            <controls:NeonColorSwatch
+                                              SelectedColor="{Binding AmmoCounterTextColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                     </WrapPanel>
-                    <TextBlock Text="Drag the widget to reposition. Drag bottom-right corner to resize. Shows ammo type below count."
-                               Foreground="Gray"
-                               FontSize="10"
-                               Margin="0,0,0,0"/>
                 </StackPanel>
             </GroupBox>
 
-            <!-- Performance Settings -->
-            <GroupBox Header="Misc"
-                      Margin="0,0,0,12">
+            <!-- Misc card -->
+            <GroupBox Header="Misc" Margin="0,0,0,8">
                 <StackPanel>
                     <StackPanel Margin="0,0,0,8">
-                        <TextBlock Text="ESP Max FPS (0 = unlimited / 144 default):"
+                        <TextBlock Text="ESP Max FPS (0 = Unlimited)"
                                    VerticalAlignment="Center" />
                         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                             <Slider x:Name="EspFpsSlider"
@@ -425,44 +385,40 @@
                                     LargeChange="30"
                                     TickFrequency="30"
                                     IsSnapToTickEnabled="True"
-                                   Value="{Binding EspMaxFPS, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    Value="{Binding EspMaxFPS, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    ToolTip="Defaults to 144. Lower values save CPU/GPU." />
                             <TextBlock Text="{Binding Value, ElementName=EspFpsSlider, StringFormat='{}{0:F0}'}"
                                        VerticalAlignment="Center"
                                        Margin="8,0,0,0" />
                         </StackPanel>
-                        <TextBlock Text="0 = unlimited (defaults to 144). Lower values save CPU/GPU."
-                                   Foreground="Gray"
-                                   FontSize="10"
-                                   Margin="0,2,0,0" />
                     </StackPanel>
-
 
                     <CheckBox Content="Crosshair"
                                   ToolTip="Displays a simple crosshair at the center of the ESP window."
                                   IsChecked="{Binding EspCrosshair, Mode=TwoWay}"
                                   Margin="0,0,16,8" />
 
-                    <WrapPanel Margin="0,4,0,0" IsEnabled="{Binding EspCrosshair}">
-                        <TextBlock Text="Crosshair Length" VerticalAlignment="Center"/>
-                        <Slider x:Name="CrosshairLengthSlider"
-                                Width="150"
-                                Margin="8,0"
-                                Minimum="5"
-                                Maximum="100"
-                                SmallChange="1"
-                                LargeChange="5"
-                                Value="{Binding EspCrosshairLength, Mode=TwoWay}"/>
-                        <TextBlock Text="{Binding Value, ElementName=CrosshairLengthSlider, StringFormat=F0}"
-                                   VerticalAlignment="Center"
-                                   Margin="8,0,0,0"/>
-                    </WrapPanel>
+                    <StackPanel Visibility="{Binding EspCrosshair, Converter={StaticResource BoolToVis}}">
+                        <WrapPanel Margin="0,4,0,0">
+                            <TextBlock Text="Crosshair Length" VerticalAlignment="Center"/>
+                            <Slider x:Name="CrosshairLengthSlider"
+                                    Width="150"
+                                    Margin="8,0"
+                                    Minimum="5"
+                                    Maximum="100"
+                                    SmallChange="1"
+                                    LargeChange="5"
+                                    Value="{Binding EspCrosshairLength, Mode=TwoWay}"/>
+                            <TextBlock Text="{Binding Value, ElementName=CrosshairLengthSlider, StringFormat=F0}"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0"/>
+                        </WrapPanel>
 
-                    <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="Crosshair Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <xctk:ColorPicker Width="42" Height="26"
-                                              SelectedColor="{Binding EspColorCrosshair, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              UsingAlphaChannel="True"
-                                              ShowRecentColors="False"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Crosshair Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <controls:NeonColorSwatch
+                                                  SelectedColor="{Binding EspColorCrosshair, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
+                        </StackPanel>
                     </StackPanel>
                 </StackPanel>
             </GroupBox>

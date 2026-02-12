@@ -16,33 +16,37 @@
         <StackPanel Orientation="Vertical"
                     Margin="0,0,0,10">
 
-            <GroupBox Header="Hideout Item Tracking"
-                      Margin="0,0,0,12">
+            <!-- General card -->
+            <GroupBox Header="General" Margin="0,0,0,8">
                 <StackPanel>
-                    <WrapPanel Margin="0,0,0,8">
-                        <CheckBox Content="Enable Hideout Tracking"
-                                  ToolTip="Highlights loot items needed for selected hideout upgrades."
-                                  IsChecked="{Binding Enabled, Mode=TwoWay}"
-                                  Margin="0,0,16,8" />
-                        <CheckBox Content="Show on Map/ESP"
-                                  ToolTip="Display hideout items on radar and ESP."
-                                  IsChecked="{Binding ShowHideoutItems, Mode=TwoWay}"
-                                  IsEnabled="{Binding Enabled}"
-                                  Margin="0,0,16,8" />
-                    </WrapPanel>
+                    <CheckBox Content="Enable Hideout Tracking"
+                              ToolTip="Highlights loot items needed for selected hideout upgrades."
+                              IsChecked="{Binding Enabled, Mode=TwoWay}"
+                              FontWeight="SemiBold"
+                              Margin="0,0,0,4" />
+                    <CheckBox Content="Show on Map/ESP"
+                              ToolTip="Display hideout items on radar and ESP."
+                              IsChecked="{Binding ShowHideoutItems, Mode=TwoWay}"
+                              IsEnabled="{Binding Enabled}" />
+                </StackPanel>
+            </GroupBox>
 
+            <!-- Station selection card -->
+            <GroupBox Header="Stations"
+                      Margin="0,0,0,8"
+                      IsEnabled="{Binding Enabled}">
+                <StackPanel>
                     <TextBlock Text="Select hideout stations and levels to track:"
                                Margin="0,0,0,8"
-                               FontStyle="Italic" />
+                               Foreground="{DynamicResource App.TextMutedBrush}"
+                               FontSize="12" />
 
-                    <!-- Horizontal station/level layout -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  MaxHeight="350"
-                                  IsEnabled="{Binding Enabled}">
+                                  MaxHeight="350">
                         <ItemsControl ItemsSource="{Binding Stations}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="#444"
+                                    <Border BorderBrush="{DynamicResource App.BorderBrush}"
                                             BorderThickness="0,0,0,1"
                                             Padding="0,4"
                                             Margin="0,0,0,2">
@@ -52,14 +56,12 @@
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
 
-                                            <!-- Station Name -->
                                             <TextBlock Grid.Column="0"
                                                        Text="{Binding Name}"
                                                        FontWeight="SemiBold"
                                                        VerticalAlignment="Center"
                                                        Margin="0,0,8,0" />
 
-                                            <!-- Level Toggles -->
                                             <ItemsControl Grid.Column="1"
                                                           ItemsSource="{Binding Levels}">
                                                 <ItemsControl.ItemsPanel>
@@ -77,16 +79,33 @@
                                                                       ToolTip="{Binding ItemSummary}">
                                                             <ToggleButton.Style>
                                                                 <Style TargetType="ToggleButton">
-                                                                    <Setter Property="Background" Value="#333" />
-                                                                    <Setter Property="Foreground" Value="White" />
-                                                                    <Setter Property="BorderBrush" Value="#555" />
+                                                                    <Setter Property="Background" Value="#0C1A1A28" />
+                                                                    <Setter Property="Foreground" Value="{DynamicResource App.TextSecondaryBrush}" />
+                                                                    <Setter Property="BorderBrush" Value="{DynamicResource App.BorderBrush}" />
+                                                                    <Setter Property="BorderThickness" Value="1" />
+                                                                    <Setter Property="Template">
+                                                                        <Setter.Value>
+                                                                            <ControlTemplate TargetType="ToggleButton">
+                                                                                <Border x:Name="Bd"
+                                                                                        Background="{TemplateBinding Background}"
+                                                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                                                        CornerRadius="3"
+                                                                                        Padding="{TemplateBinding Padding}">
+                                                                                    <ContentPresenter HorizontalAlignment="Center"
+                                                                                                      VerticalAlignment="Center" />
+                                                                                </Border>
+                                                                            </ControlTemplate>
+                                                                        </Setter.Value>
+                                                                    </Setter>
                                                                     <Style.Triggers>
                                                                         <Trigger Property="IsChecked" Value="True">
-                                                                            <Setter Property="Background" Value="#1E6B1E" />
-                                                                            <Setter Property="BorderBrush" Value="#2A8B2A" />
+                                                                            <Setter Property="Background" Value="#1A3B82F6" />
+                                                                            <Setter Property="BorderBrush" Value="{DynamicResource Neon.CyanBrush}" />
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Neon.CyanBrush}" />
                                                                         </Trigger>
                                                                         <Trigger Property="IsMouseOver" Value="True">
-                                                                            <Setter Property="BorderBrush" Value="Orange" />
+                                                                            <Setter Property="BorderBrush" Value="{DynamicResource Neon.PurpleSoftBrush}" />
                                                                         </Trigger>
                                                                     </Style.Triggers>
                                                                 </Style>
@@ -108,7 +127,7 @@
             </GroupBox>
 
             <GroupBox Header="Currently Tracking"
-                      Margin="0,0,0,12"
+                      Margin="0,0,0,8"
                       IsEnabled="{Binding Enabled}">
                 <StackPanel>
                     <TextBlock Margin="0,0,0,8">

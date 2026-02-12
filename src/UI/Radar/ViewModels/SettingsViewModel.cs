@@ -513,49 +513,6 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
 
         #endregion
 
-        #region Quest Helper
-
-        public bool QuestHelperEnabled
-        {
-            get => App.Config.QuestHelper.Enabled;
-            set
-            {
-                if (App.Config.QuestHelper.Enabled != value)
-                {
-                    App.Config.QuestHelper.Enabled = value;
-                    OnPropertyChanged(nameof(QuestHelperEnabled));
-                }
-            }
-        }
-
-        public bool QuestHelperShowLocations
-        {
-            get => App.Config.QuestHelper.ShowLocations;
-            set
-            {
-                if (App.Config.QuestHelper.ShowLocations != value)
-                {
-                    App.Config.QuestHelper.ShowLocations = value;
-                    OnPropertyChanged(nameof(QuestHelperShowLocations));
-                }
-            }
-        }
-
-        public bool ShowQuestItems
-        {
-            get => App.Config.Loot.ShowQuestItems;
-            set
-            {
-                if (App.Config.Loot.ShowQuestItems != value)
-                {
-                    App.Config.Loot.ShowQuestItems = value;
-                    OnPropertyChanged(nameof(ShowQuestItems));
-                }
-            }
-        }
-
-        #endregion
-
         #region Radar Widget Font
 
         public float RadarWidgetFontSize

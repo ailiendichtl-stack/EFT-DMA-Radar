@@ -95,7 +95,7 @@
             <!-- Active Quests Panel -->
             <controls:DraggablePanel
                 x:Name="QuestsPanel"
-                Title="📍 Active Quests"
+                Title="📍 Quest Helper"
                 Visibility="{Binding PanelManager.QuestsPanel.IsOpen, Converter={StaticResource BoolToVis}}"
                 Canvas.Left="{Binding PanelManager.QuestsPanel.X, Mode=TwoWay}"
                 Canvas.Top="{Binding PanelManager.QuestsPanel.Y, Mode=TwoWay}"
@@ -108,7 +108,7 @@
             <!-- Hideout Panel -->
             <controls:DraggablePanel
                 x:Name="HideoutPanel"
-                Title="🏠 Hideout"
+                Title="🏠 Hideout Helper"
                 Visibility="{Binding PanelManager.HideoutPanel.IsOpen, Converter={StaticResource BoolToVis}}"
                 Canvas.Left="{Binding PanelManager.HideoutPanel.X, Mode=TwoWay}"
                 Canvas.Top="{Binding PanelManager.HideoutPanel.Y, Mode=TwoWay}"

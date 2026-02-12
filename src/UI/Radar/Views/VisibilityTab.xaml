@@ -6,6 +6,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+             xmlns:controls="clr-namespace:LoneEftDmaRadar.UI.Controls"
              mc:Ignorable="d"
              Padding="10">
 
@@ -20,8 +21,7 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Orientation="Vertical"
-                    Margin="0,0,0,10"
-                    HorizontalAlignment="Left">
+                    Margin="0,0,0,10">
 
             <TextBlock Text="Visibility / LOS"
                        FontSize="16"
@@ -35,8 +35,7 @@
 
             <!-- Mesh Status -->
             <GroupBox Header="Mesh Status"
-                      Margin="0,12,0,0"
-                      Width="380">
+                      Margin="0,0,0,8">
                 <StackPanel Margin="6">
                     <TextBlock Text="{Binding MeshStatusText}"
                                FontFamily="Consolas"
@@ -55,8 +54,7 @@
 
             <!-- Raycast Options -->
             <GroupBox Header="Raycast Options"
-                      Margin="0,12,0,0"
-                      Width="380">
+                      Margin="0,0,0,8">
                 <StackPanel Margin="6">
                     <CheckBox Content="Dual-Check (Eye + Ballistic)"
                               IsChecked="{Binding DualCheck, Mode=TwoWay}"
@@ -71,8 +69,7 @@
 
             <!-- ESP Coloring -->
             <GroupBox Header="ESP Coloring"
-                      Margin="0,12,0,0"
-                      Width="380">
+                      Margin="0,0,0,8">
                 <StackPanel Margin="6">
                     <CheckBox Content="Per-Bone Skeleton Coloring"
                               IsChecked="{Binding PerBoneColoring, Mode=TwoWay}"
@@ -82,19 +79,15 @@
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Visible:" VerticalAlignment="Center" Margin="0,0,6,0"
                                    ToolTip="Eye LOS clear" />
-                        <xctk:ColorPicker Width="42" Height="26"
-                                          SelectedColor="{Binding VisibleColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                          UsingAlphaChannel="True"
-                                          ShowRecentColors="False" />
+                        <controls:NeonColorSwatch
+                                          SelectedColor="{Binding VisibleColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Margin="0,6,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Hitscan-Only:" VerticalAlignment="Center" Margin="0,0,6,0"
                                    ToolTip="Ballistic LOS clear, eye blocked" />
-                        <xctk:ColorPicker Width="42" Height="26"
-                                          SelectedColor="{Binding HitscanOnlyColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                          UsingAlphaChannel="True"
-                                          ShowRecentColors="False" />
+                        <controls:NeonColorSwatch
+                                          SelectedColor="{Binding HitscanOnlyColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}" />
                     </StackPanel>
 
                     <TextBlock Text="Not visible = default faction color"

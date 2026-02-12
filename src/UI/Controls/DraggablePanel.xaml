@@ -11,116 +11,145 @@
              behaviors:ResizableBehavior.MinWidth="280"
              behaviors:ResizableBehavior.MinHeight="200">
 
-    <Border x:Name="PanelRoot"
-            Background="{DynamicResource App.SurfaceBrush}"
-            BorderBrush="{DynamicResource App.BorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8">
+    <!-- Layered structure: GlowLayer (Effect, no text) + ContentLayer (no Effect, ClearType preserved) -->
+    <Grid x:Name="PanelRoot">
+        <!-- Layer 0: Neon glow border (DropShadowEffect here — no text children, so ClearType unaffected) -->
+        <Border CornerRadius="6"
+                BorderBrush="{DynamicResource Neon.GlowBorderBrush}"
+                BorderThickness="1.1"
+                Background="Transparent">
+            <Border.Effect>
+                <DropShadowEffect Color="#9945FF"
+                                  BlurRadius="18"
+                                  ShadowDepth="0"
+                                  Opacity="0.30"/>
+            </Border.Effect>
+        </Border>
 
-        <!-- Drop shadow effect -->
-        <Border.Effect>
-            <DropShadowEffect Color="Black"
-                              BlurRadius="20"
-                              ShadowDepth="5"
-                              Opacity="0.5"
-                              Direction="270"/>
-        </Border.Effect>
+        <!-- Layer 1: Content (no Effect — ClearType text rendering preserved) -->
+        <Border Background="{DynamicResource Glass.SurfaceBrush}"
+                BorderThickness="0.8"
+                CornerRadius="6">
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#409945FF" Offset="0"/>
+                    <GradientStop Color="#40E63366" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.BorderBrush>
 
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="36"/>
-                <!-- Title bar -->
-                <RowDefinition Height="*"/>
-                <!-- Content -->
-            </Grid.RowDefinitions>
+            <!-- Inner border: dark bottom/right edge for depth -->
+            <Border BorderBrush="{DynamicResource Glass.BorderDarkBrush}"
+                    BorderThickness="0,0,0.5,0.5"
+                    CornerRadius="6">
 
-            <!-- Title bar (drag handle - set in code-behind) -->
-            <Border x:Name="TitleBar"
-                    Grid.Row="0"
-                    Background="{DynamicResource Panel.TitleBarBrush}"
-                    CornerRadius="8,8,0,0">
-                <Grid Margin="12,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="32"/>
+                        <!-- Title bar -->
+                        <RowDefinition Height="*"/>
+                        <!-- Content -->
+                    </Grid.RowDefinitions>
 
-                    <!-- Title -->
-                    <TextBlock x:Name="TitleText"
-                               Grid.Column="0"
-                               Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                               VerticalAlignment="Center"
-                               FontWeight="SemiBold"
-                               FontSize="13"
-                               Foreground="{DynamicResource App.TextPrimaryBrush}"/>
+                    <!-- Title bar (drag handle) -->
+                    <Border x:Name="TitleBar"
+                            Grid.Row="0"
+                            Background="{DynamicResource Panel.TitleBarBrush}"
+                            CornerRadius="6,6,0,0">
 
-                    <!-- Collapse and Close buttons -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                        <Button x:Name="CollapseButton"
-                                Width="28"
-                                Height="28"
-                                Margin="0,0,4,0"
-                                Padding="0"
-                                VerticalAlignment="Center"
-                                Click="CollapseButton_Click"
-                                Style="{StaticResource PanelCloseButtonStyle}">
-                            <TextBlock x:Name="CollapseSymbol" Text="−">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
-                                                <Setter Property="Text" Value="+"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </Button>
-                        <Button x:Name="CloseButton"
-                                Content="✕"
-                                Width="28"
-                                Height="28"
-                                Margin="0"
-                                Padding="0"
-                                VerticalAlignment="Center"
-                                Click="CloseButton_Click"
-                                Style="{StaticResource PanelCloseButtonStyle}"/>
-                    </StackPanel>
+                        <!-- Neon bottom separator -->
+                        <Border BorderThickness="0,0,0,0.5">
+                            <Border.BorderBrush>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#203B82F6" Offset="0"/>
+                                    <GradientStop Color="#309945FF" Offset="0.5"/>
+                                    <GradientStop Color="#20E63366" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.BorderBrush>
+                            <Grid Margin="10,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Title -->
+                                <TextBlock x:Name="TitleText"
+                                           Grid.Column="0"
+                                           Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                           VerticalAlignment="Center"
+                                           FontWeight="SemiBold"
+                                           FontSize="13"
+                                           Foreground="{DynamicResource Neon.PinkBrush}"/>
+
+                                <!-- Collapse and Close buttons -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button x:Name="CollapseButton"
+                                            Width="24"
+                                            Height="24"
+                                            Margin="0,0,2,0"
+                                            Padding="0"
+                                            VerticalAlignment="Center"
+                                            Click="CollapseButton_Click"
+                                            Style="{StaticResource PanelCloseButtonStyle}">
+                                        <TextBlock x:Name="CollapseSymbol" Text="&#x2212;" FontSize="11">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                                            <Setter Property="Text" Value="+"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Button>
+                                    <Button x:Name="CloseButton"
+                                            Content="&#x2715;"
+                                            Width="24"
+                                            Height="24"
+                                            Margin="0"
+                                            Padding="0"
+                                            VerticalAlignment="Center"
+                                            Click="CloseButton_Click"
+                                            Style="{StaticResource PanelCloseButtonStyle}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Border>
+
+                    <!-- Content area with ScrollViewer -->
+                    <Border x:Name="ContentBorder"
+                            Grid.Row="1"
+                            Background="{DynamicResource Glass.CardBrush}"
+                            CornerRadius="0,0,6,6"
+                            Visibility="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisInverted}}">
+                        <ScrollViewer x:Name="ContentScrollViewer"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Padding="0"
+                                      PreviewMouseWheel="ContentScrollViewer_PreviewMouseWheel">
+                            <ContentPresenter x:Name="ContentArea"
+                                              Content="{Binding PanelContent, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              Margin="0"/>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Resize handle (bottom-right triangle) -->
+                    <Path x:Name="ResizeHandle"
+                          Grid.Row="1"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Bottom"
+                          Margin="0,0,2,2"
+                          Data="M 0 10 L 10 10 L 10 0 Z"
+                          Fill="{DynamicResource Panel.ResizeHandleBrush}"
+                          Opacity="0.4"
+                          Cursor="SizeNWSE"
+                          Visibility="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisInverted}}">
+                        <Path.RenderTransform>
+                            <RotateTransform Angle="0"/>
+                        </Path.RenderTransform>
+                    </Path>
                 </Grid>
             </Border>
-
-            <!-- Content area with ScrollViewer -->
-            <Border x:Name="ContentBorder"
-                    Grid.Row="1"
-                    Background="{DynamicResource App.CardBrush}"
-                    CornerRadius="0,0,8,8"
-                    Visibility="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisInverted}}">
-                <ScrollViewer x:Name="ContentScrollViewer"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled"
-                              Padding="0"
-                              PreviewMouseWheel="ContentScrollViewer_PreviewMouseWheel">
-                    <ContentPresenter x:Name="ContentArea"
-                                      Content="{Binding PanelContent, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                      Margin="0"/>
-                </ScrollViewer>
-            </Border>
-
-            <!-- Resize handle (bottom-right triangle) -->
-            <Path x:Name="ResizeHandle"
-                  Grid.Row="1"
-                  HorizontalAlignment="Right"
-                  VerticalAlignment="Bottom"
-                  Margin="0,0,2,2"
-                  Data="M 0 12 L 12 12 L 12 0 Z"
-                  Fill="{DynamicResource Panel.ResizeHandleBrush}"
-                  Opacity="0.6"
-                  Cursor="SizeNWSE"
-                  Visibility="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisInverted}}">
-                <Path.RenderTransform>
-                    <RotateTransform Angle="0"/>
-                </Path.RenderTransform>
-            </Path>
-        </Grid>
-    </Border>
+        </Border>
+    </Grid>
 </UserControl>

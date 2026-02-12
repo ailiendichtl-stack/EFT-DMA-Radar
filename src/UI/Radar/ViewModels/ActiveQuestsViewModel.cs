@@ -28,6 +28,49 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
 
         public int ActiveQuestCount => ActiveQuests.Count;
 
+        #region Quest Helper Toggles
+
+        public bool QuestHelperEnabled
+        {
+            get => App.Config.QuestHelper.Enabled;
+            set
+            {
+                if (App.Config.QuestHelper.Enabled != value)
+                {
+                    App.Config.QuestHelper.Enabled = value;
+                    OnPropertyChanged(nameof(QuestHelperEnabled));
+                }
+            }
+        }
+
+        public bool QuestHelperShowLocations
+        {
+            get => App.Config.QuestHelper.ShowLocations;
+            set
+            {
+                if (App.Config.QuestHelper.ShowLocations != value)
+                {
+                    App.Config.QuestHelper.ShowLocations = value;
+                    OnPropertyChanged(nameof(QuestHelperShowLocations));
+                }
+            }
+        }
+
+        public bool ShowQuestItems
+        {
+            get => App.Config.Loot.ShowQuestItems;
+            set
+            {
+                if (App.Config.Loot.ShowQuestItems != value)
+                {
+                    App.Config.Loot.ShowQuestItems = value;
+                    OnPropertyChanged(nameof(ShowQuestItems));
+                }
+            }
+        }
+
+        #endregion
+
         /// <summary>
         /// Refresh the list of active quests from QuestManager.
         /// Call this periodically or when quests change.

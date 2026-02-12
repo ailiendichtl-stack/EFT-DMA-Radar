@@ -90,10 +90,18 @@ namespace LoneEftDmaRadar.UI.Controls
 
         #endregion
 
+        private static int _zCounter;
+
         public DraggablePanel()
         {
             InitializeComponent();
             Loaded += DraggablePanel_Loaded;
+        }
+
+        protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
+        {
+            base.OnPreviewMouseLeftButtonDown(e);
+            System.Windows.Controls.Canvas.SetZIndex(this, ++_zCounter);
         }
 
         private void DraggablePanel_Loaded(object sender, RoutedEventArgs e)

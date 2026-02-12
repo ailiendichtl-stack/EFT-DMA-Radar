@@ -15,8 +15,28 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Orientation="Vertical" Margin="0,0,0,10">
 
-            <GroupBox Header="Active Quest Management"
-                      Margin="0,0,0,12">
+            <!-- General card -->
+            <GroupBox Header="General" Margin="0,0,0,8">
+                <StackPanel>
+                    <CheckBox Content="Enable Quest Helper"
+                              ToolTip="Enables quest tracking from game memory. Tracks your active quests and objectives."
+                              IsChecked="{Binding QuestHelperEnabled, Mode=TwoWay}"
+                              FontWeight="SemiBold"
+                              Margin="0,0,0,4" />
+                    <CheckBox Content="Show Quest Locations"
+                              ToolTip="Shows quest objective locations on the radar map (cyan markers)."
+                              IsChecked="{Binding QuestHelperShowLocations, Mode=TwoWay}"
+                              IsEnabled="{Binding QuestHelperEnabled}"
+                              Margin="0,0,0,4" />
+                    <CheckBox Content="Highlight Quest Items"
+                              ToolTip="Highlights loot items that are needed for your active quests."
+                              IsChecked="{Binding ShowQuestItems, Mode=TwoWay}"
+                              IsEnabled="{Binding QuestHelperEnabled}" />
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="Active Quests"
+                      Margin="0,0,0,8">
                 <StackPanel>
                     <TextBlock Text="Toggle quests on/off. Disabled quests won't show objectives on the radar."
                                Margin="0,0,0,8"

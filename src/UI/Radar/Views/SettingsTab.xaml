@@ -16,56 +16,45 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Orientation="Vertical"
                     Margin="0,0,0,10">
-            <!-- Radar Settings -->
-            <GroupBox Header="Radar Settings"
-                      Margin="0,0,0,12">
+
+            <WrapPanel Margin="0,0,0,12">
+                <Button Content="Restart Radar"
+                        ToolTip="Restarts the Radar for the current raid instance. Zoom: F1/F2 | Fullscreen: F11"
+                        Command="{Binding RestartRadarCommand}"
+                        MinWidth="100"
+                        Height="35"
+                        Margin="0,0,8,8" />
+                <Button Content="Color Picker"
+                        ToolTip="Allows customizing entity colors on the Radar UI."
+                        IsEnabled="{Binding ColorPickerIsEnabled}"
+                        Command="{Binding OpenColorPickerCommand}"
+                        MinWidth="100"
+                        Height="35"
+                        Margin="0,0,8,8" />
+                <Button Content="Open Config"
+                        ToolTip="Opens the config folder."
+                        Command="{Binding OpenConfigCommand}"
+                        MinWidth="100"
+                        Height="35"
+                        Margin="0,0,8,8" />
+                <Button Content="Backup Config"
+                        ToolTip="Backs up your configuration (Recommended)."
+                        Command="{Binding BackupConfigCommand}"
+                        MinWidth="100"
+                        Height="35"
+                        Margin="0,0,8,8" />
+                <Button Content="Refresh Data"
+                        ToolTip="Force refresh item/quest data from tarkov.dev API. Use if quest tracking shows 0 tasks."
+                        Command="{Binding RefreshDataCommand}"
+                        MinWidth="100"
+                        Height="35"
+                        Margin="0,0,8,8" />
+            </WrapPanel>
+
+            <!-- Display card -->
+            <GroupBox Header="Display"
+                      Margin="0,0,0,8">
                 <StackPanel>
-
-                    <!-- help text -->
-                    <TextBlock TextWrapping="Wrap"
-                               Margin="0,0,0,12"
-                               FontStyle="Italic">
-Zoom In: F1 / Mouse Wheel Up<LineBreak />
-Zoom Out: F2 / Mouse Wheel Down<LineBreak />
-Toggle Fullscreen: F11
-                    </TextBlock>
-
-                    <!-- buttons -->
-                    <WrapPanel Margin="0,0,0,12">
-                        <Button Content="Restart Radar"
-                                ToolTip="Restarts the Radar for the current raid instance. Can be useful if stuck on 'waiting for raid start' or the raid is not functioning properly."
-                                Command="{Binding RestartRadarCommand}"
-                                MinWidth="100"
-                                Height="35"
-                                Margin="0,0,8,8" />
-                        <Button Content="Color Picker"
-                                ToolTip="Allows customizing entity colors on the Radar UI."
-                                IsEnabled="{Binding ColorPickerIsEnabled}"
-                                Command="{Binding OpenColorPickerCommand}"
-                                MinWidth="100"
-                                Height="35"
-                                Margin="0,0,8,8" />
-                        <Button Content="Open Config"
-                                ToolTip="Opens the config folder."
-                                Command="{Binding OpenConfigCommand}"
-                                MinWidth="100"
-                                Height="35"
-                                Margin="0,0,8,8" />
-                        <Button Content="Backup Config"
-                                ToolTip="Backs up your configuration (Recommended)."
-                                Command="{Binding BackupConfigCommand}"
-                                MinWidth="100"
-                                Height="35"
-                                Margin="0,0,8,8" />
-                        <Button Content="Refresh Data"
-                                ToolTip="Force refresh item/quest data from tarkov.dev API. Use if quest tracking shows 0 tasks."
-                                Command="{Binding RefreshDataCommand}"
-                                MinWidth="100"
-                                Height="35"
-                                Margin="0,0,8,8" />
-                    </WrapPanel>
-
-                    <!-- sliders -->
                     <WrapPanel Margin="0,0,0,12">
                         <StackPanel Orientation="Horizontal"
                                     VerticalAlignment="Center"
@@ -107,7 +96,6 @@ Toggle Fullscreen: F11
                         </StackPanel>
                     </WrapPanel>
 
-                    <!-- toggles -->
                     <WrapPanel>
                         <CheckBox Content="Show Map Setup Helper"
                                   ToolTip="Toggles the 'Map Setup Helper' to assist with getting Map Bounds/Scaling"
@@ -150,13 +138,12 @@ Toggle Fullscreen: F11
                                   Margin="0,0,0,8" />
                     </WrapPanel>
 
-                    <!-- Widget Font Size Slider -->
                     <StackPanel Orientation="Horizontal"
                                 VerticalAlignment="Center"
-                                Margin="0,8,0,8">
+                                Margin="0,8,0,0">
                         <TextBlock Text="Widget Font Size"
                                    VerticalAlignment="Center"
-                                   ToolTip="Font size for loot height indicators (▲▼●) and other radar widgets." />
+                                   ToolTip="Font size for loot height indicators and other radar widgets." />
                         <Slider x:Name="WidgetFontSizeSlider"
                                 Width="150"
                                 Margin="8,0"
@@ -171,13 +158,12 @@ Toggle Fullscreen: F11
                                    VerticalAlignment="Center"
                                    Margin="8,0,0,0" />
                     </StackPanel>
-
                 </StackPanel>
             </GroupBox>
 
-            <!-- Loot -->
+            <!-- Loot card -->
             <GroupBox Header="Loot"
-                      Margin="0,0,0,12">
+                      Margin="0,0,0,8">
                 <StackPanel>
                     <WrapPanel Margin="0,0,0,8">
                         <CheckBox Content="Show Loot (F3)"
@@ -196,65 +182,41 @@ Toggle Fullscreen: F11
                                   Margin="0,0,16,8" />
                     </WrapPanel>
 
-                    <StackPanel Orientation="Horizontal"
-                                VerticalAlignment="Center"
-                                Margin="0,0,16,8"
-                                IsEnabled="{Binding ShowStaticContainers}">
-                        <TextBlock Text="Container Distance"
-                                   VerticalAlignment="Center" />
-                        <Slider x:Name="ContainerDistSlider"
-                                Width="150"
-                                Margin="8,0"
-                                Minimum="0"
-                                Maximum="1000"
-                                SmallChange="10"
-                                LargeChange="100"
-                                Value="{Binding ContainerDistance, Mode=TwoWay}" />
-                        <TextBlock Text="{Binding Value, ElementName=ContainerDistSlider}"
-                                   VerticalAlignment="Center"
-                                   Margin="8,0,0,0" />
+                    <StackPanel Visibility="{Binding ShowStaticContainers, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,16,8">
+                            <TextBlock Text="Container Distance"
+                                       VerticalAlignment="Center" />
+                            <Slider x:Name="ContainerDistSlider"
+                                    Width="150"
+                                    Margin="8,0"
+                                    Minimum="0"
+                                    Maximum="1000"
+                                    SmallChange="10"
+                                    LargeChange="100"
+                                    Value="{Binding ContainerDistance, Mode=TwoWay}" />
+                            <TextBlock Text="{Binding Value, ElementName=ContainerDistSlider}"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal"
+                                    Margin="0,0,16,8">
+                            <TextBlock Text="Min Value (0=All)"
+                                       VerticalAlignment="Center" />
+                            <Slider x:Name="ContainerMinValueSlider"
+                                    Width="150"
+                                    Margin="8,0"
+                                    Minimum="0"
+                                    Maximum="500000"
+                                    SmallChange="10000"
+                                    LargeChange="50000"
+                                    Value="{Binding ContainerMinValue, Mode=TwoWay}" />
+                            <TextBlock Text="{Binding Value, ElementName=ContainerMinValueSlider, StringFormat='{}{0:N0}'}"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0" />
+                        </StackPanel>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal"
-                                Margin="0,0,16,8"
-                                IsEnabled="{Binding ShowStaticContainers}">
-                        <TextBlock Text="Min Value (0=All)"
-                                   VerticalAlignment="Center" />
-                        <Slider x:Name="ContainerMinValueSlider"
-                                Width="150"
-                                Margin="8,0"
-                                Minimum="0"
-                                Maximum="500000"
-                                SmallChange="10000"
-                                LargeChange="50000"
-                                Value="{Binding ContainerMinValue, Mode=TwoWay}" />
-                        <TextBlock Text="{Binding Value, ElementName=ContainerMinValueSlider, StringFormat='{}{0:N0}'}"
-                                   VerticalAlignment="Center"
-                                   Margin="8,0,0,0" />
-                    </StackPanel>
-
-                </StackPanel>
-            </GroupBox>
-
-            <!-- Quest Helper -->
-            <GroupBox Header="Quest Helper"
-                      Margin="0,0,0,12">
-                <StackPanel>
-                    <WrapPanel Margin="0,0,0,8">
-                        <CheckBox Content="Enable Quest Helper"
-                                  ToolTip="Enables quest tracking from game memory. Tracks your active quests and objectives."
-                                  IsChecked="{Binding QuestHelperEnabled, Mode=TwoWay}"
-                                  Margin="0,0,16,8" />
-                        <CheckBox Content="Show Quest Locations"
-                                  ToolTip="Shows quest objective locations on the radar map (cyan markers)."
-                                  IsChecked="{Binding QuestHelperShowLocations, Mode=TwoWay}"
-                                  IsEnabled="{Binding QuestHelperEnabled}"
-                                  Margin="0,0,16,8" />
-                        <CheckBox Content="Highlight Quest Items"
-                                  ToolTip="Highlights loot items that are needed for your active quests."
-                                  IsChecked="{Binding ShowQuestItems, Mode=TwoWay}"
-                                  IsEnabled="{Binding QuestHelperEnabled}"
-                                  Margin="0,0,16,8" />
-                    </WrapPanel>
                 </StackPanel>
             </GroupBox>
 
