@@ -33,12 +33,12 @@
 
             <!-- Glassmorphism (purple-tinted, heavy transparency) -->
             <LinearGradientBrush x:Key="Glass.SurfaceBrush" StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#99141420" Offset="0"/>
-                <GradientStop Color="#991A1A2A" Offset="1"/>
+                <GradientStop Color="#70141420" Offset="0"/>
+                <GradientStop Color="#701A1A2A" Offset="1"/>
             </LinearGradientBrush>
             <LinearGradientBrush x:Key="Glass.CardBrush" StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#801A1A28" Offset="0"/>
-                <GradientStop Color="#801E1E30" Offset="1"/>
+                <GradientStop Color="#601A1A28" Offset="0"/>
+                <GradientStop Color="#601E1E30" Offset="1"/>
             </LinearGradientBrush>
             <SolidColorBrush x:Key="Glass.BorderLightBrush" Color="#159070FF"/>
             <SolidColorBrush x:Key="Glass.BorderDarkBrush" Color="#08000010"/>
@@ -79,7 +79,7 @@
             </LinearGradientBrush>
 
             <!-- Neon glow border brush (subtle, for panel borders) -->
-            <SolidColorBrush x:Key="Neon.GlowBorderBrush" Color="#669945FF"/>
+            <SolidColorBrush x:Key="Neon.GlowBorderBrush" Color="#5C9945FF"/>
 
             <!-- Panel-specific -->
             <SolidColorBrush x:Key="Panel.TitleBarBrush" Color="#1A1A26"/>
@@ -277,26 +277,109 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="Root"
-                                    Background="#1A1A24"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="5"
-                                    Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  RecognizesAccessKey="True"/>
-                            </Border>
+                            <Grid>
+                                <!-- Glow layer (no text children — ClearType safe) -->
+                                <Border x:Name="GlowLayer"
+                                        CornerRadius="5"
+                                        Background="Transparent"
+                                        BorderBrush="#009945FF"
+                                        BorderThickness="0.5"
+                                        Opacity="0">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#9945FF"
+                                                          BlurRadius="10"
+                                                          ShadowDepth="0"
+                                                          Opacity="0.35"/>
+                                    </Border.Effect>
+                                </Border>
+                                <!-- Content layer -->
+                                <Border x:Name="Root"
+                                        CornerRadius="5"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        Padding="{TemplateBinding Padding}">
+                                    <Border.Background>
+                                        <SolidColorBrush x:Name="RootBg" Color="#1A1A24"/>
+                                    </Border.Background>
+                                    <Border.BorderBrush>
+                                        <SolidColorBrush x:Name="RootBorder" Color="#222222"/>
+                                    </Border.BorderBrush>
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      RecognizesAccessKey="True"/>
+                                </Border>
+                            </Grid>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="#1A9945FF"/>
-                                    <Setter TargetName="Root" Property="BorderBrush" Value="#309945FF"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="RootBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#1A9945FF" Duration="0:0:0.12"/>
+                                                <ColorAnimation Storyboard.TargetName="RootBorder"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#309945FF" Duration="0:0:0.12"/>
+                                                <DoubleAnimation Storyboard.TargetName="GlowLayer"
+                                                    Storyboard.TargetProperty="Opacity"
+                                                    To="1" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="RootBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#1A1A24" Duration="0:0:0.12"/>
+                                                <ColorAnimation Storyboard.TargetName="RootBorder"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#222222" Duration="0:0:0.12"/>
+                                                <DoubleAnimation Storyboard.TargetName="GlowLayer"
+                                                    Storyboard.TargetProperty="Opacity"
+                                                    To="0" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="#339945FF"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="RootBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#339945FF" Duration="0:0:0.01"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="RootBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#1A1A24" Duration="0:0:0.08"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                                 <Trigger Property="IsKeyboardFocused" Value="True">
-                                    <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource App.AccentBrush}"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="RootBorder"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#9945FF" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="RootBorder"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#222222" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
                                     <Setter Property="Opacity" Value="0.5"/>
@@ -317,10 +400,14 @@
                                 <Border x:Name="Box"
                                         Width="15" Height="15"
                                         CornerRadius="3"
-                                        BorderBrush="{DynamicResource App.BorderBrush}"
                                         BorderThickness="0.5"
-                                        Background="#1A1A24"
                                         VerticalAlignment="Center">
+                                    <Border.Background>
+                                        <SolidColorBrush x:Name="BoxBg" Color="#1A1A24"/>
+                                    </Border.Background>
+                                    <Border.BorderBrush>
+                                        <SolidColorBrush x:Name="BoxBorderColor" Color="#222222"/>
+                                    </Border.BorderBrush>
                                     <Path x:Name="Check"
                                           Data="M 3 8 L 7 12 L 13 4"
                                           Stroke="{DynamicResource App.AccentBrush}"
@@ -337,11 +424,50 @@
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsChecked" Value="True">
                                     <Setter TargetName="Check" Property="Visibility" Value="Visible"/>
-                                    <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource App.AccentBrush}"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="BoxBorderColor"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#9945FF" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="BoxBorderColor"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#222222" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Box" Property="Background" Value="#201A30"/>
-                                    <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource App.AccentBrush}"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="BoxBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#201A30" Duration="0:0:0.12"/>
+                                                <ColorAnimation Storyboard.TargetName="BoxBorderColor"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#9945FF" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="BoxBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#1A1A24" Duration="0:0:0.12"/>
+                                                <ColorAnimation Storyboard.TargetName="BoxBorderColor"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#222222" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
                                     <Setter Property="Opacity" Value="0.5"/>
@@ -367,11 +493,15 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="TextBox">
                             <Border x:Name="Bd"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     CornerRadius="3"
                                     Padding="{TemplateBinding Padding}">
+                                <Border.Background>
+                                    <SolidColorBrush x:Name="BdBg" Color="#14171D"/>
+                                </Border.Background>
+                                <Border.BorderBrush>
+                                    <SolidColorBrush x:Name="BdBorderColor" Color="#1E2128"/>
+                                </Border.BorderBrush>
                                 <ScrollViewer x:Name="PART_ContentHost" />
                             </Border>
                             <ControlTemplate.Triggers>
@@ -379,11 +509,50 @@
                                     <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
                                 </Trigger>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource TextBox.MouseOver.Background}"/>
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource TextBox.MouseOver.Border}"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="BdBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#181C22" Duration="0:0:0.12"/>
+                                                <ColorAnimation Storyboard.TargetName="BdBorderColor"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#2A2E37" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="BdBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#14171D" Duration="0:0:0.12"/>
+                                                <ColorAnimation Storyboard.TargetName="BdBorderColor"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#1E2128" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                                 <Trigger Property="IsKeyboardFocused" Value="True">
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource TextBox.Focus.Border}"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="BdBorderColor"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#9945FF" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="BdBorderColor"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#1E2128" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -415,11 +584,15 @@
                                     <ToggleButton.Template>
                                         <ControlTemplate TargetType="ToggleButton">
                                             <Border x:Name="Bd"
-                                                    Background="{TemplateBinding Background}"
-                                                    BorderBrush="{TemplateBinding BorderBrush}"
                                                     BorderThickness="{TemplateBinding BorderThickness}"
                                                     CornerRadius="3"
                                                     Padding="{TemplateBinding Padding}">
+                                                <Border.Background>
+                                                    <SolidColorBrush x:Name="CbBg" Color="#14171D"/>
+                                                </Border.Background>
+                                                <Border.BorderBrush>
+                                                    <SolidColorBrush x:Name="CbBorder" Color="#1E2128"/>
+                                                </Border.BorderBrush>
                                                 <Grid>
                                                     <ContentPresenter x:Name="ContentSite"
                                                                       Margin="0,0,24,0"
@@ -442,14 +615,70 @@
                                             </Border>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource ComboBox.MouseOver.Background}"/>
-                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource ComboBox.MouseOver.Border}"/>
+                                                    <Trigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <ColorAnimation Storyboard.TargetName="CbBg"
+                                                                    Storyboard.TargetProperty="Color"
+                                                                    To="#181C22" Duration="0:0:0.12"/>
+                                                                <ColorAnimation Storyboard.TargetName="CbBorder"
+                                                                    Storyboard.TargetProperty="Color"
+                                                                    To="#2A2E37" Duration="0:0:0.12"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.EnterActions>
+                                                    <Trigger.ExitActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <ColorAnimation Storyboard.TargetName="CbBg"
+                                                                    Storyboard.TargetProperty="Color"
+                                                                    To="#14171D" Duration="0:0:0.12"/>
+                                                                <ColorAnimation Storyboard.TargetName="CbBorder"
+                                                                    Storyboard.TargetProperty="Color"
+                                                                    To="#1E2128" Duration="0:0:0.12"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.ExitActions>
                                                 </Trigger>
                                                 <Trigger Property="IsKeyboardFocused" Value="True">
-                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource ComboBox.Focus.Border}"/>
+                                                    <Trigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <ColorAnimation Storyboard.TargetName="CbBorder"
+                                                                    Storyboard.TargetProperty="Color"
+                                                                    To="#9945FF" Duration="0:0:0.12"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.EnterActions>
+                                                    <Trigger.ExitActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <ColorAnimation Storyboard.TargetName="CbBorder"
+                                                                    Storyboard.TargetProperty="Color"
+                                                                    To="#1E2128" Duration="0:0:0.12"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.ExitActions>
                                                 </Trigger>
                                                 <Trigger Property="IsChecked" Value="True">
-                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource ComboBox.Focus.Border}"/>
+                                                    <Trigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <ColorAnimation Storyboard.TargetName="CbBorder"
+                                                                    Storyboard.TargetProperty="Color"
+                                                                    To="#9945FF" Duration="0:0:0.12"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.EnterActions>
+                                                    <Trigger.ExitActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <ColorAnimation Storyboard.TargetName="CbBorder"
+                                                                    Storyboard.TargetProperty="Color"
+                                                                    To="#1E2128" Duration="0:0:0.12"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.ExitActions>
                                                 </Trigger>
                                                 <Trigger Property="IsEnabled" Value="False">
                                                     <Setter Property="Opacity" Value="0.5"/>
@@ -467,11 +696,22 @@
                                        Focusable="False"
                                        StaysOpen="False"
                                        PlacementTarget="{Binding ElementName=ToggleButton}">
-                                    <Border Background="#14171D"
-                                            BorderBrush="{DynamicResource App.BorderBrush}"
-                                            BorderThickness="0.5"
-                                            CornerRadius="3"
-                                            Margin="0,2,0,0">
+                                    <Border CornerRadius="5"
+                                            BorderThickness="0.8"
+                                            Margin="0,2,0,0"
+                                            Padding="2">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#E81A1A28" Offset="0"/>
+                                                <GradientStop Color="#E81E1E30" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <Border.BorderBrush>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#309945FF" Offset="0"/>
+                                                <GradientStop Color="#20E63366" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.BorderBrush>
                                         <ScrollViewer Style="{x:Null}" Padding="2">
                                             <ItemsPresenter />
                                         </ScrollViewer>
@@ -496,19 +736,215 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="ComboBoxItem">
                             <Border x:Name="Root"
-                                    Background="{TemplateBinding Background}"
                                     Padding="{TemplateBinding Padding}"
                                     CornerRadius="2">
+                                <Border.Background>
+                                    <SolidColorBrush x:Name="CbiRoot" Color="#00000000"/>
+                                </Border.Background>
                                 <ContentPresenter />
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsHighlighted" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="#1F2430"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="CbiRoot"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#1A9945FF" Duration="0:0:0.10"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="CbiRoot"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#00000000" Duration="0:0:0.10"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="#2A3040"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="CbiRoot"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#289945FF" Duration="0:0:0.01"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="CbiRoot"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#00000000" Duration="0:0:0.10"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                             </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ContextMenu / MenuItem / Separator -->
+            <Style TargetType="ContextMenu">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="HasDropShadow" Value="True"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ContextMenu">
+                            <Grid>
+                                <!-- Glow layer (no text — ClearType safe) -->
+                                <Border CornerRadius="6"
+                                        Background="Transparent"
+                                        BorderBrush="#409945FF"
+                                        BorderThickness="0.5">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#9945FF"
+                                                          BlurRadius="12"
+                                                          ShadowDepth="0"
+                                                          Opacity="0.25"/>
+                                    </Border.Effect>
+                                </Border>
+                                <!-- Content layer -->
+                                <Border CornerRadius="6"
+                                        Padding="4"
+                                        BorderThickness="0.8">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#F01A1A28" Offset="0"/>
+                                            <GradientStop Color="#F01E1E30" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <Border.BorderBrush>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#309945FF" Offset="0"/>
+                                            <GradientStop Color="#20E63366" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.BorderBrush>
+                                    <StackPanel IsItemsHost="True"
+                                                KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                </Border>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="MenuItem">
+                <Setter Property="Foreground" Value="{DynamicResource App.TextPrimaryBrush}"/>
+                <Setter Property="Padding" Value="10,6"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="MenuItem">
+                            <Border x:Name="MiBd"
+                                    CornerRadius="3"
+                                    Padding="{TemplateBinding Padding}">
+                                <Border.Background>
+                                    <SolidColorBrush x:Name="MiBg" Color="#00000000"/>
+                                </Border.Background>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Icon"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Shortcut"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter x:Name="Icon"
+                                                      Content="{TemplateBinding Icon}"
+                                                      ContentSource="Icon"
+                                                      Margin="0,0,6,0"
+                                                      Width="16" Height="16"
+                                                      VerticalAlignment="Center"/>
+                                    <ContentPresenter Grid.Column="1"
+                                                      ContentSource="Header"
+                                                      RecognizesAccessKey="True"
+                                                      VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2"
+                                               Text="{TemplateBinding InputGestureText}"
+                                               Foreground="{DynamicResource App.TextTertiaryBrush}"
+                                               Margin="20,0,0,0"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="Icon" Value="{x:Null}">
+                                    <Setter TargetName="Icon" Property="Visibility" Value="Collapsed"/>
+                                </Trigger>
+                                <Trigger Property="IsHighlighted" Value="True">
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="MiBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#1A9945FF" Duration="0:0:0.10"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="MiBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#00000000" Duration="0:0:0.10"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.5"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="Separator">
+                <Setter Property="Height" Value="1"/>
+                <Setter Property="Margin" Value="6,3"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Separator">
+                            <Rectangle Height="0.5" Fill="{DynamicResource App.BorderBrush}" Margin="4,2"/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ProgressBar -->
+            <Style TargetType="ProgressBar">
+                <Setter Property="Height" Value="6"/>
+                <Setter Property="Background" Value="#1A1A24"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ProgressBar">
+                            <Grid>
+                                <Border CornerRadius="3"
+                                        Background="#1A1A24"
+                                        BorderBrush="{DynamicResource App.BorderBrush}"
+                                        BorderThickness="0.5"/>
+                                <Border x:Name="PART_Track"
+                                        CornerRadius="3"
+                                        Margin="1"/>
+                                <Border x:Name="PART_Indicator"
+                                        CornerRadius="3"
+                                        Margin="1"
+                                        HorizontalAlignment="Left">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="#3B82F6" Offset="0"/>
+                                            <GradientStop Color="#9945FF" Offset="0.5"/>
+                                            <GradientStop Color="#E63366" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+                            </Grid>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
@@ -538,6 +974,11 @@
                 <Setter Property="Padding" Value="8,5" />
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="#1C1F2A"/>
+                    </Trigger>
+                </Style.Triggers>
             </Style>
 
             <Style TargetType="DataGridCell">
@@ -572,7 +1013,7 @@
                         <Setter Property="Background" Value="#1F2430" />
                     </Trigger>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="#181B22" />
+                        <Setter Property="Background" Value="#1A9945FF" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
@@ -594,17 +1035,53 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="ListBoxItem">
                             <Border x:Name="Bd"
-                                    Background="{TemplateBinding Background}"
                                     Padding="{TemplateBinding Padding}"
                                     CornerRadius="3">
+                                <Border.Background>
+                                    <SolidColorBrush x:Name="LbiBg" Color="#00000000"/>
+                                </Border.Background>
                                 <ContentPresenter />
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="#181B22"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="LbiBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#181B22" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="LbiBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#00000000" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="#1F2430"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="LbiBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#1F2430" Duration="0:0:0.01"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="LbiBg"
+                                                    Storyboard.TargetProperty="Color"
+                                                    To="#00000000" Duration="0:0:0.12"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -688,6 +1165,19 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="Slider">
                             <Grid Margin="6,0">
+                                <!-- Track glow layer (behind the track) -->
+                                <Border x:Name="TrackGlow"
+                                        VerticalAlignment="Center"
+                                        Height="2" CornerRadius="1"
+                                        Background="Transparent"
+                                        Opacity="0.5">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#9945FF"
+                                                          BlurRadius="8"
+                                                          ShadowDepth="0"
+                                                          Opacity="0.35"/>
+                                    </Border.Effect>
+                                </Border>
                                 <Track x:Name="PART_Track"
                                        VerticalAlignment="Center"
                                        Maximum="{TemplateBinding Maximum}"

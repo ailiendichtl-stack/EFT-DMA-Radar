@@ -139,20 +139,27 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             set { App.Config.Device.AutoTargetSwitch = value; OnPropertyChanged(); }
         }
 
-        public List<Bones> AvailableBones { get; } = new List<Bones>
+        public record BoneOption(Bones Value, string Name);
+
+        public List<BoneOption> AvailableBones { get; } = new()
         {
-            Bones.HumanHead,
-            Bones.HumanNeck,
-            Bones.HumanSpine3,
-            Bones.HumanSpine2,
-            Bones.HumanPelvis,
-            Bones.Closest
+            new(Bones.HumanHead,    "Head"),
+            new(Bones.HumanNeck,    "Neck"),
+            new(Bones.HumanSpine3,  "Chest"),
+            new(Bones.HumanSpine2,  "Stomach"),
+            new(Bones.HumanPelvis,  "Pelvis"),
+            new(Bones.HumanLThigh1, "Left Thigh"),
+            new(Bones.HumanRThigh1, "Right Thigh"),
+            new(Bones.HumanLCalf,   "Left Calf"),
+            new(Bones.HumanRCalf,   "Right Calf"),
+            new(Bones.Closest,      "Closest"),
         };
 
-        public Bones TargetBone
+        public BoneOption SelectedBone
         {
-            get => App.Config.Device.TargetBone;
-            set { App.Config.Device.TargetBone = value; OnPropertyChanged(); }
+            get => AvailableBones.FirstOrDefault(b => b.Value == App.Config.Device.TargetBone)
+                   ?? AvailableBones[0];
+            set { App.Config.Device.TargetBone = value.Value; OnPropertyChanged(); }
         }
 
         public bool MemWritesEnabled

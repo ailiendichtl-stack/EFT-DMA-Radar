@@ -484,14 +484,14 @@ namespace LoneEftDmaRadar.UI.Skia
 
         public static SKPaint TextRadarStatus { get; } = new()
         {
-            Color = SKColors.Red,
+            Color = new SKColor(0xE6, 0x33, 0x66), // Neon pink (#E63366)
             IsStroke = false,
             IsAntialias = true,
         };
 
         public static SKPaint TextStatusSmall { get; } = new SKPaint
         {
-            Color = SKColors.Red,
+            Color = new SKColor(0xE6, 0x33, 0x66), // Neon pink (#E63366)
             IsStroke = false,
             IsAntialias = true,
         };

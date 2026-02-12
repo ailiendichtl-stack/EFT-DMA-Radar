@@ -16,24 +16,24 @@
         <!-- Layer 0: Neon glow border (DropShadowEffect here — no text children, so ClearType unaffected) -->
         <Border CornerRadius="6"
                 BorderBrush="{DynamicResource Neon.GlowBorderBrush}"
-                BorderThickness="1.1"
+                BorderThickness="0.8"
                 Background="Transparent">
             <Border.Effect>
                 <DropShadowEffect Color="#9945FF"
-                                  BlurRadius="18"
+                                  BlurRadius="20"
                                   ShadowDepth="0"
-                                  Opacity="0.30"/>
+                                  Opacity="0.32"/>
             </Border.Effect>
         </Border>
 
         <!-- Layer 1: Content (no Effect — ClearType text rendering preserved) -->
         <Border Background="{DynamicResource Glass.SurfaceBrush}"
-                BorderThickness="0.8"
+                BorderThickness="0.6"
                 CornerRadius="6">
             <Border.BorderBrush>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                     <GradientStop Color="#409945FF" Offset="0"/>
-                    <GradientStop Color="#40E63366" Offset="1"/>
+                    <GradientStop Color="#35E63366" Offset="1"/>
                 </LinearGradientBrush>
             </Border.BorderBrush>
 
@@ -71,14 +71,25 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <!-- Title -->
-                                <TextBlock x:Name="TitleText"
-                                           Grid.Column="0"
-                                           Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                           VerticalAlignment="Center"
-                                           FontWeight="SemiBold"
-                                           FontSize="13"
-                                           Foreground="{DynamicResource Neon.PinkBrush}"/>
+                                <!-- Title with glow -->
+                                <Grid Grid.Column="0" VerticalAlignment="Center">
+                                    <!-- Glow layer (blurred duplicate — no ClearType needed) -->
+                                    <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               FontWeight="SemiBold"
+                                               FontSize="13"
+                                               Foreground="{DynamicResource Neon.PinkBrush}"
+                                               Opacity="0.55">
+                                        <TextBlock.Effect>
+                                            <BlurEffect Radius="6"/>
+                                        </TextBlock.Effect>
+                                    </TextBlock>
+                                    <!-- Crisp text layer (no effect — ClearType preserved) -->
+                                    <TextBlock x:Name="TitleText"
+                                               Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               FontWeight="SemiBold"
+                                               FontSize="13"
+                                               Foreground="{DynamicResource Neon.PinkBrush}"/>
+                                </Grid>
 
                                 <!-- Collapse and Close buttons -->
                                 <StackPanel Grid.Column="1" Orientation="Horizontal">

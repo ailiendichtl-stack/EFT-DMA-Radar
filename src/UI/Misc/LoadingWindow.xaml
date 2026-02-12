@@ -6,14 +6,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Loading…"
-        SizeToContent="WidthAndHeight"
+        Width="700" Height="180"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
         Topmost="True"
-        Background="White"
-        AllowsTransparency="False"
+        Background="#0D0D0D"
+        AllowsTransparency="True"
         Icon="/lone-icon.ico">
 
     <!-- design-time only -->
@@ -22,23 +22,55 @@
                           IsDesignTimeCreatable="False"/>
     </d:Window.DataContext>
 
-    <Border CornerRadius="2"
-            Padding="40"
-            Background="White"
-            BorderBrush="Gray"
-            BorderThickness="1">
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-            <TextBlock Text="{Binding StatusText}"
-                       FontSize="28"
-                       Margin="0,0,0,20"
-                       TextAlignment="Center" Foreground="Black"/>
-            <ProgressBar Minimum="0"
-                         Maximum="100"
-                         Value="{Binding Progress}"
-                         Height="40"
-                         Width="600"
-                         Foreground="Green"
-                         Background="#EEE"/>
-        </StackPanel>
-    </Border>
+    <Grid Margin="8">
+        <!-- Glow layer (no text — ClearType safe) -->
+        <Border CornerRadius="8"
+                BorderBrush="#409945FF"
+                BorderThickness="0.8"
+                Background="Transparent">
+            <Border.Effect>
+                <DropShadowEffect Color="#9945FF"
+                                  BlurRadius="16"
+                                  ShadowDepth="0"
+                                  Opacity="0.30"/>
+            </Border.Effect>
+        </Border>
+
+        <!-- Content layer -->
+        <Border CornerRadius="8"
+                Padding="40,30"
+                BorderThickness="0.8">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#F0101018" Offset="0"/>
+                    <GradientStop Color="#F0141422" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#309945FF" Offset="0"/>
+                    <GradientStop Color="#20E63366" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.BorderBrush>
+
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="{Binding StatusText}"
+                           FontSize="22"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource App.TextPrimaryBrush}"
+                           Margin="0,0,0,16"
+                           TextAlignment="Center"/>
+                <ProgressBar Minimum="0"
+                             Maximum="100"
+                             Value="{Binding Progress}"
+                             Height="8"
+                             Width="500"/>
+                <TextBlock Text="{Binding Progress, StringFormat={}{0:F0}%}"
+                           FontSize="11"
+                           Foreground="{DynamicResource App.TextTertiaryBrush}"
+                           Margin="0,8,0,0"
+                           TextAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
 </Window>

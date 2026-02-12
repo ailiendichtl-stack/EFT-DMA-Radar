@@ -83,11 +83,10 @@
                         </StackPanel>
                         <CheckBox Content="Skeleton" IsChecked="{Binding EspPlayerSkeletons, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Names" IsChecked="{Binding EspPlayerNames, Mode=TwoWay}" Margin="0,0,16,8" />
+                        <CheckBox Content="Health" IsChecked="{Binding EspPlayerHealth, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Group IDs" IsChecked="{Binding EspGroupIds, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Group Colors" IsChecked="{Binding EspGroupColors, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Faction Text" IsChecked="{Binding EspPlayerFaction, Mode=TwoWay}" Margin="0,0,16,8" />
-                        <CheckBox Content="Faction Color" IsChecked="{Binding EspFactionColors, Mode=TwoWay}" Margin="0,0,16,8" />
-                        <CheckBox Content="Health Status" IsChecked="{Binding EspPlayerHealth, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Distance" IsChecked="{Binding EspPlayerDistance, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Weapons" IsChecked="{Binding EspPlayerWeapons, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Head Circle" IsChecked="{Binding EspHeadCirclePlayers, Mode=TwoWay}" Margin="0,0,16,8" ToolTip="Head circles inherit the entity color" />
@@ -118,7 +117,7 @@
                                               SelectedColor="{Binding EspColorPlayers, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,4,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="BEAR Faction:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="BEAR:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <controls:NeonColorSwatch
                                               SelectedColor="{Binding EspColorFactionBear, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                             <TextBlock Text="USEC:" VerticalAlignment="Center" Margin="10,0,6,0"/>
@@ -139,7 +138,7 @@
                         </StackPanel>
                         <CheckBox Content="Skeleton" IsChecked="{Binding EspAISkeletons, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Names" IsChecked="{Binding EspAINames, Mode=TwoWay}" Margin="0,0,16,8" />
-                        <CheckBox Content="Health Status" IsChecked="{Binding EspAIHealth, Mode=TwoWay}" Margin="0,0,16,8" />
+                        <CheckBox Content="Health" IsChecked="{Binding EspAIHealth, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Distance" IsChecked="{Binding EspAIDistance, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Weapons" IsChecked="{Binding EspAIWeapons, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Head Circle" IsChecked="{Binding EspHeadCircleAI, Mode=TwoWay}" Margin="0,0,16,8" ToolTip="Head circles inherit the entity color" />
@@ -151,22 +150,22 @@
                                   SelectedItem="{Binding EspLabelPositionAI, Mode=TwoWay}"
                                   ToolTip="Choose where the AI/scav label is drawn relative to the bounding box."/>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="AI/Scav Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="AI/Scav:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <controls:NeonColorSwatch
                                               SelectedColor="{Binding EspColorAI, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Player Scav Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Player Scav:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <controls:NeonColorSwatch
                                               SelectedColor="{Binding EspColorPlayerScavs, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Raider Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Raider:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <controls:NeonColorSwatch
                                               SelectedColor="{Binding EspColorRaiders, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Boss Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Boss:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <controls:NeonColorSwatch
                                               SelectedColor="{Binding EspColorBosses, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
@@ -235,7 +234,7 @@
                      </WrapPanel>
                      <StackPanel Visibility="{Binding EspContainers, Converter={StaticResource BoolToVis}}">
                          <WrapPanel Margin="0,4,0,0">
-                            <TextBlock Text="Container Distance (ESP)"
+                            <TextBlock Text="Container Draw Distance"
                                        VerticalAlignment="Center" />
                             <Slider x:Name="EspContainerDistanceSlider"
                                     Width="150"
@@ -281,7 +280,7 @@
                                    Margin="8,0,0,0" />
                      </WrapPanel>
                     <WrapPanel Margin="0,4,0,0">
-                        <TextBlock Text="Max Distance (0 = Unlimited):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Loot Draw Distance (0 = Unlimited):" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <Slider x:Name="LootDistanceSlider"
                                 Width="200"
                                 Margin="0,0,8,0"
@@ -294,27 +293,27 @@
                                    VerticalAlignment="Center"
                                    MinWidth="50"/>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Loot Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Loot:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <controls:NeonColorSwatch
                                               SelectedColor="{Binding EspColorLoot, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Container Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Container:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <controls:NeonColorSwatch
                                               SelectedColor="{Binding EspColorContainers, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Exfil Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Exfil:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <controls:NeonColorSwatch
                                               SelectedColor="{Binding EspColorExfil, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Tripwire Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Tripwire:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <controls:NeonColorSwatch
                                               SelectedColor="{Binding EspColorTripwire, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Grenade Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Grenade:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <controls:NeonColorSwatch
                                               SelectedColor="{Binding EspColorGrenade, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
