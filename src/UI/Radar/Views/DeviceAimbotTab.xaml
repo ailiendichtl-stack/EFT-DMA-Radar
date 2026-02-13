@@ -230,6 +230,51 @@
                               IsChecked="{Binding AutoTargetSwitch, Mode=TwoWay}"
                               ToolTip="When enabled, automatically switches to next target when current becomes invalid."
                               Margin="0,4,0,0" />
+
+                    <Separator Margin="0,8"/>
+
+                    <CheckBox Content="Enable Hitscan (Visibility-Based Bone Selection)"
+                              IsChecked="{Binding HitscanEnabled, Mode=TwoWay}"
+                              FontWeight="SemiBold"
+                              ToolTip="Dynamically selects the highest-priority shootable bone using ballistic LOS data from the Visibility system."
+                              Margin="0,4,0,4" />
+
+                    <StackPanel Visibility="{Binding HitscanEnabled, Converter={StaticResource BoolToVis}}"
+                                Margin="16,0,0,0">
+
+                        <TextBlock Text="Bone Priority (top = highest)"
+                                   FontWeight="Bold" Margin="0,4,0,4" />
+                        <ListBox ItemsSource="{Binding BonePriorityList}"
+                                 SelectedItem="{Binding SelectedPriorityBone, Mode=TwoWay}"
+                                 DisplayMemberPath="Name"
+                                 Height="200"
+                                 Margin="0,0,0,4" />
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button Content="Move Up"
+                                    Command="{Binding MoveBoneUpCommand}"
+                                    MinWidth="90" Height="28" Margin="0,0,8,0" />
+                            <Button Content="Move Down"
+                                    Command="{Binding MoveBoneDownCommand}"
+                                    MinWidth="90" Height="28" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding BoneHoldTimeMs, StringFormat='Grace Period: {0}ms'}"
+                                   FontWeight="Bold" Margin="0,0,0,4"
+                                   ToolTip="How long to hold the current bone after it loses visibility. Automatically shortened for fast-moving targets to prevent wall-tracking." />
+                        <Slider Value="{Binding BoneHoldTimeMs, Mode=TwoWay}"
+                                Minimum="25" Maximum="500"
+                                TickFrequency="25" IsSnapToTickEnabled="True"
+                                Margin="0,0,0,8" />
+
+                        <TextBlock Text="{Binding BoneConfirmTimeMs, StringFormat='Confirm Time: {0}ms'}"
+                                   FontWeight="Bold" Margin="0,0,0,4"
+                                   ToolTip="A higher-priority bone must stay visible this long before the aimbot switches to it. Prevents jitter from brief visibility flickers." />
+                        <Slider Value="{Binding BoneConfirmTimeMs, Mode=TwoWay}"
+                                Minimum="25" Maximum="300"
+                                TickFrequency="25" IsSnapToTickEnabled="True"
+                                Margin="0,0,0,4" />
+                    </StackPanel>
                 </StackPanel>
             </GroupBox>
 

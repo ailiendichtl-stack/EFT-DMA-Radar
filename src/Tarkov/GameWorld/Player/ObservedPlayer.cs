@@ -49,7 +49,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// <summary>
         /// Player's Current Items.
         /// </summary>
-        public PlayerEquipment Equipment { get; }
+        public override PlayerEquipment Equipment { get; }
         /// <summary>
         /// Address of InventoryController field.
         /// </summary>
@@ -332,7 +332,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             {
                 throw new NotImplementedException(nameof(PlayerSide));
             }
-            Equipment = new PlayerEquipment(this);
+            Equipment = new PlayerEquipment(this, InventoryControllerAddr);
 
             // Try to get existing group from cache (for Auto Groups feature)
             PlayerId = GetPlayerId();

@@ -233,7 +233,6 @@ namespace LoneEftDmaRadar.LOS
             if (localPlayer == null || players == null)
                 return;
 
-            // Get eye position from local player head bone
             var eyePos = localPlayer.GetBonePos(Bones.HumanHead);
             if (eyePos == Vector3.Zero) return;
 

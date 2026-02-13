@@ -405,7 +405,7 @@ namespace SDK
 
         public readonly partial struct GridItemCollection // Grid's ItemCollection wrapper
         {
-            public const uint Items = 0x10; // System.Collections.Generic.List<Item>
+            public const uint Items = 0x18; // List<Item> (ItemsList field — 0x10 is the Dictionary, not the List)
         }
 
         public readonly partial struct ModTemplate //Class: EFT.InventoryLogic.ModTemplate

@@ -1026,6 +1026,34 @@ namespace LoneEftDmaRadar
         /// </summary>
         public bool AutoTargetSwitch { get; set; } = true;
 
+        // Hitscan bone priority
+        public bool HitscanEnabled { get; set; } = false;
+
+        public List<Bones> BonePriority { get; set; } = new()
+        {
+            Bones.HumanHead,
+            Bones.HumanNeck,
+            Bones.HumanSpine3,
+            Bones.HumanSpine2,
+            Bones.HumanPelvis,
+            Bones.HumanLThigh1,
+            Bones.HumanRThigh1,
+            Bones.HumanLCalf,
+            Bones.HumanRCalf,
+        };
+
+        /// <summary>
+        /// Base grace period (ms) before switching away from current bone when it loses visibility.
+        /// Automatically scaled down for fast-moving targets (halved at 5+ m/s).
+        /// </summary>
+        public int BoneHoldTimeMs { get; set; } = 100;
+
+        /// <summary>
+        /// Confirmation window (ms) — a higher-priority bone must stay shootable
+        /// this long before the aimbot upgrades to it. Prevents jitter from 1-frame flickers.
+        /// </summary>
+        public int BoneConfirmTimeMs { get; set; } = 100;
+
         // KMBox NET
         public bool UseKmBoxNet { get; set; } = false;
         public string KmBoxNetIp { get; set; } = "192.168.2.4";

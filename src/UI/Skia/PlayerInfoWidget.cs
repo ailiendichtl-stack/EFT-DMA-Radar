@@ -167,10 +167,9 @@ namespace LoneEftDmaRadar.UI.Skia
                 string hours = null;
                 string value = null;
 
-                if (player is ObservedPlayer obs)
+                if (player.Equipment is PlayerEquipment eq)
                 {
-                    // Profile data no longer available (BSG removed account ID access)
-                    value = Utilities.FormatNumberKM(obs.Equipment.Value);
+                    value = Utilities.FormatNumberKM(eq.Value);
                 }
 
                 string grp = player.GroupID != -1 ? player.GroupID.ToString() : "--";

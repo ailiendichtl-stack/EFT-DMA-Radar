@@ -1714,16 +1714,26 @@ namespace LoneEftDmaRadar.UI.ESP
 
         private void DrawDeviceAimbotTargetLine(Dx9RenderContext ctx, float width, float height)
         {
-            var DeviceAimbot = MemDMA.DeviceAimbot;
-            if (DeviceAimbot?.LockedTarget is not { } target)
+            var deviceAimbot = MemDMA.DeviceAimbot;
+            if (deviceAimbot?.LockedTarget is not { } target)
                 return;
 
-            var headPos = target.GetBonePos(Bones.HumanHead);
-            if (!WorldToScreen2(headPos, out var screen, width, height))
+            // Use hitscan bone when active, otherwise fall back to configured bone
+            Bones targetBone;
+            if (App.Config.Device.HitscanEnabled && deviceAimbot.ActiveHitscanBone != default)
+                targetBone = deviceAimbot.ActiveHitscanBone;
+            else
+                targetBone = App.Config.Device.TargetBone;
+
+            // Get bone position (fall back to head if bone not available)
+            var bonePos = target.GetBonePos(targetBone);
+            if (bonePos == System.Numerics.Vector3.Zero)
+                bonePos = target.GetBonePos(Bones.HumanHead);
+            if (!WorldToScreen2(bonePos, out var screen, width, height))
                 return;
 
             var center = new RawVector2(width / 2f, height / 2f);
-            bool engaged = DeviceAimbot.IsEngaged;
+            bool engaged = deviceAimbot.IsEngaged;
             var skColor = engaged ? new SKColor(0, 200, 255, 200) : new SKColor(255, 210, 0, 180);
             ctx.DrawLine(center, ToRaw(screen), ToColor(skColor), 2f);
         }

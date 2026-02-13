@@ -80,6 +80,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         /// </summary>
         public override ulong RotationAddress { get; }
 
+        /// <summary>
+        /// Player's equipped gear (offline AI only).
+        /// </summary>
+        public override PlayerEquipment Equipment { get; }
+
         #region Weapon Detection
 
         private string _cachedWeaponName;
@@ -153,6 +158,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             {
                 IsHuman = false; // Offline AI are not human-controlled
                 SetupOfflineAI();
+                Equipment = new PlayerEquipment(this, Base + Offsets.Player._inventoryController);
             }
             else
             {

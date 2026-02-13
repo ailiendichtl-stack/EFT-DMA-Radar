@@ -7,6 +7,7 @@ using LoneEftDmaRadar.UI.Misc;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -160,6 +161,55 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             get => AvailableBones.FirstOrDefault(b => b.Value == App.Config.Device.TargetBone)
                    ?? AvailableBones[0];
             set { App.Config.Device.TargetBone = value.Value; OnPropertyChanged(); }
+        }
+
+        // Hitscan
+        public bool HitscanEnabled
+        {
+            get => App.Config.Device.HitscanEnabled;
+            set { App.Config.Device.HitscanEnabled = value; OnPropertyChanged(); }
+        }
+
+        public int BoneHoldTimeMs
+        {
+            get => App.Config.Device.BoneHoldTimeMs;
+            set { App.Config.Device.BoneHoldTimeMs = Math.Clamp(value, 25, 500); OnPropertyChanged(); }
+        }
+
+        public int BoneConfirmTimeMs
+        {
+            get => App.Config.Device.BoneConfirmTimeMs;
+            set { App.Config.Device.BoneConfirmTimeMs = Math.Clamp(value, 25, 300); OnPropertyChanged(); }
+        }
+
+        public ObservableCollection<BoneOption> BonePriorityList { get; }
+
+        private BoneOption _selectedPriorityBone;
+        public BoneOption SelectedPriorityBone
+        {
+            get => _selectedPriorityBone;
+            set { _selectedPriorityBone = value; OnPropertyChanged(); }
+        }
+
+        public ICommand MoveBoneUpCommand { get; }
+        public ICommand MoveBoneDownCommand { get; }
+
+        private void SyncBonePriorityToConfig() =>
+            App.Config.Device.BonePriority = BonePriorityList.Select(b => b.Value).ToList();
+
+        private void MoveBoneUp()
+        {
+            if (SelectedPriorityBone == null) return;
+            int idx = BonePriorityList.IndexOf(SelectedPriorityBone);
+            if (idx > 0) BonePriorityList.Move(idx, idx - 1);
+        }
+
+        private void MoveBoneDown()
+        {
+            if (SelectedPriorityBone == null) return;
+            int idx = BonePriorityList.IndexOf(SelectedPriorityBone);
+            if (idx >= 0 && idx < BonePriorityList.Count - 1)
+                BonePriorityList.Move(idx, idx + 1);
         }
 
         public bool MemWritesEnabled
@@ -370,6 +420,34 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             DisconnectCommand = new SimpleCommand(Disconnect);
             RefreshDevicesCommand = new SimpleCommand(RefreshDevices);
             TestMoveCommand = new SimpleCommand(TestMove);
+            MoveBoneUpCommand = new SimpleCommand(MoveBoneUp);
+            MoveBoneDownCommand = new SimpleCommand(MoveBoneDown);
+
+            // Initialize bone priority list from config
+            var allBones = new Dictionary<Bones, string>
+            {
+                [Bones.HumanHead]    = "Head",
+                [Bones.HumanNeck]    = "Neck",
+                [Bones.HumanSpine3]  = "Chest",
+                [Bones.HumanSpine2]  = "Stomach",
+                [Bones.HumanPelvis]  = "Pelvis",
+                [Bones.HumanLThigh1] = "Left Thigh",
+                [Bones.HumanRThigh1] = "Right Thigh",
+                [Bones.HumanLCalf]   = "Left Calf",
+                [Bones.HumanRCalf]   = "Right Calf",
+            };
+
+            BonePriorityList = new ObservableCollection<BoneOption>(
+                App.Config.Device.BonePriority
+                    .Where(b => allBones.ContainsKey(b))
+                    .Select(b => new BoneOption(b, allBones[b])));
+
+            // Append missing bones (config migration safety)
+            foreach (var kvp in allBones)
+                if (!BonePriorityList.Any(x => x.Value == kvp.Key))
+                    BonePriorityList.Add(new BoneOption(kvp.Key, kvp.Value));
+
+            BonePriorityList.CollectionChanged += (_, _) => SyncBonePriorityToConfig();
 
             RefreshDevices();
 

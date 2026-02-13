@@ -16,6 +16,7 @@ using LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
 using LoneEftDmaRadar.UI.Misc.Ballistics;
+using LoneEftDmaRadar.LOS;
 using SkiaSharp;
 using LoneEftDmaRadar.Tarkov.GameWorld.Camera;
 
@@ -106,6 +107,16 @@ namespace LoneEftDmaRadar.UI.Misc
         private bool _hasVelocitySample;
         private long _velocitySampleTicks;
         private string _lastTrackedTargetId;
+        private volatile float _lastWorldSpeed;   // Magnitude of world velocity, used by hitscan grace scaling
+
+        // Hitscan bone priority state
+        private Bones _hitscanCurrentBone;         // Currently locked bone
+        private long _hitscanBoneLockTick;         // Stopwatch tick when bone was locked
+        private long _hitscanBoneLostTick;         // Tick when current bone lost visibility (0 = visible)
+        private Bones _hitscanPendingUpgrade;      // Higher-priority bone being confirmed
+        private long _hitscanPendingStartTick;     // Tick when pending upgrade first became shootable
+        private ulong _hitscanTargetBase;          // Target address these states belong to
+        private const float HITSCAN_FALLBACK_MAX_FOV = 200f; // Prevents snapping to extremities
 
         // Reusable list to avoid allocations in hot path
         private readonly List<TargetCandidate> _candidateBuffer = new(32);
@@ -478,6 +489,18 @@ namespace LoneEftDmaRadar.UI.Misc
 
                 _dbgHaveSkeleton++;
 
+                // Hitscan: skip targets with no shootable bones
+                if (Config.HitscanEnabled)
+                {
+                    var visMgr = VisibilityManager.Instance;
+                    if (visMgr != null)
+                    {
+                        var vis = visMgr.GetVisibility(player);
+                        if (vis == null || vis.Value.HitscanMask == 0)
+                            continue;
+                    }
+                }
+
                 // Check if any bone is within FOV
                 float bestFovForThisPlayer = float.MaxValue;
                 bool anyBoneProjected = false;
@@ -667,6 +690,13 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                     _cachedClosestBoneTarget = null;
                 }
             }
+            // Reset hitscan state
+            _hitscanCurrentBone = default;
+            _hitscanBoneLostTick = 0;
+            _hitscanPendingUpgrade = default;
+            _hitscanPendingStartTick = 0;
+            _hitscanTargetBase = 0;
+            _lastWorldSpeed = 0;
             // Clear fractional accumulators to prevent carryover
             _accumX = 0;
             _accumY = 0;
@@ -678,9 +708,172 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             ResetVelocityTracking();
         }
 
+        /// <summary>
+        /// Hitscan bone selection: walks the user's priority list and picks the highest-priority
+        /// bone that has clear ballistic LOS. Includes hysteresis (grace period + confirmation
+        /// window) to prevent rapid bone switching from frame-to-frame visibility flicker.
+        /// </summary>
+        private bool TryGetHitscanBone(AbstractPlayer target, out UnityTransform boneTransform)
+        {
+            boneTransform = null;
+            var bones = target.PlayerBones;
+            if (bones == null || bones.Count == 0) return false;
+
+            // Get visibility data — struct copy, no allocation
+            var visMgr = VisibilityManager.Instance;
+            if (visMgr == null) return false;
+            var vis = visMgr.GetVisibility(target);
+            if (vis == null) return false;
+
+            uint hitscanMask = vis.Value.HitscanMask;
+            long now = _cacheTimer.ElapsedTicks;
+            var priority = Config.BonePriority;
+
+            // Reset state if target changed
+            if (target.Base != _hitscanTargetBase)
+            {
+                _hitscanTargetBase = target.Base;
+                _hitscanCurrentBone = default;
+                _hitscanBoneLostTick = 0;
+                _hitscanPendingUpgrade = default;
+                _hitscanPendingStartTick = 0;
+            }
+
+            // Find highest-priority shootable bone
+            Bones bestPrioBone = default;
+            int bestPrioIndex = int.MaxValue;
+            for (int i = 0; i < priority.Count; i++)
+            {
+                if (BoneMappings.IsBoneSet(hitscanMask, priority[i]))
+                {
+                    bestPrioBone = priority[i];
+                    bestPrioIndex = i;
+                    break;
+                }
+            }
+
+            // Current bone's priority index (-1 from IndexOf → use MaxValue for "not in list")
+            int currentIndex = _hitscanCurrentBone != default
+                ? priority.IndexOf(_hitscanCurrentBone)
+                : -1;
+            if (currentIndex < 0) currentIndex = int.MaxValue;
+
+            bool currentShootable = _hitscanCurrentBone != default
+                && BoneMappings.IsBoneSet(hitscanMask, _hitscanCurrentBone);
+
+            // Velocity-scaled grace: halve at 5+ m/s to prevent wall-tracking
+            float targetSpeed = _lastWorldSpeed;
+            float graceScale = targetSpeed > 5f ? 0.5f
+                : targetSpeed > 2f ? 1f - 0.5f * ((targetSpeed - 2f) / 3f)
+                : 1f;
+            long holdTicks = (long)(Config.BoneHoldTimeMs * graceScale / 1000.0 * Stopwatch.Frequency);
+            long confirmTicks = (long)(Config.BoneConfirmTimeMs / 1000.0 * Stopwatch.Frequency);
+
+            // === Case 1: Current bone still shootable ===
+            if (currentShootable)
+            {
+                _hitscanBoneLostTick = 0;
+
+                // Check for higher-priority upgrade
+                if (bestPrioIndex < currentIndex)
+                {
+                    if (_hitscanPendingUpgrade == bestPrioBone)
+                    {
+                        if ((now - _hitscanPendingStartTick) >= confirmTicks)
+                        {
+                            _hitscanCurrentBone = bestPrioBone;
+                            _hitscanBoneLockTick = now;
+                            _hitscanPendingUpgrade = default;
+                        }
+                    }
+                    else
+                    {
+                        _hitscanPendingUpgrade = bestPrioBone;
+                        _hitscanPendingStartTick = now;
+                    }
+                }
+                else
+                {
+                    _hitscanPendingUpgrade = default;
+                }
+
+                return bones.TryGetValue(_hitscanCurrentBone, out boneTransform);
+            }
+
+            // === Case 2: Current bone lost visibility ===
+            if (_hitscanCurrentBone != default)
+            {
+                if (_hitscanBoneLostTick == 0)
+                    _hitscanBoneLostTick = now;
+
+                if ((now - _hitscanBoneLostTick) < holdTicks)
+                {
+                    // Grace period — hold current bone position (transform still valid)
+                    return bones.TryGetValue(_hitscanCurrentBone, out boneTransform);
+                }
+
+                // Grace expired — if pending upgrade is still shootable, take it immediately
+                if (_hitscanPendingUpgrade != default
+                    && BoneMappings.IsBoneSet(hitscanMask, _hitscanPendingUpgrade))
+                {
+                    _hitscanCurrentBone = _hitscanPendingUpgrade;
+                    _hitscanBoneLockTick = now;
+                    _hitscanBoneLostTick = 0;
+                    _hitscanPendingUpgrade = default;
+                    return bones.TryGetValue(_hitscanCurrentBone, out boneTransform);
+                }
+            }
+
+            // === Case 3: Grace expired — switch to best priority bone ===
+            _hitscanPendingUpgrade = default;
+            if (bestPrioIndex < int.MaxValue)
+            {
+                _hitscanCurrentBone = bestPrioBone;
+                _hitscanBoneLockTick = now;
+                _hitscanBoneLostTick = 0;
+                return bones.TryGetValue(_hitscanCurrentBone, out boneTransform);
+            }
+
+            // === Case 4: No priority bones — fallback to any shootable bone (FOV-capped) ===
+            float bestFov = HITSCAN_FALLBACK_MAX_FOV;
+            Bones fallbackBone = default;
+            for (int i = 0; i < BoneMappings.BoneCount; i++)
+            {
+                if ((hitscanMask & (1u << i)) == 0) continue;
+                var bone = BoneMappings.IndexToBone[i];
+                if (!bones.TryGetValue(bone, out var bt)) continue;
+                if (CameraManager.WorldToScreen(in bt.Position, out var sp))
+                {
+                    float fov = CameraManager.GetFovMagnitude(sp);
+                    if (fov < bestFov)
+                    {
+                        bestFov = fov;
+                        fallbackBone = bone;
+                        boneTransform = bt;
+                    }
+                }
+            }
+
+            if (boneTransform != null)
+            {
+                _hitscanCurrentBone = fallbackBone;
+                _hitscanBoneLockTick = now;
+                _hitscanBoneLostTick = 0;
+                return true;
+            }
+
+            return false;
+        }
+
         private bool TryGetTargetBone(AbstractPlayer target, Bones targetBone, out UnityTransform boneTransform)
         {
             boneTransform = null;
+
+            // Hitscan mode: use priority-based bone selection with visibility
+            if (Config.HitscanEnabled && VisibilityManager.Instance?.IsReady == true)
+            {
+                return TryGetHitscanBone(target, out boneTransform);
+            }
 
             // Use PlayerBones directly - this is the live data source
             // Skeleton.BoneTransforms references PlayerBones but Skeleton object can become stale
@@ -1035,6 +1228,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                             _targetWorldVelocity = Vector3.Lerp(_targetWorldVelocity, newVelocity, velocitySmoothing);
                         }
 
+                        _lastWorldSpeed = _targetWorldVelocity.Length();
+
                         // Update sample position for next calculation
                         _velocitySamplePos = currentWorldPos;
                         _velocitySampleTicks = now;
@@ -1047,6 +1242,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                     {
                         // Below threshold - decay velocity
                         _targetWorldVelocity = Vector3.Lerp(_targetWorldVelocity, Vector3.Zero, 0.15f);
+                        _lastWorldSpeed = _targetWorldVelocity.Length();
                         _velocitySamplePos = currentWorldPos;
                         _velocitySampleTicks = now;
                     }
@@ -1055,6 +1251,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 {
                     // Target stationary for 50ms+ - decay velocity toward zero
                     _targetWorldVelocity = Vector3.Lerp(_targetWorldVelocity, Vector3.Zero, 0.2f);
+                    _lastWorldSpeed = _targetWorldVelocity.Length();
                     _velocitySamplePos = currentWorldPos;
                     _velocitySampleTicks = now;
                 }
@@ -1359,6 +1556,12 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
         /// </summary>
         public AbstractPlayer LockedTarget => _lockedTarget;
 
+        /// <summary>
+        /// The bone currently targeted by the hitscan system.
+        /// Read by ESP render thread — atomic uint enum read, no lock needed.
+        /// </summary>
+        public Bones ActiveHitscanBone => _hitscanCurrentBone;
+
         private readonly struct TargetCandidate
         {
             public AbstractPlayer Player { get; init; }
@@ -1556,7 +1759,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                     LockedTargetType = _lockedTarget?.Type,
                     LockedTargetDistance = distanceToTarget,
                     LockedTargetFov = _lastLockedTargetFov,
-                    TargetBone = Config.TargetBone,
+                    TargetBone = Config.HitscanEnabled && _hitscanCurrentBone != default
+                        ? _hitscanCurrentBone : Config.TargetBone,
                     HasFireport = _hasLastFireport,
                     FireportPosition = _hasLastFireport ? _lastFireportPos : (Vector3?)null,
                     BallisticsValid = _lastBallistics?.IsAmmoValid ?? false,

@@ -29,7 +29,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers
         public static List<ContainerItem> GetCorpseContents(ObservedPlayer player)
         {
             var inventoryController = Memory.ReadPtr(player.InventoryControllerAddr);
-            return GetCorpseContentsFromInventoryController(inventoryController);
+            return GetContentsFromInventoryController(inventoryController);
         }
 
         /// <summary>
@@ -41,7 +41,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers
         public static List<ContainerItem> GetCorpseContents(ClientPlayer player)
         {
             var inventoryController = Memory.ReadPtr(player.Base + Offsets.Player._inventoryController);
-            return GetCorpseContentsFromInventoryController(inventoryController);
+            return GetContentsFromInventoryController(inventoryController);
         }
 
         /// <summary>
@@ -63,21 +63,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers
                 // interactiveClass + 0xF0 (InteractiveLootItem.Item) -> itemBase
                 // itemBase + 0x80 (LootItemMod.Slots) -> slots array
                 var itemBase = Memory.ReadPtr(corpseInteractiveClass + Offsets.InteractiveLootItem.Item);
-                if (itemBase == 0)
-                {
-                    LoneEftDmaRadar.UI.Misc.DebugLogger.LogDebug($"[CorpseRead] 0x{corpseInteractiveClass:X} - ItemBase is NULL at offset 0x{Offsets.InteractiveLootItem.Item:X}");
-                    return items;
-                }
+                if (itemBase == 0) return items;
 
                 var slotsPtr = Memory.ReadPtr(itemBase + Offsets.LootItemMod.Slots);
-                if (slotsPtr == 0)
-                {
-                    LoneEftDmaRadar.UI.Misc.DebugLogger.LogDebug($"[CorpseRead] 0x{corpseInteractiveClass:X} - Slots is NULL at offset 0x{Offsets.LootItemMod.Slots:X}");
-                    return items;
-                }
+                if (slotsPtr == 0) return items;
 
                 using var slotsArray = UnityArray<ulong>.Create(slotsPtr, false);
-                LoneEftDmaRadar.UI.Misc.DebugLogger.LogDebug($"[CorpseRead] 0x{corpseInteractiveClass:X} - Found {slotsArray.Count} slots");
 
                 foreach (var slotPtr in slotsArray)
                 {
@@ -92,8 +83,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers
 
                         var containedItem = Memory.ReadPtr(slotPtr + Offsets.Slot.ContainedItem);
                         if (containedItem == 0) continue;
-
-                        LoneEftDmaRadar.UI.Misc.DebugLogger.LogDebug($"[CorpseRead] 0x{corpseInteractiveClass:X} - Found slot '{slotName}' with item");
 
                         // Read the grids from this container item
                         ReadItemGrids(containedItem, items);
@@ -110,9 +99,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot.Helpers
         }
 
         /// <summary>
-        /// Internal method to read corpse contents from an inventory controller address.
+        /// Reads inventory contents (Backpack, TacticalVest, Pockets) from an inventory controller pointer.
+        /// Works for both corpses and alive players.
         /// </summary>
-        private static List<ContainerItem> GetCorpseContentsFromInventoryController(ulong inventoryController)
+        internal static List<ContainerItem> GetContentsFromInventoryController(ulong inventoryController)
         {
             var items = new List<ContainerItem>();
 

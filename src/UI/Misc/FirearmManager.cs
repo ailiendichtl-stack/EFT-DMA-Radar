@@ -297,17 +297,31 @@ namespace LoneEftDmaRadar.UI.Misc
         /// </summary>
         private static CachedHandsInfo GetHandsInfo(ulong handsController)
         {
-            var itemBase = MemoryInterface.Memory.ReadPtr(handsController + Offsets.ItemHandsController.Item, false);
-            var itemTemp = MemoryInterface.Memory.ReadPtr(itemBase + Offsets.LootItem.Template, false);
-            var itemIdPtr = MemoryInterface.Memory.ReadValue<MongoID>(itemTemp + Offsets.ItemTemplate._id, false);
-            var itemId = itemIdPtr.ReadString(64, false); // Use ReadString() method
-            
-            ArgumentOutOfRangeException.ThrowIfNotEqual(itemId.Length, 24, nameof(itemId));
-            
-            if (!TarkovDataManager.AllItems.TryGetValue(itemId, out var heldItem))
+            try
+            {
+                var itemBase = MemoryInterface.Memory.ReadPtr(handsController + Offsets.ItemHandsController.Item, false);
+                if (!MemDMA.IsValidVirtualAddress(itemBase))
+                    return new(handsController);
+
+                var itemTemp = MemoryInterface.Memory.ReadPtr(itemBase + Offsets.LootItem.Template, false);
+                if (!MemDMA.IsValidVirtualAddress(itemTemp))
+                    return new(handsController);
+
+                var itemIdPtr = MemoryInterface.Memory.ReadValue<MongoID>(itemTemp + Offsets.ItemTemplate._id, false);
+                var itemId = itemIdPtr.ReadString(64, false);
+
+                if (itemId.Length != 24)
+                    return new(handsController);
+
+                if (!TarkovDataManager.AllItems.TryGetValue(itemId, out var heldItem))
+                    return new(handsController);
+
+                return new(handsController, heldItem, itemBase, itemId);
+            }
+            catch
+            {
                 return new(handsController);
-            
-            return new(handsController, heldItem, itemBase, itemId);
+            }
         }
 
         #region Magazine Utilities

@@ -115,9 +115,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             if (wasNull && Player is not null)
             {
                 DebugLogger.LogDebug($"[CorpseSync] Synced corpse 0x{_corpse:X} to player '{Player.Name}' (Type: {Player.Type}, IsObserved: {Player is ObservedPlayer})");
-                if (Player is ObservedPlayer obs)
+                if (Player.Equipment is { } eq)
                 {
-                    DebugLogger.LogDebug($"[CorpseSync] Equipment items: {obs.Equipment.Items.Count}, Value: {obs.Equipment.Value}");
+                    DebugLogger.LogDebug($"[CorpseSync] Equipment items: {eq.Items.Count}, Value: {eq.Value}");
                 }
             }
             else if (wasNull && Player is null && !_syncFailLogged)
@@ -152,40 +152,41 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             if (!App.Config.Containers.PveScanEnabled)
                 return;
 
-            // Throttle refreshes
-            if (DateTime.UtcNow - _lastContentsRefresh < ContentsRefreshInterval && _contentsLoaded)
+            // Once contents are loaded, don't re-read (corpse loot doesn't change mid-raid)
+            if (_contentsLoaded)
                 return;
-
-            _lastContentsRefresh = DateTime.UtcNow;
 
             try
             {
+                List<ContainerItem> result = null;
+
                 // Support both ObservedPlayer (online mode) and ClientPlayer (offline PVE mode)
                 if (Player is ObservedPlayer obs)
                 {
-                    Contents = CorpseContentsReader.GetCorpseContents(obs);
-                    _contentsLoaded = true;
+                    result = CorpseContentsReader.GetCorpseContents(obs);
                 }
                 else if (Player is ClientPlayer client)
                 {
-                    Contents = CorpseContentsReader.GetCorpseContents(client);
-                    _contentsLoaded = true;
-                    DebugLogger.LogDebug($"[CorpseContents] Read {Contents.Count} items from ClientPlayer '{Player.Name}'");
+                    result = CorpseContentsReader.GetCorpseContents(client);
                 }
                 else
                 {
                     // Fallback: Try reading directly from corpse interactiveClass
                     // This works for pre-existing/environmental corpses that don't have a player sync
-                    Contents = CorpseContentsReader.GetCorpseContentsFromInteractiveClass(_corpse);
-                    _contentsLoaded = true;
-                    DebugLogger.LogDebug($"[CorpseContents] Read {Contents.Count} items directly from corpse 0x{_corpse:X} (no player sync)");
+                    result = CorpseContentsReader.GetCorpseContentsFromInteractiveClass(_corpse);
                 }
 
-                // Cache filter color from highest value important item
-                _cachedFilterColor = Contents?
-                    .Where(x => x.IsImportant && !string.IsNullOrEmpty(x.FilterColor))
-                    .OrderByDescending(x => x.Price)
-                    .FirstOrDefault()?.FilterColor;
+                if (result?.Count > 0)
+                {
+                    Contents = result;
+                    _contentsLoaded = true;
+
+                    // Cache filter color from highest value important item
+                    _cachedFilterColor = Contents
+                        .Where(x => x.IsImportant && !string.IsNullOrEmpty(x.FilterColor))
+                        .OrderByDescending(x => x.Price)
+                        .FirstOrDefault()?.FilterColor;
+                }
             }
             catch (Exception ex)
             {
@@ -267,7 +268,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 return SKPaints.TextFilteredLoot;
 
             // Fallback: Show equipment-based coloring when no inventory contents
-            if (Player is ObservedPlayer obs && obs.Equipment.Value >= App.Config.Containers.MinValue)
+            if (Player?.Equipment is { } eqFallback && eqFallback.Value >= App.Config.Containers.MinValue)
                 return SKPaints.TextFilteredLoot;
 
             return SKPaints.TextCorpse;
@@ -285,8 +286,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 _labelLogged = true;
                 var isObs = Player is ObservedPlayer;
                 var isClient = Player is ClientPlayer;
-                var eqValue = isObs ? ((ObservedPlayer)Player).Equipment.Value : -1;
-                var eqItems = isObs ? ((ObservedPlayer)Player).Equipment.Items.Count : -1;
+                var eqValue = Player.Equipment?.Value ?? -1;
+                var eqItems = Player.Equipment?.Items.Count ?? -1;
                 DebugLogger.LogDebug($"[CorpseLabel] '{Name}' - Player={Player.Name}, IsObserved={isObs}, IsClient={isClient}, Equipment.Items={eqItems}, Equipment.Value={eqValue}, InventoryValue={InventoryValue}, ContentsCount={Contents?.Count ?? 0}, PveScan={App.Config.Containers.PveScanEnabled}");
             }
 
@@ -294,9 +295,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             if (App.Config.Containers.PveScanEnabled && InventoryValue > 0)
                 return $"[{Utilities.FormatNumberKM(InventoryValue)}] {Name}";
 
-            // Otherwise show equipment value (only for ObservedPlayer)
-            if (Player is ObservedPlayer obs && obs.Equipment.Value > 0)
-                return $"[{Utilities.FormatNumberKM(obs.Equipment.Value)}] {Name}";
+            // Otherwise show equipment value
+            if (Player?.Equipment is { } eqLabel && eqLabel.Value > 0)
+                return $"[{Utilities.FormatNumberKM(eqLabel.Value)}] {Name}";
 
             return Name;
         }
@@ -314,11 +315,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 if (player.GroupID != -1) g = $"G:{player.GroupID} ";
                 if (g is not null) lines.Add(g);
 
-                // Show equipment info for ObservedPlayer (online mode)
-                if (Player is ObservedPlayer obs)
+                // Show equipment info
+                if (player.Equipment is { } eqInfo && eqInfo.Items.Count > 0)
                 {
-                    lines.Add($"Gear Value: {Utilities.FormatNumberKM(obs.Equipment.Value)}");
-                    foreach (var item in obs.Equipment.Items.OrderBy(e => e.Key))
+                    lines.Add($"Gear Value: {Utilities.FormatNumberKM(eqInfo.Value)}");
+                    foreach (var item in eqInfo.Items.OrderBy(e => e.Key))
                     {
                         lines.Add($"{item.Key.Substring(0, 5)}: {item.Value.ShortName}");
                     }

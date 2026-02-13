@@ -349,6 +349,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         public virtual ulong RotationAddress { get; }
 
         /// <summary>
+        /// Player's equipped gear (null if not available).
+        /// </summary>
+        public virtual PlayerEquipment Equipment => null;
+
+        /// <summary>
         /// Hands Controller address.
         /// </summary>
         protected ulong HandsController { get; set; }
@@ -603,15 +608,19 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             // Distance-based throttling for non-local players
             if (this is not LocalPlayer && Memory.LocalPlayer is { } lp)
             {
-                float distSq = Vector3.DistanceSquared(lp.Position, _cachedPosition);
+                // Never throttle the aimbot's locked target — it needs full-rate bone updates
+                bool isAimbotTarget = MemDMA.DeviceAimbot?.LockedTarget?.Base == this.Base;
+                if (!isAimbotTarget)
+                {
+                    float distSq = Vector3.DistanceSquared(lp.Position, _cachedPosition);
 
-                // Far players (>150m): update every 4th frame
-                if (distSq > MID_DISTANCE_SQ && _realtimeFrameCounter % 4 != 0)
-                    return;
-                // Mid-range players (50-150m): update every 2nd frame
-                else if (distSq > NEAR_DISTANCE_SQ && _realtimeFrameCounter % 2 != 0)
-                    return;
-                // Near players (<50m): update every frame
+                    // Far players (>150m): update every 4th frame
+                    if (distSq > MID_DISTANCE_SQ && _realtimeFrameCounter % 4 != 0)
+                        return;
+                    // Mid-range players (50-150m): update every 2nd frame
+                    else if (distSq > NEAR_DISTANCE_SQ && _realtimeFrameCounter % 2 != 0)
+                        return;
+                }
             }
 
             int vertexCount = SkeletonRoot.Count;
@@ -619,7 +628,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             // Determine if we need full skeleton data (for ESP skeleton rendering)
             // LocalPlayer always needs full skeleton for aimbot features
             bool needFullSkeleton = this is LocalPlayer ||
-                (IsAI ? App.Config.UI.EspAISkeletons : App.Config.UI.EspPlayerSkeletons);
+                (IsAI ? App.Config.UI.EspAISkeletons : App.Config.UI.EspPlayerSkeletons) ||
+                App.Config.Device.Enabled;
 
             // Use cached max bone requirement (computed once at allocation)
             int maxBoneRequirement = needFullSkeleton ? _cachedMaxBoneRequirement : 0;
@@ -1412,11 +1422,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             if (GroupID != -1)
                 tooltip.AddRow("Group", $"#{GroupID}");
 
-            // Equipment info for ObservedPlayers
+            // Equipment info
             var isExpanded = TooltipCard.IsExpanded(this);
-            if (this is ObservedPlayer obs2 && obs2.Equipment.Items is IReadOnlyDictionary<string, TarkovMarketItem> equipment)
+            var playerEquipment = Equipment;
+            if (playerEquipment?.Items is IReadOnlyDictionary<string, TarkovMarketItem> equipment)
             {
-                tooltip.AddRow("Gear", $"${Utilities.FormatNumberKM(obs2.Equipment.Value)}", TooltipColors.LootValuable);
+                tooltip.AddRow("Gear", $"${Utilities.FormatNumberKM(playerEquipment.Value)}", TooltipColors.LootValuable);
 
                 if (isExpanded)
                 {
@@ -1424,6 +1435,23 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     foreach (var item in equipment.OrderBy(e => e.Key))
                     {
                         tooltip.AddRow($"  {item.Key}", item.Value.ShortName);
+                    }
+
+                    // Show inventory contents (items inside backpack/rig/pockets)
+                    if (playerEquipment.InventoryContents is { Count: > 0 } invContents)
+                    {
+                        tooltip.AddRow("Loot", $"${Utilities.FormatNumberKM(playerEquipment.InventoryValue)}", TooltipColors.LootValuable);
+                        var itemLimit = Math.Min(15, invContents.Count);
+                        for (int i = 0; i < itemLimit; i++)
+                        {
+                            var ci = invContents[i];
+                            var itemColor = ci.IsQuestItem ? TooltipColors.LootQuest
+                                : ci.IsHideoutItem ? TooltipColors.LootHideout
+                                : (SKColor?)null;
+                            tooltip.AddRow($"  ${Utilities.FormatNumberKM(ci.Price)}", ci.Name, itemColor);
+                        }
+                        if (invContents.Count > 15)
+                            tooltip.AddRow("", $"(+{invContents.Count - 15} more)", TooltipColors.Default);
                     }
                 }
                 else
@@ -1441,8 +1469,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     else
                         tooltip.AddRow("Helmet", "None", TooltipColors.Default);
 
-                    // Show expand hint if has more equipment
-                    if (equipment.Count > 2)
+                    // Show expand hint if has more equipment or inventory contents
+                    if (equipment.Count > 2 || playerEquipment.InventoryContents is { Count: > 0 })
                         tooltip.AddRow("", "[Click to expand]", TooltipColors.Default);
                 }
             }
