@@ -83,7 +83,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Explosives
         /// <summary>
         /// Get the updated Position of this Grenade.
         /// </summary>
-        public void OnRefresh(VmmScatterManaged scatter)
+        public void OnRefresh(VmmScatter scatter)
         {
             // ALL grenades (including smoke) check destroyed status for cleanup
             scatter.PrepareReadValue<bool>(this + Offsets.Throwable._isDestroyed);

@@ -394,7 +394,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
             }
         }
 
-        public void OnRealtimeLoop(VmmScatterManaged scatter, LocalPlayer localPlayer)
+        public void OnRealtimeLoop(VmmScatter scatter, LocalPlayer localPlayer)
         {
             try
             {

@@ -41,6 +41,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Explosives
         /// <summary>
         /// Sync the state of the explosive item.
         /// </summary>
-        void OnRefresh(VmmScatterManaged scatter);
+        void OnRefresh(VmmScatter scatter);
     }
 }
