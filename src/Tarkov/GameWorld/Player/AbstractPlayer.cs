@@ -250,11 +250,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         }
 
         // Frame counter for distance-based update throttling
-        private int _realtimeFrameCounter;
-
-        // Distance thresholds for update throttling (squared for faster comparison)
-        private const float NEAR_DISTANCE_SQ = 50f * 50f;   // 50m
-        private const float MID_DISTANCE_SQ = 150f * 150f;  // 150m
 
         /// <summary>
         /// TRUE if critical memory reads (position/rotation) have failed.
@@ -603,25 +598,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 return;
             }
 
-            _realtimeFrameCounter++;
-
-            // Distance-based throttling for non-local players
-            if (this is not LocalPlayer && Memory.LocalPlayer is { } lp)
-            {
-                // Never throttle the aimbot's locked target — it needs full-rate bone updates
-                bool isAimbotTarget = MemDMA.DeviceAimbot?.LockedTarget?.Base == this.Base;
-                if (!isAimbotTarget)
-                {
-                    float distSq = Vector3.DistanceSquared(lp.Position, _cachedPosition);
-
-                    // Far players (>150m): update every 4th frame
-                    if (distSq > MID_DISTANCE_SQ && _realtimeFrameCounter % 4 != 0)
-                        return;
-                    // Mid-range players (50-150m): update every 2nd frame
-                    else if (distSq > NEAR_DISTANCE_SQ && _realtimeFrameCounter % 2 != 0)
-                        return;
-                }
-            }
 
             int vertexCount = SkeletonRoot.Count;
 
@@ -792,6 +768,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                                 }
                                 catch { }
                             }
+
+                            OnValidateTransforms(); // Allow subclasses to retry failed bones, etc.
                         }
                     };
                 }

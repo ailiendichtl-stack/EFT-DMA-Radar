@@ -292,15 +292,9 @@ namespace LoneEftDmaRadar.UI.ESP
             // Clear with black background (transparent for fuser)
             ctx.Clear(new DxColor(0, 0, 0, 255));
 
-                // Detect raid state changes and reset camera/state when leaving raid
-                if (_lastInRaidState && !InRaid)
-                {
-                    CameraManager.Reset();
-                    DebugLogger.LogInfo("ESP: Detected raid end - reset all state");
-                }
                 _lastInRaidState = InRaid;
 
-                if (!InRaid)
+                if (!InRaid || !CameraManager.IsInitialized)
                     return;
 
                 var localPlayer = LocalPlayer;

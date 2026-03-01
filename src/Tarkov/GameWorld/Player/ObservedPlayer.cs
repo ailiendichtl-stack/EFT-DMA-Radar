@@ -507,19 +507,24 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 Bones.HumanRFoot
             };
 
+            var failed = new List<Bones>();
             foreach (var bone in bonesToRegister)
             {
                 try
                 {
                     var chain = _transformInternalChain.ToArray();
                     chain[chain.Length - 2] = UnityList<byte>.ArrStartOffset + (uint)bone * 0x8;
-                    
+
                     var ti = Memory.ReadPtrChain(this, false, chain);
                     var transform = new UnityTransform(ti);
                     PlayerBones.TryAdd(bone, transform);
                 }
-                catch { }
+                catch
+                {
+                    failed.Add(bone);
+                }
             }
+            _failedBones = failed.Count > 0 ? failed.ToArray() : null;
             
             if (PlayerBones.Count > 0)
             {
@@ -527,6 +532,40 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                  _verticesCount = Math.Max(_cachedMaxBoneRequirement, SkeletonRoot.Count);
             }
             Skeleton = new PlayerSkeleton(SkeletonRoot, PlayerBones);
+        }
+
+        /// <summary>
+        /// Retry bones that failed during initial SetupBones (e.g. scav skeleton not fully loaded).
+        /// Called on each T2 validation pass (~50ms).
+        /// </summary>
+        public override void OnValidateTransforms()
+        {
+            if (_failedBones is not { Length: > 0 })
+                return;
+
+            var stillFailed = new List<Bones>();
+            foreach (var bone in _failedBones)
+            {
+                try
+                {
+                    var chain = _transformInternalChain.ToArray();
+                    chain[chain.Length - 2] = UnityList<byte>.ArrStartOffset + (uint)bone * 0x8;
+                    var ti = Memory.ReadPtrChain(this, false, chain);
+                    var transform = new UnityTransform(ti);
+                    PlayerBones[bone] = transform;
+                }
+                catch
+                {
+                    stillFailed.Add(bone);
+                }
+            }
+
+            if (stillFailed.Count < _failedBones.Length)
+            {
+                _failedBones = stillFailed.Count > 0 ? stillFailed.ToArray() : null;
+                CacheBoneData();
+                Skeleton = new PlayerSkeleton(SkeletonRoot, PlayerBones);
+            }
         }
 
         /// <summary>
@@ -563,6 +602,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             }
             catch { } // Ignore health status errors
         }
+
+        private Bones[] _failedBones;
 
         private static readonly uint[] _transformInternalChain =
         [

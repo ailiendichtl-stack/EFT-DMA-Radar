@@ -26,6 +26,7 @@ SOFTWARE.
  *
 */
 
+using Collections.Pooled;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
 using LoneEftDmaRadar.UI.Misc;
 
@@ -79,6 +80,16 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Explosives
                 var grenades = Memory.ReadPtr(_localGameWorld + Offsets.GameWorld.Grenades);
                 var grenadesListPtr = Memory.ReadPtr(grenades + 0x18);
                 using var grenadesList = UnityList<ulong>.Create(grenadesListPtr, false);
+
+                // Purge tracked grenades no longer in the game's live list
+                // (handles stale smoke entries, misclassified grenades, address reuse)
+                using var liveSet = grenadesList.ToPooledSet();
+                foreach (var key in _explosives.Keys)
+                {
+                    if (_explosives.TryGetValue(key, out var val) && val is Grenade && !liveSet.Contains(key))
+                        _ = _explosives.TryRemove(key, out _);
+                }
+
                 foreach (var grenade in grenadesList)
                 {
                     ct.ThrowIfCancellationRequested();

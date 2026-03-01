@@ -16,9 +16,9 @@ namespace LoneEftDmaRadar.UI.ESP
             if (_isInitialized && _espWindow != null) return;
 
             _espWindow = new ESPWindow();
-            _espWindow.Closed += (s, e) => 
-            { 
-                _espWindow = null; 
+            _espWindow.Closed += (s, e) =>
+            {
+                _espWindow = null;
                 _isInitialized = false;
                 ESPWindow.ShowESP = false; // Sync state
             };
@@ -41,7 +41,7 @@ namespace LoneEftDmaRadar.UI.ESP
         public static void ToggleESP()
         {
             if (!_isInitialized || _espWindow == null) Initialize();
-            
+
             ESPWindow.ShowESP = !ESPWindow.ShowESP;
             if (ESPWindow.ShowESP)
             {
@@ -58,7 +58,7 @@ namespace LoneEftDmaRadar.UI.ESP
         public static void ShowESP()
         {
             if (!_isInitialized || _espWindow == null) Initialize();
-            
+
             ESPWindow.ShowESP = true;
             ApplyResolutionOverride();
             _espWindow?.RefreshESP();
@@ -96,7 +96,7 @@ namespace LoneEftDmaRadar.UI.ESP
             if (!_isInitialized) Initialize();
             _espWindow?.ToggleFullscreen();
         }
-        
+
         public static void CloseESP()
         {
             _espWindow?.Close();

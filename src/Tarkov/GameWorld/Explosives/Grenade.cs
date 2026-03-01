@@ -85,18 +85,24 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Explosives
         /// </summary>
         public void OnRefresh(VmmScatterManaged scatter)
         {
+            // ALL grenades (including smoke) check destroyed status for cleanup
+            scatter.PrepareReadValue<bool>(this + Offsets.Throwable._isDestroyed);
+
             if (_isSmoke)
             {
-                // Smokes never leave the list, don't remove
+                scatter.Completed += (sender, x1) =>
+                {
+                    if (x1.ReadValue<bool>(this + Offsets.Throwable._isDestroyed, out bool destroyed) && destroyed)
+                        _ = _parent.TryRemove(Addr, out _);
+                };
                 return;
             }
-            scatter.PrepareReadValue<bool>(this + Offsets.Throwable._isDestroyed);
+
             scatter.PrepareReadArray<UnityTransform.TrsX>(_transform.VerticesAddr, _transform.Count);
             scatter.Completed += (sender, x1) =>
             {
                 if (x1.ReadValue<bool>(this + Offsets.Throwable._isDestroyed, out bool destroyed) && destroyed)
                 {
-                    // Remove from parent collection
                     _ = _parent.TryRemove(Addr, out _);
                     return;
                 }
