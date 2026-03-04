@@ -1126,13 +1126,13 @@ namespace LoneEftDmaRadar
         /// Loot scan interval in seconds (how often to rescan loot after initial scan).
         /// </summary>
         [JsonPropertyName("lootScanIntervalSeconds")]
-        public int LootScanIntervalSeconds { get; set; } = 30;
+        public int LootScanIntervalSeconds { get; set; } = 10;
 
         /// <summary>
         /// Corpse contents scan interval in seconds.
         /// </summary>
         [JsonPropertyName("corpseScanIntervalSeconds")]
-        public int CorpseScanIntervalSeconds { get; set; } = 30;
+        public int CorpseScanIntervalSeconds { get; set; } = 15;
 
         /// <summary>
         /// T1 Realtime worker sleep duration in milliseconds.
@@ -1157,6 +1157,12 @@ namespace LoneEftDmaRadar
         /// </summary>
         [JsonPropertyName("espTimerPeriodMs")]
         public int EspTimerPeriodMs { get; set; } = 2;
+
+        /// <summary>
+        /// Whether the performance monitor is enabled in the Debug panel.
+        /// </summary>
+        [JsonPropertyName("showPerformanceMonitor")]
+        public bool ShowPerformanceMonitor { get; set; } = false;
     }
 
     /// <summary>
@@ -1455,6 +1461,9 @@ namespace LoneEftDmaRadar
 
         [JsonPropertyName("showDoors")]
         public bool ShowDoors { get; set; } = true;
+
+        [JsonPropertyName("keyDoorsOnly")]
+        public bool KeyDoorsOnly { get; set; } = false;
 
         [JsonPropertyName("showLockedDoors")]
         public bool ShowLockedDoors { get; set; } = true;

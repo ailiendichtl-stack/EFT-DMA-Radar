@@ -117,6 +117,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Interactables
             InteractableType.Switch => App.Config.Misc.ShowSwitches,
             InteractableType.CardReader => App.Config.Misc.ShowCardReaders,
             _ => App.Config.Misc.ShowDoors &&
+                 (!App.Config.Misc.KeyDoorsOnly || !string.IsNullOrEmpty(KeyId)) &&
                  (IsLocked ? App.Config.Misc.ShowLockedDoors : App.Config.Misc.ShowUnlockedDoors)
         };
 

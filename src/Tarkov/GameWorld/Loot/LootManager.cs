@@ -159,8 +159,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             // Update container status and batch refresh contents
             var hideSearched = App.Config.Containers.HideSearched;
 
-            // Collect containers that need content refresh (PVE mode only)
-            if (App.Config.Containers.PveScanEnabled)
+            // Collect containers that need content refresh (offline raids only)
+            if (Memory.Game?.IsOfflineRaid == true)
             {
                 var containersToRefresh = new List<StaticLootContainer>();
                 foreach (var kvp in _loot)

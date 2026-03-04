@@ -236,6 +236,9 @@ namespace LoneEftDmaRadar.LOS
             var eyePos = localPlayer.GetBonePos(Bones.HumanHead);
             if (eyePos == Vector3.Zero) return;
 
+            // Use fireport (muzzle) position for ballistic LOS, fallback to eye
+            var fireportPos = localPlayer.FirearmManager?.CurrentSnapshot?.FireportPosition ?? eyePos;
+
             bool dualCheck = config.DualCheck;
             bool noFoliage = config.NoFoliage;
             uint boneMask = config.BoneMask;
@@ -264,14 +267,14 @@ namespace LoneEftDmaRadar.LOS
                     // Skip invalid positions
                     if (bonePos == Vector3.Zero) continue;
 
-                    // Eye LOS check
+                    // Eye LOS check (can the player see the target?)
                     if (_raycast.HasEyeLOS(eyePos, bonePos, noFoliage))
                         visMask |= (1u << i);
 
-                    // Ballistic check
+                    // Ballistic check (can a bullet reach the target from the muzzle?)
                     if (dualCheck)
                     {
-                        if (_raycast.HasBallisticLOS(eyePos, bonePos))
+                        if (_raycast.HasBallisticLOS(fireportPos, bonePos))
                             hitMask |= (1u << i);
                     }
                 }

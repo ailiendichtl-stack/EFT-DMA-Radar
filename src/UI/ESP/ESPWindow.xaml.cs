@@ -683,6 +683,7 @@ namespace LoneEftDmaRadar.UI.ESP
                     InteractableType.Switch => App.Config.UI.EspSwitches && App.Config.Misc.ShowSwitches,
                     InteractableType.CardReader => App.Config.UI.EspCardReaders && App.Config.Misc.ShowCardReaders,
                     _ => App.Config.UI.EspDoors && App.Config.Misc.ShowDoors &&
+                         (!App.Config.Misc.KeyDoorsOnly || !string.IsNullOrEmpty(door.KeyId)) &&
                          (door.IsLocked ? App.Config.Misc.ShowLockedDoors : App.Config.Misc.ShowUnlockedDoors)
                 };
                 if (!visible)
@@ -1936,10 +1937,10 @@ namespace LoneEftDmaRadar.UI.ESP
                 ctx.DrawText($"Raid Mode: {raidMode}", x, y, modeColor, DxTextSize.Small);
                 y += lineStep;
 
-                // Show PVE scan status
-                bool pveEnabled = App.Config.Containers.PveScanEnabled;
-                var scanColor = pveEnabled ? new DxColor(0, 255, 0, 255) : new DxColor(0, 0, 255, 255);
-                ctx.DrawText($"PVE Content Scan: {(pveEnabled ? "ON" : "OFF")}", x, y, scanColor, DxTextSize.Small);
+                // Show offline raid status (auto-detected)
+                bool isOffline = Memory.Game?.IsOfflineRaid == true;
+                var scanColor = isOffline ? new DxColor(0, 255, 0, 255) : new DxColor(0, 0, 255, 255);
+                ctx.DrawText($"Content Scan: {(isOffline ? "AUTO" : "N/A")}", x, y, scanColor, DxTextSize.Small);
             }
         }
 
@@ -1948,14 +1949,17 @@ namespace LoneEftDmaRadar.UI.ESP
             var fpsText = $"FPS: {_fps}";
             ctx.DrawText(fpsText, 10, 10, new DxColor(255, 255, 255, 255), DxTextSize.Small);
 
-            // LOS diagnostic overlay
-            var visMgr = VisibilityManager.Instance;
-            if (App.Config.Visibility.Enabled && visMgr != null)
+            // LOS diagnostic overlay (only when debug overlay is enabled)
+            if (App.Config.Device.ShowDebug)
             {
-                string status = visMgr.IsReady
-                    ? $"LOS: {visMgr.EnemiesTracked} tracked | {visMgr.LatencyMs:F1}ms | {visMgr.FramesPerSecond}fps"
-                    : $"LOS: {visMgr.MeshStatus}";
-                ctx.DrawText(status, 10, 26, new DxColor(255, 255, 255, 200), DxTextSize.Small);
+                var visMgr = VisibilityManager.Instance;
+                if (App.Config.Visibility.Enabled && visMgr != null)
+                {
+                    string status = visMgr.IsReady
+                        ? $"LOS: {visMgr.EnemiesTracked} tracked | {visMgr.LatencyMs:F1}ms | {visMgr.FramesPerSecond}fps"
+                        : $"LOS: {visMgr.MeshStatus}";
+                    ctx.DrawText(status, 10, 26, new DxColor(255, 255, 255, 200), DxTextSize.Small);
+                }
             }
         }
 

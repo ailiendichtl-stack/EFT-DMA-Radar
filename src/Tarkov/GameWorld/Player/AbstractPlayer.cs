@@ -148,9 +148,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             SpawnDebugLogger.Log($"  className='{className}', isClientPlayer={isClientPlayer}");
 
             if (isClientPlayer)
+            {
                 player = new ClientPlayer(playerBase);
+            }
             else
+            {
                 player = new ObservedPlayer(playerBase, gameWorld);
+                gameWorld.IsOfflineRaid = false; // Online raid detected
+            }
             SpawnDebugLogger.Log($"  Player allocated: Name='{player.Name}', Type={player.Type}, Side={player.PlayerSide}");
             DebugLogger.LogDebug($"Player '{player.Name}' allocated | 0x{playerBase:X}");
             return player;
@@ -630,7 +635,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                 try
                 {
                     // Resetting all bone transforms
-                    foreach (var bone in PlayerBones.Keys.ToList())
+                    foreach (var bone in PlayerBones.Keys)
                     {
                         ResetBoneTransform(bone);
                     }
@@ -772,7 +777,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                                 // IMPORTANT: also rebuild all bone transforms and skeleton wrapper
                                 try
                                 {
-                                    foreach (var bone in PlayerBones.Keys.ToList())
+                                    foreach (var bone in PlayerBones.Keys)
                                     {
                                         ResetBoneTransform(bone);
                                     }

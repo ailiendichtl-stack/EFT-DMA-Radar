@@ -148,8 +148,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// </summary>
         public void RefreshContents()
         {
-            // Only scan contents if PVE scanning is enabled (offline mode only)
-            if (!App.Config.Containers.PveScanEnabled)
+            // Only scan contents in offline raids where loot is pre-generated
+            if (Memory.Game?.IsOfflineRaid != true)
                 return;
 
             // Once contents are loaded, don't re-read (corpse loot doesn't change mid-raid)
@@ -288,11 +288,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 var isClient = Player is ClientPlayer;
                 var eqValue = Player.Equipment?.Value ?? -1;
                 var eqItems = Player.Equipment?.Items.Count ?? -1;
-                DebugLogger.LogDebug($"[CorpseLabel] '{Name}' - Player={Player.Name}, IsObserved={isObs}, IsClient={isClient}, Equipment.Items={eqItems}, Equipment.Value={eqValue}, InventoryValue={InventoryValue}, ContentsCount={Contents?.Count ?? 0}, PveScan={App.Config.Containers.PveScanEnabled}");
+                DebugLogger.LogDebug($"[CorpseLabel] '{Name}' - Player={Player.Name}, IsObserved={isObs}, IsClient={isClient}, Equipment.Items={eqItems}, Equipment.Value={eqValue}, InventoryValue={InventoryValue}, ContentsCount={Contents?.Count ?? 0}, OfflineRaid={Memory.Game?.IsOfflineRaid}");
             }
 
-            // If PVE scanning is enabled and we have inventory contents, show that value
-            if (App.Config.Containers.PveScanEnabled && InventoryValue > 0)
+            // If in offline raid and we have inventory contents, show that value
+            if (Memory.Game?.IsOfflineRaid == true && InventoryValue > 0)
                 return $"[{Utilities.FormatNumberKM(InventoryValue)}] {Name}";
 
             // Otherwise show equipment value

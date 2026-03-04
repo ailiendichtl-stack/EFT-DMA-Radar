@@ -1,0 +1,153 @@
+<UserControl x:Class="LoneEftDmaRadar.UI.Radar.Views.LootSettingsTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:LoneEftDmaRadar.UI.Radar.ViewModels"
+             mc:Ignorable="d"
+             Padding="10">
+
+    <d:UserControl.DataContext>
+        <d:DesignInstance Type="{x:Type vm:LootSettingsViewModel}"
+                          IsDesignTimeCreatable="False" />
+    </d:UserControl.DataContext>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Orientation="Vertical"
+                    Margin="0,0,0,10">
+
+            <!-- General -->
+            <GroupBox Header="General"
+                      Margin="0,0,0,8">
+                <StackPanel>
+                    <WrapPanel Margin="0,0,0,8">
+                        <CheckBox Content="Show Loot (F3)"
+                                  ToolTip="Toggles displaying Loot on the Radar/ESP."
+                                  IsChecked="{Binding ShowLoot, Mode=TwoWay}"
+                                  Margin="0,0,16,8" />
+                        <CheckBox Content="Show Static Containers"
+                                  ToolTip="Shows static containers on the map/ESP."
+                                  IsChecked="{Binding ShowStaticContainers, Mode=TwoWay}"
+                                  Margin="0,0,16,8" />
+                        <CheckBox Content="PVE Mode"
+                                  ToolTip="Use PVE flea market prices instead of PVP. Refreshes price data when toggled."
+                                  IsChecked="{Binding PveMode, Mode=TwoWay}"
+                                  Foreground="Orange"
+                                  FontWeight="SemiBold"
+                                  Margin="0,0,16,8" />
+                    </WrapPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Value Thresholds -->
+            <GroupBox Header="Loot Values"
+                      Margin="0,0,0,8">
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0"
+                                   Text="Regular"
+                                   VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding RegularValue, UpdateSourceTrigger=PropertyChanged}"
+                                 MinWidth="80" />
+                        <TextBlock Grid.Column="2"
+                                   Text="Valuable"
+                                   VerticalAlignment="Center"
+                                   Margin="12,0,0,0" />
+                        <TextBox Grid.Column="3"
+                                 Text="{Binding ValuableValue, UpdateSourceTrigger=PropertyChanged}"
+                                 MinWidth="80" />
+                        <CheckBox Grid.Column="4"
+                                  Content="Price Per Slot"
+                                  IsChecked="{Binding PricePerSlot}"
+                                  Margin="12,0,0,0" />
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,0,0,4">
+                        <RadioButton Content="Flea Prices"
+                                     ToolTip="Use flea market prices"
+                                     IsChecked="{Binding IsFleaPrices, Mode=TwoWay}"
+                                     GroupName="PriceSource" />
+                        <RadioButton Content="Trader Prices"
+                                     ToolTip="Use trader prices"
+                                     IsChecked="{Binding IsTraderPrices, Mode=TwoWay}"
+                                     GroupName="PriceSource"
+                                     Margin="12,0,0,0" />
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Filters -->
+            <GroupBox Header="Filters"
+                      Margin="0,0,0,8">
+                <WrapPanel>
+                    <CheckBox Content="Hide Corpses"
+                              IsChecked="{Binding HideCorpses}"
+                              Margin="0,0,12,0" />
+                    <CheckBox Content="Show Meds"
+                              IsChecked="{Binding ShowMeds}"
+                              Margin="0,0,12,0" />
+                    <CheckBox Content="Show Food"
+                              IsChecked="{Binding ShowFood}"
+                              Margin="0,0,12,0" />
+                    <CheckBox Content="Show Backpacks"
+                              IsChecked="{Binding ShowBackpacks}"
+                              Margin="0,0,12,0" />
+                    <CheckBox Content="Show Quest Items"
+                              IsChecked="{Binding ShowQuestItems}" />
+                </WrapPanel>
+            </GroupBox>
+
+            <!-- Container Settings -->
+            <GroupBox Header="Containers"
+                      Margin="0,0,0,8"
+                      Visibility="{Binding ShowStaticContainers, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Margin="0,0,16,8">
+                        <TextBlock Text="Container Distance"
+                                   VerticalAlignment="Center" />
+                        <Slider x:Name="ContainerDistSlider"
+                                Width="150"
+                                Margin="8,0"
+                                Minimum="0"
+                                Maximum="1000"
+                                SmallChange="10"
+                                LargeChange="100"
+                                Value="{Binding ContainerDistance, Mode=TwoWay}" />
+                        <TextBlock Text="{Binding Value, ElementName=ContainerDistSlider}"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,0,16,8">
+                        <TextBlock Text="Min Value (0=All)"
+                                   VerticalAlignment="Center" />
+                        <Slider x:Name="ContainerMinValueSlider"
+                                Width="150"
+                                Margin="8,0"
+                                Minimum="0"
+                                Maximum="500000"
+                                SmallChange="10000"
+                                LargeChange="50000"
+                                Value="{Binding ContainerMinValue, Mode=TwoWay}" />
+                        <TextBlock Text="{Binding Value, ElementName=ContainerMinValueSlider, StringFormat='{}{0:N0}'}"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0" />
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

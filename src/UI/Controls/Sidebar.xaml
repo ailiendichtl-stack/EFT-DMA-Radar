@@ -79,6 +79,10 @@
                     <!-- LOOT section -->
                     <Rectangle Height="0.5" Margin="6,10,6,0" Fill="{DynamicResource Neon.TriGradientBrush}" Opacity="0.3"/>
                     <TextBlock Text="LOOT" Style="{StaticResource SidebarGroupHeader}"/>
+                    <Button Content="&#x1F39A; Loot Settings"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleLootPanelCommand}"
+                            Tag="{Binding LootPanel.IsOpen, Mode=OneWay}"/>
                     <Button Content="&#x1F3AF; Loot Filters"
                             Style="{StaticResource SidebarButton}"
                             Command="{Binding ToggleLootFiltersPanelCommand}"
@@ -142,6 +146,11 @@
 
                     <!-- Spacer -->
                     <Rectangle Height="16"/>
+
+                    <!-- Map mode button -->
+                    <Button Content="{Binding MapFreeButtonText}"
+                            Style="{StaticResource SidebarButton}"
+                            Command="{Binding ToggleMapFreeCommand}"/>
 
                     <!-- Reset button -->
                     <Button Content="&#x21BA; Reset Panels"

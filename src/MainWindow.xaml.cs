@@ -100,6 +100,7 @@ namespace LoneEftDmaRadar
                     case "DebugPanel": pm.DebugPanel.IsOpen = false; break;
                     case "VisibilityPanel": pm.VisibilityPanel.IsOpen = false; break;
                     case "PlayersPanel": pm.PlayersPanel.IsOpen = false; break;
+                    case "LootPanel": pm.LootPanel.IsOpen = false; break;
                 }
             }
         }
@@ -159,6 +160,8 @@ namespace LoneEftDmaRadar
 
                 // Save panel layout states
                 ViewModel?.PanelManager?.SaveToConfig();
+
+                App.Config.Save(); // Save config before Environment.Exit(0) in OnClosed kills the process
 
                 Memory.Dispose(); // Close FPGA
                 VisibilityManager.Stop();

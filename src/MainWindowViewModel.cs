@@ -165,17 +165,20 @@ namespace LoneEftDmaRadar
 
         private void ToggleShowMeds_HotkeyStateChanged(object sender, HotkeyEventArgs e)
         {
-            if (e.State && _parent.Radar?.Overlay?.ViewModel is RadarOverlayViewModel vm)
+            if (e.State)
             {
-                vm.ShowMeds = !vm.ShowMeds;
+                UI.Loot.LootFilter.ShowMeds = !UI.Loot.LootFilter.ShowMeds;
+                Memory.Loot?.RefreshFilter();
             }
         }
 
         private void ToggleShowQuestItems_HotkeyStateChanged(object sender, HotkeyEventArgs e)
         {
-            if (e.State && _parent.Radar?.Overlay?.ViewModel is RadarOverlayViewModel vm)
+            if (e.State)
             {
-                vm.ShowQuestItems = !vm.ShowQuestItems;
+                UI.Loot.LootFilter.ShowQuestItems = !UI.Loot.LootFilter.ShowQuestItems;
+                App.Config.Loot.ShowQuestItems = UI.Loot.LootFilter.ShowQuestItems;
+                Memory.Loot?.RefreshFilter();
             }
         }
 
@@ -213,9 +216,10 @@ namespace LoneEftDmaRadar
 
         private void ToggleShowFood_HotkeyStateChanged(object sender, HotkeyEventArgs e)
         {
-            if (e.State && _parent.Radar?.Overlay?.ViewModel is RadarOverlayViewModel vm)
+            if (e.State)
             {
-                vm.ShowFood = !vm.ShowFood;
+                UI.Loot.LootFilter.ShowFood = !UI.Loot.LootFilter.ShowFood;
+                Memory.Loot?.RefreshFilter();
             }
         }
 
@@ -305,9 +309,9 @@ namespace LoneEftDmaRadar
 
         private void ToggleStaticContainers_HotkeyStateChanged(object sender, HotkeyEventArgs e)
         {
-            if (e.State && _parent.Settings?.ViewModel is SettingsViewModel vm)
+            if (e.State)
             {
-                vm.ShowStaticContainers = !vm.ShowStaticContainers;
+                App.Config.Containers.Enabled = !App.Config.Containers.Enabled;
             }
         }
 

@@ -182,6 +182,11 @@
                                   ToolTip="Shows doors on the radar map with lock state indicators."
                                   IsChecked="{Binding ShowDoors, Mode=TwoWay}"
                                   Margin="0,0,16,8" />
+                        <CheckBox Content="Key Doors Only"
+                                  ToolTip="Only show doors that require a key to unlock. Applies to both radar and ESP."
+                                  IsChecked="{Binding KeyDoorsOnly, Mode=TwoWay}"
+                                  IsEnabled="{Binding ShowDoors}"
+                                  Margin="0,0,16,8" />
                         <CheckBox Content="Locked Doors"
                                   ToolTip="Show locked doors (red X markers)."
                                   IsChecked="{Binding ShowLockedDoors, Mode=TwoWay}"
@@ -225,64 +230,6 @@
                 </StackPanel>
             </GroupBox>
 
-            <!-- Loot card -->
-            <GroupBox Header="Loot"
-                      Margin="0,0,0,8">
-                <StackPanel>
-                    <WrapPanel Margin="0,0,0,8">
-                        <CheckBox Content="Show Loot (F3)"
-                                  ToolTip="Toggles displaying Loot on the Radar/ESP."
-                                  IsChecked="{Binding ShowLoot, Mode=TwoWay}"
-                                  Margin="0,0,16,8" />
-                        <CheckBox Content="Show Static Containers"
-                                  ToolTip="Shows static containers on the map/ESP."
-                                  IsChecked="{Binding ShowStaticContainers, Mode=TwoWay}"
-                                  Margin="0,0,16,8" />
-                        <CheckBox Content="PVE Mode"
-                                  ToolTip="Use PVE flea market prices instead of PVP. Refreshes price data when toggled."
-                                  IsChecked="{Binding PveMode, Mode=TwoWay}"
-                                  Foreground="Orange"
-                                  FontWeight="SemiBold"
-                                  Margin="0,0,16,8" />
-                    </WrapPanel>
-
-                    <StackPanel Visibility="{Binding ShowStaticContainers, Converter={StaticResource BoolToVis}}">
-                        <StackPanel Orientation="Horizontal"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,16,8">
-                            <TextBlock Text="Container Distance"
-                                       VerticalAlignment="Center" />
-                            <Slider x:Name="ContainerDistSlider"
-                                    Width="150"
-                                    Margin="8,0"
-                                    Minimum="0"
-                                    Maximum="1000"
-                                    SmallChange="10"
-                                    LargeChange="100"
-                                    Value="{Binding ContainerDistance, Mode=TwoWay}" />
-                            <TextBlock Text="{Binding Value, ElementName=ContainerDistSlider}"
-                                       VerticalAlignment="Center"
-                                       Margin="8,0,0,0" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal"
-                                    Margin="0,0,16,8">
-                            <TextBlock Text="Min Value (0=All)"
-                                       VerticalAlignment="Center" />
-                            <Slider x:Name="ContainerMinValueSlider"
-                                    Width="150"
-                                    Margin="8,0"
-                                    Minimum="0"
-                                    Maximum="500000"
-                                    SmallChange="10000"
-                                    LargeChange="50000"
-                                    Value="{Binding ContainerMinValue, Mode=TwoWay}" />
-                            <TextBlock Text="{Binding Value, ElementName=ContainerMinValueSlider, StringFormat='{}{0:N0}'}"
-                                       VerticalAlignment="Center"
-                                       Margin="8,0,0,0" />
-                        </StackPanel>
-                    </StackPanel>
-                </StackPanel>
-            </GroupBox>
 
         </StackPanel>
     </ScrollViewer>

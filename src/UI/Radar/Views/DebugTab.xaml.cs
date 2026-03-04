@@ -11,6 +11,7 @@ namespace LoneEftDmaRadar.UI.Radar.Views
         {
             InitializeComponent();
             DataContext = ViewModel = new DebugTabViewModel();
+            IsVisibleChanged += (_, e) => ViewModel.SetPanelVisible((bool)e.NewValue);
         }
     }
 }

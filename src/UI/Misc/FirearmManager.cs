@@ -4,6 +4,7 @@
  */
 
 using System;
+using System.Buffers;
 using System.Linq;
 using System.Threading;
 using LoneEftDmaRadar.DMA;
@@ -12,6 +13,8 @@ using LoneEftDmaRadar.Tarkov.GameWorld.Player;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
 using LoneEftDmaRadar.Tarkov.Unity.Structures;
 using LoneEftDmaRadar.Web.TarkovDev.Data;
+using VmmSharpEx.Scatter;
+using static LoneEftDmaRadar.Tarkov.Unity.Structures.UnityTransform;
 
 namespace LoneEftDmaRadar.UI.Misc
 {
@@ -89,6 +92,47 @@ namespace LoneEftDmaRadar.UI.Misc
             _localPlayer = localPlayer;
         }
 
+        /// <summary>
+        /// Add fireport vertex read to T1 scatter for realtime position updates.
+        /// Transform acquisition and ammo info handled by Update() on T2.
+        /// </summary>
+        public void OnRealtimeLoop(VmmScatter scatter)
+        {
+            var transform = _fireportTransform;
+            if (transform == null)
+                return;
+
+            var addr = transform.VerticesAddr;
+            var count = transform.Count;
+            scatter.PrepareReadArray<TrsX>(addr, count);
+            scatter.Completed += (_, s) =>
+            {
+                if (s.ReadPooled<TrsX>(addr, count) is IMemoryOwner<TrsX> vertices)
+                {
+                    using (vertices)
+                    {
+                        try
+                        {
+                            var span = vertices.Memory.Span;
+                            if (span.Length >= count)
+                            {
+                                var pos = transform.UpdatePosition(span);
+                                var rot = transform.GetRotation(span);
+
+                                if (Vector3.Distance(pos, _localPlayer.Position) <= 100f)
+                                {
+                                    var old = _snapshot;
+                                    _snapshot = new FirearmSnapshot(
+                                        old.HandsController, old.IsWeapon, old.ItemAddr, old.ItemId,
+                                        old.CurrentAmmo, old.MaxAmmo, old.AmmoTypeName, pos, rot);
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            };
+        }
 
         /// <summary>
         /// Update Hands/Firearm/Magazine information for LocalPlayer.

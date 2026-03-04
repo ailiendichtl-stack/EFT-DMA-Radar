@@ -196,6 +196,19 @@
                 <tabs:PlayersTab/>
             </controls:DraggablePanel>
 
+            <!-- Loot Settings Panel -->
+            <controls:DraggablePanel
+                x:Name="LootPanel"
+                Title="🎚 Loot Settings"
+                Visibility="{Binding PanelManager.LootPanel.IsOpen, Converter={StaticResource BoolToVis}}"
+                Canvas.Left="{Binding PanelManager.LootPanel.X, Mode=TwoWay}"
+                Canvas.Top="{Binding PanelManager.LootPanel.Y, Mode=TwoWay}"
+                Width="{Binding PanelManager.LootPanel.Width, Mode=TwoWay}"
+                Height="{Binding PanelManager.LootPanel.Height, Mode=TwoWay}"
+                CloseRequested="Panel_CloseRequested">
+                <tabs:LootSettingsTab/>
+            </controls:DraggablePanel>
+
             <!-- Debug Panel -->
             <controls:DraggablePanel
                 x:Name="DebugPanel"

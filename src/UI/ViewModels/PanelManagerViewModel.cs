@@ -76,6 +76,38 @@ namespace LoneEftDmaRadar.UI.ViewModels
         public PanelState DebugPanel { get; } = new() { X = 480, Y = 130, Width = 400, Height = 300 };
         public PanelState VisibilityPanel { get; } = new() { X = 500, Y = 150, Width = 400, Height = 450 };
         public PanelState PlayersPanel { get; } = new() { X = 520, Y = 170, Width = 450, Height = 500 };
+        public PanelState LootPanel { get; } = new() { X = 300, Y = 50, Width = 420, Height = 450 };
+
+        #endregion
+
+        #region Map Free State
+
+        private bool _isMapFreeEnabled;
+        public bool IsMapFreeEnabled
+        {
+            get => _isMapFreeEnabled;
+            set
+            {
+                if (_isMapFreeEnabled == value) return;
+                _isMapFreeEnabled = value;
+                MapFreeButtonText = _isMapFreeEnabled ? "\U0001F4CC Map Follow" : "\U0001F5FA Map Free";
+                OnPropertyChanged(nameof(IsMapFreeEnabled));
+            }
+        }
+
+        private string _mapFreeButtonText = "\U0001F5FA Map Free";
+        public string MapFreeButtonText
+        {
+            get => _mapFreeButtonText;
+            set
+            {
+                if (_mapFreeButtonText == value) return;
+                _mapFreeButtonText = value;
+                OnPropertyChanged(nameof(MapFreeButtonText));
+            }
+        }
+
+        public ICommand ToggleMapFreeCommand { get; }
 
         #endregion
 
@@ -115,6 +147,7 @@ namespace LoneEftDmaRadar.UI.ViewModels
         public ICommand ToggleDebugPanelCommand { get; }
         public ICommand ToggleVisibilityPanelCommand { get; }
         public ICommand TogglePlayersPanelCommand { get; }
+        public ICommand ToggleLootPanelCommand { get; }
         public ICommand ResetAllPanelsCommand { get; }
 
         #endregion
@@ -137,7 +170,8 @@ namespace LoneEftDmaRadar.UI.ViewModels
                 ["WebRadarPanel"] = WebRadarPanel,
                 ["DebugPanel"] = DebugPanel,
                 ["VisibilityPanel"] = VisibilityPanel,
-                ["PlayersPanel"] = PlayersPanel
+                ["PlayersPanel"] = PlayersPanel,
+                ["LootPanel"] = LootPanel
             };
 
             // Initialize toggle commands
@@ -155,6 +189,8 @@ namespace LoneEftDmaRadar.UI.ViewModels
             ToggleDebugPanelCommand = new RelayCommand(() => TogglePanel(DebugPanel));
             ToggleVisibilityPanelCommand = new RelayCommand(() => TogglePanel(VisibilityPanel));
             TogglePlayersPanelCommand = new RelayCommand(() => TogglePanel(PlayersPanel));
+            ToggleLootPanelCommand = new RelayCommand(() => TogglePanel(LootPanel));
+            ToggleMapFreeCommand = new RelayCommand(() => IsMapFreeEnabled = !IsMapFreeEnabled);
             ResetAllPanelsCommand = new RelayCommand(ResetAllPanels);
 
             // Load saved panel states from config
@@ -226,6 +262,7 @@ namespace LoneEftDmaRadar.UI.ViewModels
             ResetPanel(DebugPanel, 480, 130, 400, 300);
             ResetPanel(VisibilityPanel, 500, 150, 400, 450);
             ResetPanel(PlayersPanel, 520, 170, 450, 500);
+            ResetPanel(LootPanel, 300, 50, 420, 450);
         }
 
         private void ResetPanel(PanelState panel, double x, double y, double width, double height)

@@ -64,7 +64,6 @@ DMA-based radar for Escape from Tarkov, forked from [Lone EFT DMA Radar](https:/
 - Door, switch and card reader ESP [WIP]
 
 ### Memory Features
-- Device aimbot (KMBox support)
 - Silent aim
 - No recoil / no sway
 - Infinite stamina
@@ -146,7 +145,6 @@ Output will be in `bin/Release/net9.0-windows/`
 - [DMA Educational Resources](https://github.com/dma-educational-resources/eft-dma-radar) - Memory writes, kill feed, web radar improvements, and more
 
 With special thanks to the entire DER team for maintaining it and the community work ([x0m](https://github.com/xx0m), [mamboooo](https://github.com/Mambo-Noob), [MasterKeef](https://github.com/chuckmorris420))
- —
 
 ## Contributing
 

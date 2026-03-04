@@ -11,7 +11,7 @@ namespace LoneEftDmaRadar.UI.Skia
         private const float Padding = 6f;
         private const float LineSpacing = 2f;
         private const float RightMargin = 10f;
-        private const float TopMargin = 50f;
+        private const float TopMargin = 10f;
         private const float BackgroundAlpha = 160;
 
         private static readonly SKFont _font = new(CustomFonts.NeoSansStdRegular, 11f)

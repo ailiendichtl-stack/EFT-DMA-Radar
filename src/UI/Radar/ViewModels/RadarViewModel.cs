@@ -207,7 +207,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         /// <summary>
         /// True if corpses are visible as loot.
         /// </summary>
-        private static bool LootCorpsesVisible => (MainWindow.Instance?.Settings?.ViewModel?.ShowLoot ?? false) && !(MainWindow.Instance?.Radar?.Overlay?.ViewModel?.HideCorpses ?? false) && !FilterIsSet;
+        private static bool LootCorpsesVisible => (MainWindow.Instance?.Settings?.ViewModel?.ShowLoot ?? false) && !App.Config.Loot.HideCorpses && !FilterIsSet;
 
         /// <summary>
         /// Contains all 'mouse-overable' items.
@@ -234,7 +234,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 var anyInteractableVisible = App.Config.Misc.ShowDoors || App.Config.Misc.ShowSwitches || App.Config.Misc.ShowCardReaders;
                 var doors = (anyInteractableVisible ? Doors : null) ?? Enumerable.Empty<IMouseoverEntity>();
 
-                if (FilterIsSet && !(MainWindow.Instance?.Radar?.Overlay?.ViewModel?.HideCorpses ?? false)) // Item Search
+                if (FilterIsSet && !App.Config.Loot.HideCorpses) // Item Search
                 {
                     var lootSet = new HashSet<IMouseoverEntity>(loot); // O(1) contains instead of O(n)
                     players = players.Where(x =>
@@ -416,7 +416,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                     }
                     // Prepare to draw Game Map
                     EftMapParams mapParams; // Drawing Source
-                    if (MainWindow.Instance?.Radar?.Overlay?.ViewModel?.IsMapFreeEnabled ?? false) // Map fixed location, click to pan map
+                    if (MainWindow.Instance?.ViewModel?.PanelManager?.IsMapFreeEnabled ?? false) // Map fixed location, click to pan map
                     {
                         if (_mapPanPosition == default)
                         {
@@ -891,10 +891,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                     }
                 }
             }
-            if (MainWindow.Instance?.Radar?.Overlay?.ViewModel is RadarOverlayViewModel vm && vm.IsLootOverlayVisible)
-            {
-                vm.IsLootOverlayVisible = false; // Hide Loot Overlay on Mouse Down
-            }
+            // Loot overlay removed — no longer need to dismiss on click
         }
 
         private void Radar_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
@@ -906,7 +903,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             var mouseY = (float)pt.Y;
             var mouse = new Vector2(mouseX, mouseY);
 
-            if (_mouseDown && MainWindow.Instance?.Radar?.Overlay?.ViewModel is RadarOverlayViewModel vm && vm.IsMapFreeEnabled) // panning
+            if (_mouseDown && (MainWindow.Instance?.ViewModel?.PanelManager?.IsMapFreeEnabled ?? false)) // panning
             {
                 var deltaX = -(mouseX - _lastMousePosition.X);
                 var deltaY = -(mouseY - _lastMousePosition.Y);

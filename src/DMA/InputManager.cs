@@ -116,15 +116,11 @@ namespace LoneEftDmaRadar.DMA
         /// and returns whether that logical key is down according to DeviceAimbot.
         /// 
         /// This gives us:
-        /// - LBUTTON   �� DeviceAimbotMouseButton.Left
-        /// - RBUTTON   �� DeviceAimbotMouseButton.Right
-        /// - MBUTTON   �� DeviceAimbotMouseButton.Middle
-        /// - XBUTTON1  �� DeviceAimbotMouseButton.mouse4
-        /// - XBUTTON2  �� DeviceAimbotMouseButton.mouse5
-        /// 
-        /// So users can bind hotkeys to those keys in the hotkey UI ?????
-        /// they will work even when VmmInputManager is unavailable, as long
-        /// as the DeviceAimbot device is connected.
+        /// - LBUTTON   DeviceAimbotMouseButton.Left
+        /// - RBUTTON   DeviceAimbotMouseButton.Right
+        /// - MBUTTON   DeviceAimbotMouseButton.Middle
+        /// - XBUTTON1  DeviceAimbotMouseButton.mouse4
+        /// - XBUTTON2  DeviceAimbotMouseButton.mouse5
         /// </summary>
         private static bool IsDeviceAimbotKeyDown(Win32VirtualKey vk)
         {

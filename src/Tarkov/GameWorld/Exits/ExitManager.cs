@@ -30,6 +30,8 @@ using LoneEftDmaRadar.DMA;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
 using LoneEftDmaRadar.UI.Misc;
 using SDK;
+using VmmSharpEx.Options;
+using VmmSharpEx.Scatter;
 
 namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
 {
@@ -43,6 +45,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
         private readonly ulong _localGameWorld;
         private readonly bool _isPMC;
         private bool _memoryExfilsLoaded = false;
+        private DateTime _lastRefresh = DateTime.MinValue;
+        private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(2);
 
         public ExitManager(string mapId, bool isPMC, ulong localGameWorld = 0)
         {
@@ -145,22 +149,26 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
         }
 
         /// <summary>
-        /// Refreshes exfil statuses from memory.
-        /// Call this periodically to update live status.
+        /// Refreshes exfil statuses from memory using batched scatter reads.
+        /// Throttled to every 2 seconds — exfil statuses don't change faster than that.
         /// </summary>
         public void RefreshStatuses()
         {
+            if (DateTime.UtcNow - _lastRefresh < RefreshInterval)
+                return;
+            _lastRefresh = DateTime.UtcNow;
+
             // Try to load memory addresses if not done yet
             if (!_memoryExfilsLoaded)
             {
                 TryLoadMemoryExfils();
             }
 
-            // Update status for all exfils that have memory addresses
+            // Batch all exfil status reads into a single scatter operation
+            using var scatter = Memory.CreateScatter(VmmFlags.NOCACHE);
             foreach (var exfil in _exfils)
-            {
-                exfil.UpdateStatus();
-            }
+                exfil.OnRefresh(scatter);
+            scatter.Execute();
         }
 
         #region IReadOnlyCollection

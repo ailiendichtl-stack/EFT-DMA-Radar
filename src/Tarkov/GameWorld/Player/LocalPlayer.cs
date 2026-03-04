@@ -174,19 +174,22 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         {
             base.OnRealtimeLoop(scatter);
 
-            try
+            var lookAddr = Base + Offsets.Player._playerLookRaycastTransform;
+            scatter.PrepareReadValue<ulong>(lookAddr);
+            scatter.Completed += (_, s) =>
             {
-                var transformPtr = Memory.ReadPtr(Base + Offsets.Player._playerLookRaycastTransform, false);
-
-                if (transformPtr != 0x0)
-                    _lookRaycastTransform = new UnityTransform(transformPtr);
-                else
+                try
+                {
+                    if (s.ReadValue<ulong>(lookAddr, out var transformPtr) && transformPtr != 0)
+                        _lookRaycastTransform = new UnityTransform(transformPtr);
+                    else
+                        _lookRaycastTransform = null;
+                }
+                catch
+                {
                     _lookRaycastTransform = null;
-            }
-            catch
-            {
-                _lookRaycastTransform = null;
-            }
+                }
+            };
         }
 
         public override void OnValidateTransforms()

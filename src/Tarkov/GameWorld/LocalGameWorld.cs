@@ -102,6 +102,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
         /// </summary>
         public bool RaidStarted { get; private set; }
 
+        /// <summary>
+        /// True if no ObservedPlayers exist (offline/PVE raid).
+        /// Auto-detected from player types — enables container/corpse content scanning.
+        /// </summary>
+        public bool IsOfflineRaid { get; internal set; } = true;
+
         private LocalGameWorld() { }
 
         /// <summary>
@@ -423,11 +429,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 {
                     player.OnRealtimeLoop(scatter);
                 }
+                // Add fireport transform to scatter for realtime aimbot accuracy
+                localPlayer?.FirearmManager?.OnRealtimeLoop(scatter);
                 scatter.Execute();
-
-                // Update local player's firearm manager for ammo counter, etc.
-                // Moved here from ESP render loop to avoid blocking rendering
-                localPlayer?.UpdateFirearmManager();
             }
             finally
             {
@@ -474,6 +478,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
 
                 // Refresh player equipment
                 RefreshEquipment();
+
+                // Update firearm manager (ammo, weapon detection, fireport acquisition)
+                // Fireport position is updated at T1 rate via scatter; this handles the slow parts
+                LocalPlayer?.UpdateFirearmManager();
             }
             finally
             {
@@ -483,13 +491,10 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
 
         private void RefreshEquipment()
         {
-            var players = _rgtPlayers
-                .OfType<ObservedPlayer>()
-                .Where(x => !x.IsAI // Only human players
-                    && x.IsActive && x.IsAlive);
-            foreach (var player in players)
+            foreach (var player in _rgtPlayers)
             {
-                player.Equipment.Refresh();
+                if (player is ObservedPlayer observed && !observed.IsAI && observed.IsActive && observed.IsAlive)
+                    observed.Equipment.Refresh();
             }
         }
 

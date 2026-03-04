@@ -113,8 +113,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// </summary>
         private bool PassesMinValueFilter()
         {
-            // If PVE scan is disabled, we can't determine value - show all containers
-            if (!App.Config.Containers.PveScanEnabled) return true;
+            // If not in an offline raid, we can't determine value - show all containers
+            if (Memory.Game?.IsOfflineRaid != true) return true;
             var minValue = App.Config.Containers.MinValue;
             if (minValue <= 0) return true; // No filter
             if (HasImportantContents) return true; // Important items always show
@@ -174,8 +174,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         /// </summary>
         internal void RefreshContents()
         {
-            // Only scan contents if PVE scanning is enabled (offline mode only)
-            if (!App.Config.Containers.PveScanEnabled)
+            // Only scan contents in offline raids where loot is pre-generated
+            if (Memory.Game?.IsOfflineRaid != true)
                 return;
 
             if (_contentsLoaded || _interactiveClass == 0)

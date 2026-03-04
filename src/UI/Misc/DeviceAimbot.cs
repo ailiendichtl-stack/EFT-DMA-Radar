@@ -88,12 +88,16 @@ namespace LoneEftDmaRadar.UI.Misc
         // Fractional accumulators - track sub-pixel movement to prevent rounding loss
         private float _accumX, _accumY;
 
-        // Dead-reckoning: track cumulative mouse counts sent since last DMA camera update
+        // Dead-reckoning: track cumulative mouse counts sent since last DMA camera update.
         // This compensates for the DMA feedback lag — the aimbot can't see its own mouse
         // movement until the next DMA camera read, so we subtract what we've already sent.
+        // Note: dead-reckoning is in mouse counts while screen delta is in pixels — these diverge
+        // with non-1:1 sensitivity, so we cap accumulation time to prevent over-compensation.
         private float _deadReckonX, _deadReckonY;
-        private Vector2 _lastDmaScreenPos; // Last screen position from DMA (to detect camera updates)
+        private Vector2 _lastDmaScreenPos; // Screen position at last confirmed DMA camera update
         private bool _hasLastDmaScreenPos;
+        private long _deadReckonStartTick; // When dead-reckoning started accumulating
+        private static readonly long DeadReckonMaxAgeTicks = Stopwatch.Frequency / 50; // 20ms max age (~2 T1 cycles)
 
         // Velocity tracking for PD control (screen-space)
         private Vector2 _lastTargetScreenPos;
@@ -365,14 +369,13 @@ namespace LoneEftDmaRadar.UI.Misc
                             continue;
                         }
 
+                        // Full reset (hitscan, world speed, dead-reckoning, velocity) then set new target
+                        ResetTarget();
                         lock (_targetLock)
                         {
                             _lockedTarget = newTarget;
                             currentTarget = newTarget;
                         }
-
-                        // Reset velocity tracking for new target
-                        ResetVelocityTracking();
                     }
                     else if (!IsTargetValid(currentTarget, localPlayer))
                     {
@@ -389,14 +392,13 @@ namespace LoneEftDmaRadar.UI.Misc
                                 continue;
                             }
 
+                            // Full reset (hitscan, world speed, dead-reckoning, velocity) then set new target
+                            ResetTarget();
                             lock (_targetLock)
                             {
                                 _lockedTarget = newTarget;
                                 currentTarget = newTarget;
                             }
-
-                            // Reset velocity tracking for new target
-                            ResetVelocityTracking();
                         }
                         else
                         {
@@ -689,6 +691,21 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             return IsTargetValidFull(target, localPlayer);
         }
 
+        /// <summary>
+        /// Resets all aim-state that must be cleared when the target changes:
+        /// dead-reckoning, fractional accumulators, DMA screen position, and velocity tracking.
+        /// Called from ResetTarget() and from target-switch paths.
+        /// </summary>
+        private void ResetAimState()
+        {
+            _accumX = 0;
+            _accumY = 0;
+            _deadReckonX = 0;
+            _deadReckonY = 0;
+            _hasLastDmaScreenPos = false;
+            ResetVelocityTracking();
+        }
+
         private void ResetTarget()
         {
             lock (_targetLock)
@@ -708,15 +725,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             _hitscanPendingStartTick = 0;
             _hitscanTargetBase = 0;
             _lastWorldSpeed = 0;
-            // Clear fractional accumulators to prevent carryover
-            _accumX = 0;
-            _accumY = 0;
-            // Reset dead-reckoning
-            _deadReckonX = 0;
-            _deadReckonY = 0;
-            _hasLastDmaScreenPos = false;
-            // Reset velocity tracking
-            ResetVelocityTracking();
+            // Reset all aim state (dead-reckoning, accumulators, velocity)
+            ResetAimState();
         }
 
         /// <summary>
@@ -1003,20 +1013,29 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             float deltaY = screenPos.Y - center.Y;
 
             // Dead-reckoning: compensate for mouse movement already sent but not yet
-            // reflected in the DMA camera read (Fix #1)
+            // reflected in the DMA camera read. Compares current screen position against
+            // the anchored position from the last confirmed DMA camera update.
+            // Time-capped at ~20ms to prevent over-compensation from unit mismatch
+            // (dead-reckoning is in mouse counts, delta is in screen pixels).
             if (_hasLastDmaScreenPos)
             {
-                // Detect if DMA camera has updated by checking if screen position changed
                 float dmaShift = Vector2.Distance(screenPos, _lastDmaScreenPos);
-                if (dmaShift > 0.01f)
+                long age = _cacheTimer.ElapsedTicks - _deadReckonStartTick;
+
+                if (dmaShift > 0.5f || age > DeadReckonMaxAgeTicks)
                 {
-                    // Camera updated — reset dead-reckoning
+                    // Camera updated OR dead-reckoning expired — reset
                     _deadReckonX = 0;
                     _deadReckonY = 0;
+                    _lastDmaScreenPos = screenPos; // Anchor to new DMA position
                 }
+                // else: DMA hasn't caught up yet, keep compensating
             }
-            _lastDmaScreenPos = screenPos;
-            _hasLastDmaScreenPos = true;
+            else
+            {
+                _lastDmaScreenPos = screenPos;
+                _hasLastDmaScreenPos = true;
+            }
 
             // Subtract already-sent mouse movement from the delta
             deltaX -= _deadReckonX;
@@ -1033,8 +1052,11 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             {
                 SendDeviceMove(moveX, moveY);
             }
-            // Always accumulate dead-reckoning (even if 0 was sent this tick,
-            // the accumulators still track intent)
+
+            // Start tracking dead-reckoning age from first accumulated movement
+            if (_deadReckonX == 0 && _deadReckonY == 0 && (moveX != 0 || moveY != 0))
+                _deadReckonStartTick = _cacheTimer.ElapsedTicks;
+
             _deadReckonX += moveX;
             _deadReckonY += moveY;
         }

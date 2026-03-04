@@ -21,126 +21,71 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         public DebugTabViewModel()
         {
             ToggleDebugConsoleCommand = new SimpleCommand(DebugLogger.Toggle);
+            _showPerformanceMonitor = App.Config.Debug.ShowPerformanceMonitor;
 
             _timer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(500)
             };
-            _timer.Tick += (_, _) =>
-            {
-                RefreshDeviceAimbotDebug();
-                RefreshPerformanceStats();
-                RefreshQuestTracker();
-            };
-            _timer.Start();
-            RefreshDeviceAimbotDebug();
-            RefreshPerformanceStats();
-            RefreshQuestTracker();
+            _timer.Tick += (_, _) => OnTimerTick();
         }
 
         public ICommand ToggleDebugConsoleCommand { get; }
 
-        #region Scan Interval Settings
+        #region Panel Visibility
 
-        /// <summary>
-        /// Loot scan interval in seconds (1-120).
-        /// </summary>
-        public int LootScanInterval
+        private bool _isPanelVisible;
+
+        public void SetPanelVisible(bool visible)
         {
-            get => App.Config.Debug.LootScanIntervalSeconds;
-            set
+            _isPanelVisible = visible;
+            UpdateTimerState();
+
+            if (visible)
             {
-                if (App.Config.Debug.LootScanIntervalSeconds != value)
-                {
-                    App.Config.Debug.LootScanIntervalSeconds = Math.Clamp(value, 1, 120);
-                    OnPropertyChanged(nameof(LootScanInterval));
-                }
+                RefreshDeviceAimbotDebug();
+                if (_showPerformanceMonitor)
+                    RefreshPerformanceStats();
+                RefreshQuestTracker();
             }
         }
 
-        /// <summary>
-        /// Corpse scan interval in seconds (1-120).
-        /// </summary>
-        public int CorpseScanInterval
+        private void UpdateTimerState()
         {
-            get => App.Config.Debug.CorpseScanIntervalSeconds;
-            set
-            {
-                if (App.Config.Debug.CorpseScanIntervalSeconds != value)
-                {
-                    App.Config.Debug.CorpseScanIntervalSeconds = Math.Clamp(value, 1, 120);
-                    OnPropertyChanged(nameof(CorpseScanInterval));
-                }
-            }
+            if (_isPanelVisible)
+                _timer.Start();
+            else
+                _timer.Stop();
         }
 
-        /// <summary>
-        /// T1 Realtime worker sleep in ms (1-100).
-        /// </summary>
-        public int T1SleepMs
+        private void OnTimerTick()
         {
-            get => App.Config.Debug.T1SleepMs;
-            set
-            {
-                if (App.Config.Debug.T1SleepMs != value)
-                {
-                    App.Config.Debug.T1SleepMs = Math.Clamp(value, 1, 100);
-                    OnPropertyChanged(nameof(T1SleepMs));
-                }
-            }
-        }
-
-        /// <summary>
-        /// T2 Slow worker sleep in ms (10-500).
-        /// </summary>
-        public int T2SleepMs
-        {
-            get => App.Config.Debug.T2SleepMs;
-            set
-            {
-                if (App.Config.Debug.T2SleepMs != value)
-                {
-                    App.Config.Debug.T2SleepMs = Math.Clamp(value, 10, 500);
-                    OnPropertyChanged(nameof(T2SleepMs));
-                }
-            }
-        }
-
-        /// <summary>
-        /// T3 Explosives worker sleep in ms (10-500).
-        /// </summary>
-        public int T3SleepMs
-        {
-            get => App.Config.Debug.T3SleepMs;
-            set
-            {
-                if (App.Config.Debug.T3SleepMs != value)
-                {
-                    App.Config.Debug.T3SleepMs = Math.Clamp(value, 10, 500);
-                    OnPropertyChanged(nameof(T3SleepMs));
-                }
-            }
-        }
-
-        /// <summary>
-        /// ESP render timer period in ms (1-10). Lower = higher FPS ceiling.
-        /// </summary>
-        public int EspTimerPeriodMs
-        {
-            get => App.Config.Debug.EspTimerPeriodMs;
-            set
-            {
-                if (App.Config.Debug.EspTimerPeriodMs != value)
-                {
-                    App.Config.Debug.EspTimerPeriodMs = Math.Clamp(value, 1, 10);
-                    OnPropertyChanged(nameof(EspTimerPeriodMs));
-                }
-            }
+            RefreshDeviceAimbotDebug();
+            if (_showPerformanceMonitor)
+                RefreshPerformanceStats();
+            RefreshQuestTracker();
         }
 
         #endregion
 
         #region Performance Stats
+
+        private bool _showPerformanceMonitor;
+
+        public bool ShowPerformanceMonitor
+        {
+            get => _showPerformanceMonitor;
+            set
+            {
+                if (_showPerformanceMonitor == value)
+                    return;
+                _showPerformanceMonitor = value;
+                App.Config.Debug.ShowPerformanceMonitor = value;
+                OnPropertyChanged(nameof(ShowPerformanceMonitor));
+                if (value && _isPanelVisible)
+                    RefreshPerformanceStats();
+            }
+        }
 
         public string PerformanceText
         {
@@ -155,17 +100,30 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        private static string GetStatus(double ms, double goodMax, double warnMax)
+        {
+            if (ms <= goodMax) return "[Good]";
+            if (ms <= warnMax) return "[Warning]";
+            return "[High]";
+        }
+
         private void RefreshPerformanceStats()
         {
+            var t1Avg = PerformanceStats.T1AvgLoopMs;
+            var t2Avg = PerformanceStats.T2AvgLoopMs;
+            var t3Avg = PerformanceStats.T3AvgLoopMs;
+            var lootMs = PerformanceStats.LastLootScanMs;
+            var sinceScan = PerformanceStats.SecondsSinceLastLootScan;
+
             var sb = new StringBuilder();
-            sb.AppendLine("=== Worker Performance ===");
-            sb.AppendLine($"T1 Realtime:  Last {PerformanceStats.T1LastLoopMs:F2}ms | Avg {PerformanceStats.T1AvgLoopMs:F2}ms");
-            sb.AppendLine($"T2 Slow:      Last {PerformanceStats.T2LastLoopMs:F2}ms | Avg {PerformanceStats.T2AvgLoopMs:F2}ms");
-            sb.AppendLine($"T3 Explosives: Last {PerformanceStats.T3LastLoopMs:F2}ms | Avg {PerformanceStats.T3AvgLoopMs:F2}ms");
+            sb.AppendLine("=== Worker Threads ===");
+            sb.AppendLine($"T1 Realtime:   {PerformanceStats.T1LastLoopMs,6:F2}ms | Avg {t1Avg,6:F2}ms  {GetStatus(t1Avg, 8, 15)}");
+            sb.AppendLine($"T2 Slow:       {PerformanceStats.T2LastLoopMs,6:F2}ms | Avg {t2Avg,6:F2}ms  {GetStatus(t2Avg, 500, 2000)}");
+            sb.AppendLine($"T3 Explosives: {PerformanceStats.T3LastLoopMs,6:F2}ms | Avg {t3Avg,6:F2}ms  {GetStatus(t3Avg, 15, 30)}");
             sb.AppendLine();
-            sb.AppendLine("=== Scan Performance ===");
-            sb.AppendLine($"Last Loot Scan: {PerformanceStats.LastLootScanMs:F0}ms");
-            sb.AppendLine($"Time Since Scan: {PerformanceStats.SecondsSinceLastLootScan:F0}s");
+            sb.AppendLine("=== Loot Scan ===");
+            sb.AppendLine($"Duration: {lootMs,6:F0}ms  {GetStatus(lootMs, 1000, 3000)}");
+            sb.AppendLine($"Last Scan: {sinceScan:F0}s ago");
             PerformanceText = sb.ToString();
         }
 

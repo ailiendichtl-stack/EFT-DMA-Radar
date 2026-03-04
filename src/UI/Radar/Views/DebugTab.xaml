@@ -7,6 +7,10 @@
              mc:Ignorable="d"
              Padding="10">
 
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
     <d:UserControl.DataContext>
         <d:DesignInstance Type="{x:Type vm:DebugTabViewModel}"
                           IsDesignTimeCreatable="False" />
@@ -29,10 +33,15 @@
             <GroupBox Header="Performance Monitor"
                       Margin="0,0,0,8">
                 <StackPanel>
+                    <CheckBox Content="Enable Performance Monitor"
+                              IsChecked="{Binding ShowPerformanceMonitor, Mode=TwoWay}"
+                              Margin="6,6,6,4"
+                              ToolTip="Enables live worker thread performance metrics. Disable to save resources." />
                     <TextBlock Text="{Binding PerformanceText}"
                                FontFamily="Consolas"
                                TextWrapping="Wrap"
-                               Margin="6" />
+                               Margin="6"
+                               Visibility="{Binding ShowPerformanceMonitor, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
             </GroupBox>
 
@@ -44,114 +53,6 @@
                                FontFamily="Consolas"
                                TextWrapping="Wrap"
                                Margin="6" />
-                </StackPanel>
-            </GroupBox>
-
-            <!-- Scan Interval Settings -->
-            <GroupBox Header="Scan Intervals (requires raid restart)"
-                      Margin="0,0,0,8">
-                <StackPanel Margin="6">
-                    <!-- Loot Scan Interval -->
-                    <TextBlock Text="Loot Scan Interval (seconds)"
-                               Margin="0,0,0,4" />
-                    <DockPanel>
-                        <TextBlock Text="{Binding LootScanInterval}"
-                                   Width="30"
-                                   DockPanel.Dock="Right"
-                                   TextAlignment="Right"
-                                   Margin="4,0,0,0" />
-                        <Slider Minimum="1"
-                                Maximum="120"
-                                Value="{Binding LootScanInterval, Mode=TwoWay}"
-                                TickFrequency="10"
-                                IsSnapToTickEnabled="False"
-                                ToolTip="How often to rescan loot after initial scan (lower = more CPU)" />
-                    </DockPanel>
-
-                    <!-- Corpse Scan Interval -->
-                    <TextBlock Text="Corpse Scan Interval (seconds)"
-                               Margin="0,8,0,4" />
-                    <DockPanel>
-                        <TextBlock Text="{Binding CorpseScanInterval}"
-                                   Width="30"
-                                   DockPanel.Dock="Right"
-                                   TextAlignment="Right"
-                                   Margin="4,0,0,0" />
-                        <Slider Minimum="1"
-                                Maximum="120"
-                                Value="{Binding CorpseScanInterval, Mode=TwoWay}"
-                                TickFrequency="10"
-                                IsSnapToTickEnabled="False"
-                                ToolTip="How often to rescan corpse contents (lower = more CPU)" />
-                    </DockPanel>
-
-                    <!-- T1 Sleep -->
-                    <TextBlock Text="T1 Realtime Worker Sleep (ms)"
-                               Margin="0,8,0,4" />
-                    <DockPanel>
-                        <TextBlock Text="{Binding T1SleepMs}"
-                                   Width="30"
-                                   DockPanel.Dock="Right"
-                                   TextAlignment="Right"
-                                   Margin="4,0,0,0" />
-                        <Slider Minimum="1"
-                                Maximum="100"
-                                Value="{Binding T1SleepMs, Mode=TwoWay}"
-                                TickFrequency="10"
-                                IsSnapToTickEnabled="False"
-                                ToolTip="Realtime worker loop interval (affects player position updates)" />
-                    </DockPanel>
-
-                    <!-- T2 Sleep -->
-                    <TextBlock Text="T2 Slow Worker Sleep (ms)"
-                               Margin="0,8,0,4" />
-                    <DockPanel>
-                        <TextBlock Text="{Binding T2SleepMs}"
-                                   Width="30"
-                                   DockPanel.Dock="Right"
-                                   TextAlignment="Right"
-                                   Margin="4,0,0,0" />
-                        <Slider Minimum="10"
-                                Maximum="500"
-                                Value="{Binding T2SleepMs, Mode=TwoWay}"
-                                TickFrequency="50"
-                                IsSnapToTickEnabled="False"
-                                ToolTip="Slow worker loop interval (affects loot/equipment refresh)" />
-                    </DockPanel>
-
-                    <!-- T3 Sleep -->
-                    <TextBlock Text="T3 Explosives Worker Sleep (ms)"
-                               Margin="0,8,0,4" />
-                    <DockPanel>
-                        <TextBlock Text="{Binding T3SleepMs}"
-                                   Width="30"
-                                   DockPanel.Dock="Right"
-                                   TextAlignment="Right"
-                                   Margin="4,0,0,0" />
-                        <Slider Minimum="10"
-                                Maximum="500"
-                                Value="{Binding T3SleepMs, Mode=TwoWay}"
-                                TickFrequency="50"
-                                IsSnapToTickEnabled="False"
-                                ToolTip="Explosives worker loop interval (affects grenade tracking)" />
-                    </DockPanel>
-
-                    <!-- ESP Timer Period -->
-                    <TextBlock Text="ESP Timer Period (ms)"
-                               Margin="0,8,0,4" />
-                    <DockPanel>
-                        <TextBlock Text="{Binding EspTimerPeriodMs}"
-                                   Width="30"
-                                   DockPanel.Dock="Right"
-                                   TextAlignment="Right"
-                                   Margin="4,0,0,0" />
-                        <Slider Minimum="1"
-                                Maximum="10"
-                                Value="{Binding EspTimerPeriodMs, Mode=TwoWay}"
-                                TickFrequency="1"
-                                IsSnapToTickEnabled="True"
-                                ToolTip="ESP render timer period (lower = higher FPS ceiling, requires ESP restart)" />
-                    </DockPanel>
                 </StackPanel>
             </GroupBox>
 

@@ -73,8 +73,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers
                     Refresh(checkInit: false);
                     _inited = true;
 
-                    // Read inventory contents (items inside Backpack/Rig/Pockets) if PVE scan enabled
-                    if (App.Config.Containers.PveScanEnabled)
+                    // Read inventory contents (items inside Backpack/Rig/Pockets) in offline raids
+                    if (Memory.Game?.IsOfflineRaid == true)
                     {
                         try
                         {

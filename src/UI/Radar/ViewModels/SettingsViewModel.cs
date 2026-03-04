@@ -525,6 +525,19 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        public bool KeyDoorsOnly
+        {
+            get => App.Config.Misc.KeyDoorsOnly;
+            set
+            {
+                if (App.Config.Misc.KeyDoorsOnly != value)
+                {
+                    App.Config.Misc.KeyDoorsOnly = value;
+                    OnPropertyChanged(nameof(KeyDoorsOnly));
+                }
+            }
+        }
+
         public bool ShowLockedDoors
         {
             get => App.Config.Misc.ShowLockedDoors;
@@ -602,10 +615,6 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 if (App.Config.Loot.Enabled != value)
                 {
                     App.Config.Loot.Enabled = value;
-                    if (MainWindow.Instance?.Radar?.Overlay?.ViewModel is RadarOverlayViewModel vm)
-                    {
-                        vm.IsLootButtonVisible = value;
-                    }
                     OnPropertyChanged(nameof(ShowLoot));
                 }
             }
@@ -646,76 +655,6 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 {
                     App.Config.UI.RadarMaxFPS = value;
                     OnPropertyChanged(nameof(RadarMaxFPS));
-                }
-            }
-        }
-
-        #endregion
-
-        #region Loot
-
-        public bool PveMode
-        {
-            get => App.Config.Loot.PveMode;
-            set
-            {
-                if (App.Config.Loot.PveMode != value)
-                {
-                    App.Config.Loot.PveMode = value;
-                    OnPropertyChanged(nameof(PveMode));
-                    // Trigger data refresh to fetch new prices
-                    _ = RefreshPveModeDataAsync();
-                }
-            }
-        }
-
-        private static async Task RefreshPveModeDataAsync()
-        {
-            try
-            {
-                await TarkovDataManager.RefreshDataAsync();
-            }
-            catch (Exception ex)
-            {
-                DebugLogger.LogDebug($"[PveMode] Failed to refresh price data: {ex.Message}");
-            }
-        }
-
-        public bool ShowStaticContainers
-        {
-            get => App.Config.Containers.Enabled;
-            set
-            {
-                if (App.Config.Containers.Enabled != value)
-                {
-                    App.Config.Containers.Enabled = value;
-                    OnPropertyChanged(nameof(ShowStaticContainers));
-                }
-            }
-        }
-
-        public int ContainerDistance
-        {
-            get => (int)Math.Round(App.Config.Containers.DrawDistance);
-            set
-            {
-                if (App.Config.Containers.DrawDistance != value)
-                {
-                    App.Config.Containers.DrawDistance = value;
-                    OnPropertyChanged(nameof(ContainerDistance));
-                }
-            }
-        }
-
-        public int ContainerMinValue
-        {
-            get => App.Config.Containers.MinValue;
-            set
-            {
-                if (App.Config.Containers.MinValue != value)
-                {
-                    App.Config.Containers.MinValue = value;
-                    OnPropertyChanged(nameof(ContainerMinValue));
                 }
             }
         }

@@ -32,6 +32,7 @@ using LoneEftDmaRadar.Tarkov.Unity;
 using LoneEftDmaRadar.UI.Radar.Maps;
 using LoneEftDmaRadar.UI.Skia;
 using SDK;
+using VmmSharpEx.Scatter;
 
 namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
 {
@@ -82,32 +83,32 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
         }
 
         /// <summary>
-        /// Updates the status from memory if address is known.
+        /// Queues a scatter read for exfil status. Call scatter.Execute() after all exfils are queued.
         /// </summary>
-        public void UpdateStatus()
+        public void OnRefresh(VmmScatter scatter)
         {
             if (_exfilPointAddr == 0)
                 return;
 
-            try
+            var addr = _exfilPointAddr + Offsets.ExfiltrationPoint.Status;
+            scatter.PrepareReadValue<int>(addr);
+            scatter.Completed += (_, s) =>
             {
-                var memStatus = Memory.ReadValue<int>(_exfilPointAddr + Offsets.ExfiltrationPoint.Status);
-                Status = memStatus switch
+                if (s.ReadValue<int>(addr, out var memStatus))
                 {
-                    (int)Enums.EExfiltrationStatus.NotPresent => EStatus.Closed,
-                    (int)Enums.EExfiltrationStatus.UncompleteRequirements => EStatus.Closed,
-                    (int)Enums.EExfiltrationStatus.Countdown => EStatus.Pending,
-                    (int)Enums.EExfiltrationStatus.RegularMode => EStatus.Open,
-                    (int)Enums.EExfiltrationStatus.Pending => EStatus.Pending,
-                    (int)Enums.EExfiltrationStatus.AwaitsManualActivation => EStatus.Pending,
-                    (int)Enums.EExfiltrationStatus.Hidden => EStatus.Closed,
-                    _ => EStatus.Open
-                };
-            }
-            catch
-            {
-                // Keep existing status on read failure
-            }
+                    Status = memStatus switch
+                    {
+                        (int)Enums.EExfiltrationStatus.NotPresent => EStatus.Closed,
+                        (int)Enums.EExfiltrationStatus.UncompleteRequirements => EStatus.Closed,
+                        (int)Enums.EExfiltrationStatus.Countdown => EStatus.Pending,
+                        (int)Enums.EExfiltrationStatus.RegularMode => EStatus.Open,
+                        (int)Enums.EExfiltrationStatus.Pending => EStatus.Pending,
+                        (int)Enums.EExfiltrationStatus.AwaitsManualActivation => EStatus.Pending,
+                        (int)Enums.EExfiltrationStatus.Hidden => EStatus.Closed,
+                        _ => EStatus.Open
+                    };
+                }
+            };
         }
 
         #region Interfaces
