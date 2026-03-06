@@ -20,7 +20,7 @@ DMA-based radar for Escape from Tarkov, forked from [Lone EFT DMA Radar](https:/
 
 The radar auto-creates the folder structure on startup.
 I wont be providing any mesh, plently of guides online on how to do it yourself.
-If lazy, export meshes from SPT using the [CollisionExporter](../CollisionExporter/), then copy the map folder to `MapData/`:
+If lazy, export meshes from SPT using the [CollisionExporter](https://github.com/ailiendichtl-stack/CollisionExporter), then copy the map folder to `MapData/`:
 // SPT Maps are not up to date as of 1.0 release //
 
 ```
