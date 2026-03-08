@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:behaviors="clr-namespace:LoneEftDmaRadar.UI.Behaviors"
+             xmlns:vm="clr-namespace:LoneEftDmaRadar.UI.ViewModels"
              mc:Ignorable="d"
              d:DesignWidth="400" d:DesignHeight="300"
              behaviors:DraggableBehavior.IsDraggable="True"
@@ -44,8 +45,8 @@
 
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="32"/>
-                        <!-- Title bar -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- Title bar (taller when tabs present) -->
                         <RowDefinition Height="*"/>
                         <!-- Content -->
                     </Grid.RowDefinitions>
@@ -65,18 +66,20 @@
                                     <GradientStop Color="#20E63366" Offset="1"/>
                                 </LinearGradientBrush>
                             </Border.BorderBrush>
-                            <Grid Margin="10,0">
+                            <Grid Margin="6,0,10,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <!-- Title with glow -->
-                                <Grid Grid.Column="0" VerticalAlignment="Center">
+                                <!-- Single-title mode (visible when NOT in tab mode) -->
+                                <Grid x:Name="SingleTitleArea" Grid.Column="0" VerticalAlignment="Center"
+                                      Margin="4,0,0,0" Height="32">
                                     <!-- Glow layer (blurred duplicate — no ClearType needed) -->
                                     <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                FontWeight="SemiBold"
                                                FontSize="13"
+                                               VerticalAlignment="Center"
                                                Foreground="{DynamicResource Neon.PinkBrush}"
                                                Opacity="0.55">
                                         <TextBlock.Effect>
@@ -88,8 +91,64 @@
                                                Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                FontWeight="SemiBold"
                                                FontSize="13"
+                                               VerticalAlignment="Center"
                                                Foreground="{DynamicResource Neon.PinkBrush}"/>
                                 </Grid>
+
+                                <!-- Tab headers mode (visible when in tab mode, replaces single title) -->
+                                <ItemsControl x:Name="TabStripItems"
+                                              Grid.Column="0"
+                                              Visibility="Collapsed"
+                                              ItemsSource="{Binding TabItems, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              VerticalAlignment="Center">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:TabItemModel}">
+                                            <Border x:Name="TabBorder"
+                                                    Padding="8,6"
+                                                    Margin="1,4,1,4"
+                                                    CornerRadius="4"
+                                                    Background="#10FFFFFF"
+                                                    Cursor="Hand"
+                                                    MouseLeftButtonDown="TabHeader_MouseLeftButtonDown"
+                                                    MouseMove="TabHeader_MouseMove"
+                                                    MouseLeftButtonUp="TabHeader_MouseLeftButtonUp">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <!-- Tab title with neon pink style matching panel headers -->
+                                                    <TextBlock Text="{Binding Title}"
+                                                               FontWeight="SemiBold"
+                                                               FontSize="12"
+                                                               Foreground="{DynamicResource Neon.PinkBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                    <Button Content="&#x2715;"
+                                                            FontSize="8"
+                                                            Margin="6,0,0,0"
+                                                            Padding="2"
+                                                            VerticalAlignment="Center"
+                                                            Width="14" Height="14"
+                                                            Click="TabCloseButton_Click"
+                                                            Tag="{Binding PanelName}"
+                                                            Style="{StaticResource PanelCloseButtonStyle}"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                    <Setter TargetName="TabBorder" Property="Background" Value="#25FFFFFF"/>
+                                                    <Setter TargetName="TabBorder" Property="BorderBrush">
+                                                        <Setter.Value>
+                                                            <SolidColorBrush Color="#409945FF"/>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                    <Setter TargetName="TabBorder" Property="BorderThickness" Value="0,0,0,2"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
 
                                 <!-- Collapse and Close buttons -->
                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
@@ -159,6 +218,25 @@
                             <RotateTransform Angle="0"/>
                         </Path.RenderTransform>
                     </Path>
+
+                    <!-- Drop target highlight overlay -->
+                    <Border x:Name="DropHighlight"
+                            Grid.RowSpan="2"
+                            CornerRadius="6"
+                            BorderThickness="2"
+                            IsHitTestVisible="False"
+                            Opacity="0">
+                        <Border.BorderBrush>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#CC3B82F6" Offset="0"/>
+                                <GradientStop Color="#CC9945FF" Offset="0.5"/>
+                                <GradientStop Color="#CCE63366" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.BorderBrush>
+                        <Border.Background>
+                            <SolidColorBrush Color="#0CFFFFFF"/>
+                        </Border.Background>
+                    </Border>
                 </Grid>
             </Border>
         </Border>

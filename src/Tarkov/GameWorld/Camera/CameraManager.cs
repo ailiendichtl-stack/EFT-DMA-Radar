@@ -47,7 +47,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
         private static float _opticRightMag1x;
         private static float _opticUpMag1x;
         public static Vector3 CameraPosition => new(_viewMatrix.M14, _viewMatrix.M24, _viewMatrix.Translation.Z);
-    
+
         public static void Reset()
         {
             var identity = Matrix4x4.Identity;
@@ -69,12 +69,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
             _potentialOpticCameras.Clear();
             _useFpsCameraForCurrentAds = false;
             _maxOpticFov = 0f;
+            _calibratedOpticPtr = 0;
         }
         public ulong FPSCamera { get; }
 
         private static readonly List<ulong> _potentialOpticCameras = new();
         private static bool _useFpsCameraForCurrentAds = false;
         private static float _maxOpticFov;
+        private static ulong _calibratedOpticPtr; // Tracks which optic _maxOpticFov belongs to
 
         public static void UpdateViewportRes()
         {
@@ -132,17 +134,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
         /// <summary>
         /// Converts a world position to screen coordinates with distance-based scale factor.
         /// </summary>
-        /// <param name="worldPos">World position to convert</param>
-        /// <param name="scrPos">Resulting screen position</param>
-        /// <param name="scale">Distance-based scale factor (1.0 at reference distance, larger when closer, smaller when farther)</param>
-        /// <param name="onScreenCheck">Check if position is on screen</param>
-        /// <param name="useTolerance">Use tolerance for on-screen check</param>
-        /// <returns>True if conversion succeeded and position is valid</returns>
         public static bool WorldToScreenWithScale(in Vector3 worldPos, out SKPoint scrPos, out float scale, bool onScreenCheck = false, bool useTolerance = false, bool forceFpsVP = false)
         {
-            const float REFERENCE_DISTANCE = 50f; // Reference distance for scale = 1.0
-            const float MIN_SCALE = 0.3f;         // Minimum scale factor
-            const float MAX_SCALE = 2.0f;         // Maximum scale factor
+            const float REFERENCE_DISTANCE = 50f;
+            const float MIN_SCALE = 0.3f;
+            const float MAX_SCALE = 2.0f;
 
             try
             {
@@ -162,7 +158,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                     return false;
                 }
 
-                // Calculate scale based on distance (w is approximately the distance)
                 scale = Math.Clamp(REFERENCE_DISTANCE / w, MIN_SCALE, MAX_SCALE);
 
                 float x = Vector3.Dot(vm.Right, worldPos) + vm.M14;
@@ -175,7 +170,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                     // NOT the current magnitude. The current magnitude encodes the zoom
                     // (6x higher at 6x zoom), so preserving it gives correct zoom scaling.
                     // Multiply by FPS magnitude to get screen-pixel scale.
-                    // Projects from the scope's physical position → no mount offset.
                     x *= _fpsRightMag / _opticRightMag1x;
                     y *= _fpsUpMag / _opticUpMag1x;
                 }
@@ -308,8 +302,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
         /// <summary>
         /// Validates an Optic Camera by checking if its view matrix contains valid data
         /// </summary>
-        /// <param name="cameraPtr">Pointer to the camera to validate</param>
-        /// <returns>True if the camera has a valid view matrix, false otherwise</returns>
         private static bool ValidateOpticCameraMatrix(ulong cameraPtr)
         {
             try
@@ -389,9 +381,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                 if (!IsADS)
                 {
                     _useFpsCameraForCurrentAds = false;
-                    _maxOpticFov = 0f;
-                    _opticRightMag1x = 0f;
-                    _opticUpMag1x = 0f;
+                    // Don't reset _maxOpticFov here — preserve the 1x FOV reference
+                    // across ADS cycles so scoping in at 6x works after first calibration.
+                    // It only resets when the optic camera pointer changes (different scope).
                     ScopeZoom = 1f;
                     IsScoped = false;
                 }
@@ -472,6 +464,15 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                         s.ReadValue<float>(capturedOpticFovAddr, out var opticFov) &&
                         opticFov > 0.5f && opticFov < 90f)
                     {
+                        // Reset 1x reference when scope changes (different optic camera)
+                        if (OpticCameraPtr != _calibratedOpticPtr)
+                        {
+                            _maxOpticFov = 0f;
+                            _opticRightMag1x = 0f;
+                            _opticUpMag1x = 0f;
+                            _calibratedOpticPtr = OpticCameraPtr;
+                        }
+
                         // Track widest FOV = 1x reference. Capture 1x VP magnitudes.
                         if (opticFov > _maxOpticFov)
                         {

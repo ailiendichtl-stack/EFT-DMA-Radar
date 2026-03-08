@@ -987,7 +987,8 @@ namespace LoneEftDmaRadar.UI.ESP
             bool drawHealth = isAI ? App.Config.UI.EspAIHealth : App.Config.UI.EspPlayerHealth;
             bool drawDistance = isAI ? App.Config.UI.EspAIDistance : App.Config.UI.EspPlayerDistance;
             bool drawGroupId = isAI ? App.Config.UI.EspAIGroupIds : App.Config.UI.EspGroupIds;
-            bool drawLabel = drawName || drawDistance || drawHealth || drawGroupId;
+            bool drawValue = isAI ? App.Config.UI.EspAIValue : App.Config.UI.EspPlayerValue;
+            bool drawLabel = drawName || drawDistance || drawHealth || drawGroupId || drawValue;
 
             // LOS visibility — compute entity-level color override
             var visCfg = App.Config.Visibility;
@@ -1080,9 +1081,43 @@ namespace LoneEftDmaRadar.UI.ESP
                 }
             }
 
+            // Debug: aimbot target markers (raw bone = cyan, predicted aim = magenta)
+            if (isDeviceAimbotLocked)
+            {
+                var deviceAimbot = MemDMA.DeviceAimbot;
+                if (deviceAimbot != null)
+                {
+                    // Cyan dot: raw bone position (where the bone transform says the head is)
+                    var rawBonePos = deviceAimbot.RawBoneAimPos;
+                    if (rawBonePos != default && TryProject(rawBonePos, screenWidth, screenHeight, out var rawScreen))
+                    {
+                        var cyanColor = new DxColor(0, 255, 255, 255);
+                        ctx.DrawCircle(ToRaw(rawScreen), 3f, cyanColor, filled: true);
+                    }
+
+                    // Magenta dot: predicted aim point (bone + bullet drop + lead)
+                    var predAimPos = deviceAimbot.PredictedAimPos;
+                    if (predAimPos != default && TryProject(predAimPos, screenWidth, screenHeight, out var predScreen))
+                    {
+                        var magentaColor = new DxColor(255, 0, 255, 255);
+                        ctx.DrawCircle(ToRaw(predScreen), 3f, magentaColor, filled: true);
+
+                        // Line between raw and predicted if separated (shows prediction offset)
+                        if (rawBonePos != default && TryProject(rawBonePos, screenWidth, screenHeight, out var rawScreen2))
+                        {
+                            float sep = MathF.Sqrt(
+                                (predScreen.X - rawScreen2.X) * (predScreen.X - rawScreen2.X) +
+                                (predScreen.Y - rawScreen2.Y) * (predScreen.Y - rawScreen2.Y));
+                            if (sep > 2f)
+                                ctx.DrawLine(ToRaw(rawScreen2), ToRaw(predScreen), magentaColor, 1f);
+                        }
+                    }
+                }
+            }
+
             if (drawLabel)
             {
-                DrawPlayerLabel(ctx, player, distance, color, hasBox ? bbox : (RectangleF?)null, screenWidth, screenHeight, drawName, drawDistance, drawHealth, drawGroupId);
+                DrawPlayerLabel(ctx, player, distance, color, hasBox ? bbox : (RectangleF?)null, screenWidth, screenHeight, drawName, drawDistance, drawHealth, drawGroupId, drawValue);
             }
         }
 
@@ -1734,9 +1769,9 @@ namespace LoneEftDmaRadar.UI.ESP
         /// Draws player label (name/distance) relative to the bounding box or head fallback.
         /// </summary>
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        private void DrawPlayerLabel(Dx9RenderContext ctx, AbstractPlayer player, float distance, DxColor color, RectangleF? bbox, float screenWidth, float screenHeight, bool showName, bool showDistance, bool showHealth, bool showGroup)
+        private void DrawPlayerLabel(Dx9RenderContext ctx, AbstractPlayer player, float distance, DxColor color, RectangleF? bbox, float screenWidth, float screenHeight, bool showName, bool showDistance, bool showHealth, bool showGroup, bool showValue)
         {
-            if (!showName && !showDistance && !showHealth && !showGroup)
+            if (!showName && !showDistance && !showHealth && !showGroup && !showValue)
                 return;
 
             var name = showName ? GetPlayerDisplayName(player) ?? "Unknown" : null;
@@ -1754,6 +1789,10 @@ namespace LoneEftDmaRadar.UI.ESP
             if (showGroup && player.GroupID != -1 && player.IsPmc && !player.IsAI)
                 groupText = $"G:{player.GroupID}";
 
+            string valueText = null;
+            if (showValue && player.Equipment is { } eq && eq.TotalValue > 0)
+                valueText = $"${LoneEftDmaRadar.Misc.Utilities.FormatNumberKM(eq.TotalValue)}";
+
             string text = name;
             if (!string.IsNullOrWhiteSpace(healthText))
                 text = string.IsNullOrWhiteSpace(text) ? healthText : $"{text} ({healthText})";
@@ -1763,6 +1802,8 @@ namespace LoneEftDmaRadar.UI.ESP
                 text = string.IsNullOrWhiteSpace(text) ? groupText : $"{text} [{groupText}]";
             if (!string.IsNullOrWhiteSpace(factionText))
                 text = string.IsNullOrWhiteSpace(text) ? factionText : $"{text} [{factionText}]";
+            if (!string.IsNullOrWhiteSpace(valueText))
+                text = string.IsNullOrWhiteSpace(text) ? valueText : $"{text} [{valueText}]";
 
             if (string.IsNullOrWhiteSpace(text))
                 return;

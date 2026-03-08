@@ -39,6 +39,38 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers
         /// </summary>
         public int InventoryValue => _inventoryContents?.Sum(x => x.Price) ?? 0;
 
+        /// <summary>
+        /// Total value: gear + inventory (when available).
+        /// </summary>
+        public int TotalValue => Value + InventoryValue;
+
+        /// <summary>
+        /// True if any equipped or inventory item matches an important loot filter.
+        /// </summary>
+        public bool HasImportantItem =>
+            _items.Values.Any(i => i.Important) ||
+            (_inventoryContents?.Any(x => x.IsImportant) ?? false);
+
+        /// <summary>
+        /// Gets the filter color from the highest-value important item (gear first, then inventory).
+        /// </summary>
+        public string ImportantItemFilterColor
+        {
+            get
+            {
+                var gearColor = _items.Values
+                    .Where(i => i.Important && !string.IsNullOrEmpty(i.CustomFilter?.Color))
+                    .OrderByDescending(i => i.FleaPrice > 0 ? i.FleaPrice : i.TraderPrice)
+                    .FirstOrDefault()?.CustomFilter?.Color;
+                if (!string.IsNullOrEmpty(gearColor))
+                    return gearColor;
+                return _inventoryContents?
+                    .Where(x => x.IsImportant && !string.IsNullOrEmpty(x.FilterColor))
+                    .OrderByDescending(x => x.Price)
+                    .FirstOrDefault()?.FilterColor;
+            }
+        }
+
         public PlayerEquipment(AbstractPlayer player, ulong inventoryControllerAddr)
         {
             _player = player;

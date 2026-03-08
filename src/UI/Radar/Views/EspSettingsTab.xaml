@@ -89,6 +89,7 @@
                         <CheckBox Content="Faction Text" IsChecked="{Binding EspPlayerFaction, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Distance" IsChecked="{Binding EspPlayerDistance, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Weapons" IsChecked="{Binding EspPlayerWeapons, Mode=TwoWay}" Margin="0,0,16,8" />
+                        <CheckBox Content="Value" IsChecked="{Binding EspPlayerValue, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Head Circle" IsChecked="{Binding EspHeadCirclePlayers, Mode=TwoWay}" Margin="0,0,16,8" ToolTip="Head circles inherit the entity color" />
                      </WrapPanel>
                      <WrapPanel Margin="0,4,0,0">
@@ -141,6 +142,7 @@
                         <CheckBox Content="Health" IsChecked="{Binding EspAIHealth, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Distance" IsChecked="{Binding EspAIDistance, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Weapons" IsChecked="{Binding EspAIWeapons, Mode=TwoWay}" Margin="0,0,16,8" />
+                        <CheckBox Content="Value" IsChecked="{Binding EspAIValue, Mode=TwoWay}" Margin="0,0,16,8" />
                         <CheckBox Content="Head Circle" IsChecked="{Binding EspHeadCircleAI, Mode=TwoWay}" Margin="0,0,16,8" ToolTip="Head circles inherit the entity color" />
                      </WrapPanel>
                     <WrapPanel Margin="0,8,0,0">

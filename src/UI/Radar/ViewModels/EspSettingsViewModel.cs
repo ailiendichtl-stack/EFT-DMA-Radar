@@ -201,6 +201,19 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        public bool EspPlayerValue
+        {
+            get => App.Config.UI.EspPlayerValue;
+            set
+            {
+                if (App.Config.UI.EspPlayerValue != value)
+                {
+                    App.Config.UI.EspPlayerValue = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public bool EspAISkeletons
         {
             get => App.Config.UI.EspAISkeletons;
@@ -278,7 +291,20 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 }
             }
         }
-        
+
+        public bool EspAIValue
+        {
+            get => App.Config.UI.EspAIValue;
+            set
+            {
+                if (App.Config.UI.EspAIValue != value)
+                {
+                    App.Config.UI.EspAIValue = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public bool EspLoot
         {
             get => App.Config.UI.EspLoot;

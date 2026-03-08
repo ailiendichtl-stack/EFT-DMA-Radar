@@ -6,8 +6,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Text.Json;
 using System.Threading;
 using LoneEftDmaRadar.DMA;
 using LoneEftDmaRadar.Tarkov.GameWorld;
@@ -88,16 +90,24 @@ namespace LoneEftDmaRadar.UI.Misc
         // Fractional accumulators - track sub-pixel movement to prevent rounding loss
         private float _accumX, _accumY;
 
-        // Dead-reckoning: track cumulative mouse counts sent since last DMA camera update.
-        // This compensates for the DMA feedback lag — the aimbot can't see its own mouse
-        // movement until the next DMA camera read, so we subtract what we've already sent.
-        // Note: dead-reckoning is in mouse counts while screen delta is in pixels — these diverge
-        // with non-1:1 sensitivity, so we cap accumulation time to prevent over-compensation.
-        private float _deadReckonX, _deadReckonY;
-        private Vector2 _lastDmaScreenPos; // Screen position at last confirmed DMA camera update
-        private bool _hasLastDmaScreenPos;
-        private long _deadReckonStartTick; // When dead-reckoning started accumulating
-        private static readonly long DeadReckonMaxAgeTicks = Stopwatch.Frequency / 50; // 20ms max age (~2 T1 cycles)
+        // In-flight move tracking (Smith Predictor for render delay compensation).
+        // Mouse moves take ~2 game frames to appear in the screen projection.
+        // At tick rates matching game FPS (~60Hz), we'd send 2 full corrections before
+        // either renders, causing the effective gain to exceed 1.0 → divergent oscillation.
+        // We track pending device-scale moves and subtract their expected displacement
+        // from the observed delta, so each tick only corrects the RESIDUAL error.
+        private readonly Queue<(long ticks, float dx, float dy)> _inflightMoves = new();
+        private float _lastMoveDeviceX, _lastMoveDeviceY; // Set by CalculateSmoothMovement
+
+        // Stale-data detection: the aimbot loop runs at 850Hz but DMA camera data only
+        // updates at game FPS (~60-120Hz). Sending moves on unchanged screen positions
+        // causes accumulation overshoot. We skip frames where W2S result hasn't changed.
+        private SKPoint _lastW2SResult;
+        private bool _hasLastW2SResult;
+
+        // Actual update rate measurement — tracks real Hz between non-stale frames
+        private long _lastFreshFrameTicks;
+        private float _measuredUpdateRate = 60f; // Start conservative
 
         // Velocity tracking for PD control (screen-space)
         private Vector2 _lastTargetScreenPos;
@@ -112,6 +122,19 @@ namespace LoneEftDmaRadar.UI.Misc
         private long _velocitySampleTicks;
         private string _lastTrackedTargetId;
         private volatile float _lastWorldSpeed;   // Magnitude of world velocity, used by hitscan grace scaling
+
+        // Exposed aim state for ESP debug markers
+        private Vector3 _lastPredictedAimPos;
+        private Vector3 _lastRawBoneAimPos;
+
+        // Ergo scale tracking for diagnostics
+        private float _lastErgoScale = 1f;
+
+        // Direction-change detection for Smith Predictor queue flush
+        private float _prevPendingX, _prevPendingY;
+
+        // Scoped engagement ramp-up (prevents initial overshoot when scoping onto a target)
+        private int _scopedEngageFrames;
 
         // Ergo/sensitivity compensation — cached from memory reads
         private volatile float _cachedOverweightAimMult = 1.0f; // PWA._overweightAimingMultiplier (carry weight)
@@ -175,6 +198,17 @@ namespace LoneEftDmaRadar.UI.Misc
         // Reusable list for debug lines
         private readonly List<string> _debugLines = new(64);
 
+        // === Aim Diagnostic Logger ===
+        // Captures every frame of aim sequences to JSON Lines for analysis.
+        // Enable: set AIM_DIAG_ENABLED = true, rebuild, do a few runs, then set back to false.
+        private const bool AIM_DIAG_ENABLED = false;
+        private static readonly string AIM_DIAG_PATH = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory, $"aim_diag_{DateTime.Now:yyyyMMdd_HHmmss}.jsonl");
+        private StreamWriter _diagWriter;
+        private int _diagSeqId;       // Increments each new engagement (target lock)
+        private int _diagFrameId;     // Frame counter within current sequence
+        private string _diagLastTargetId; // Detect target switches
+
         #endregion
 
         private void SendDeviceMove(int dx, int dy)
@@ -218,6 +252,20 @@ namespace LoneEftDmaRadar.UI.Misc
                 }
             }
 
+            // Initialize diagnostic logger
+            if (AIM_DIAG_ENABLED)
+            {
+                try
+                {
+                    _diagWriter = new StreamWriter(AIM_DIAG_PATH, append: false) { AutoFlush = true };
+                    DebugLogger.LogDebug($"[DeviceAimbot] Aim diagnostics logging to: {AIM_DIAG_PATH}");
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.LogDebug($"[DeviceAimbot] Failed to open diag file: {ex.Message}");
+                }
+            }
+
             _worker = new Thread(WorkerLoop)
             {
                 IsBackground = true,
@@ -235,6 +283,9 @@ namespace LoneEftDmaRadar.UI.Misc
                 return;
 
             _disposed = true;
+
+            // Close diagnostic logger
+            try { _diagWriter?.Dispose(); } catch { }
 
             // Wait for worker thread to exit (with timeout)
             if (_worker != null && _worker.IsAlive)
@@ -522,7 +573,7 @@ namespace LoneEftDmaRadar.UI.Misc
                 {
                     // IMPORTANT: use same W2S style as ESP - "in" + default flags
                     // Disable on-screen check so viewport issues don't discard candidates.
-                    if (CameraManager.WorldToScreenFPS(in bone.Position, out var screenPos))
+                    if (CameraManager.WorldToScreen(in bone.Position, out var screenPos))
                     {
                         anyBoneProjected = true;
                         float fovDist = CameraManager.GetFovMagnitude(screenPos);
@@ -646,7 +697,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
 
             foreach (var bone in target.Skeleton.BoneTransforms.Values)
             {
-                if (CameraManager.WorldToScreenFPS(in bone.Position, out var screenPos))
+                if (CameraManager.WorldToScreen(in bone.Position, out var screenPos))
                 {
                     anyBoneProjected = true;
                     float fovDist = CameraManager.GetFovMagnitude(screenPos);
@@ -700,9 +751,15 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
         {
             _accumX = 0;
             _accumY = 0;
-            _deadReckonX = 0;
-            _deadReckonY = 0;
-            _hasLastDmaScreenPos = false;
+            _inflightMoves.Clear();
+            _lastMoveDeviceX = 0;
+            _lastMoveDeviceY = 0;
+            _hasLastW2SResult = false;
+            _lastFreshFrameTicks = 0;
+            _measuredUpdateRate = 60f;
+            _prevPendingX = 0;
+            _prevPendingY = 0;
+            _scopedEngageFrames = 0;
             ResetVelocityTracking();
         }
 
@@ -863,7 +920,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 if ((hitscanMask & (1u << i)) == 0) continue;
                 var bone = BoneMappings.IndexToBone[i];
                 if (!bones.TryGetValue(bone, out var bt)) continue;
-                if (CameraManager.WorldToScreenFPS(in bt.Position, out var sp))
+                if (CameraManager.WorldToScreen(in bt.Position, out var sp))
                 {
                     float fov = CameraManager.GetFovMagnitude(sp);
                     if (fov < bestFov)
@@ -923,7 +980,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
 
                 foreach (var kvp in bones)
                 {
-                    if (CameraManager.WorldToScreenFPS(in kvp.Value.Position, out var screenPos))
+                    if (CameraManager.WorldToScreen(in kvp.Value.Position, out var screenPos))
                     {
                         float fov = CameraManager.GetFovMagnitude(screenPos);
                         if (fov < bestFov)
@@ -972,6 +1029,15 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 return;
 
             Vector3 rawTargetPos = boneTransform.Position;
+
+            // Cranium offset: HumanHead bone is anchored at the neck joint, not the
+            // cranium center. Apply a fixed upward offset (~2.5cm) for head bones only.
+            // This corrects the systematic downward bias observed in engagements.
+            Bones activeBone = Config.HitscanEnabled && _hitscanCurrentBone != default
+                ? _hitscanCurrentBone : selectedBone;
+            if (activeBone == Bones.HumanHead)
+                rawTargetPos.Y += 0.025f;
+
             Vector3 targetPos = rawTargetPos;
 
             // Always update world-space velocity tracking (needed for adaptive smoothing + prediction)
@@ -984,6 +1050,10 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 targetPos = PredictHitPoint(localPlayer, target, fireportPos.Value, targetPos);
             }
 
+            // Store aim positions for ESP debug markers (read by render thread)
+            _lastRawBoneAimPos = rawTargetPos;
+            _lastPredictedAimPos = targetPos;
+
             // Check if MemoryAim is enabled
             if (App.Config.MemWrites.Enabled && App.Config.MemWrites.MemoryAimEnabled)
             {
@@ -993,14 +1063,40 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             }
 
             // Original DeviceAimbot device aiming (only if MemoryAim is disabled)
-            // Convert to screen space — both predicted (for aiming) and raw (for velocity tracking)
-            if (!CameraManager.WorldToScreenFPS(in targetPos, out var screenPos))
+            if (!CameraManager.WorldToScreen(in targetPos, out var screenPos))
                 return;
+
+            // Stale-data detection: the aimbot runs at 850Hz but DMA camera data only
+            // updates at game FPS (~60-120Hz). If screen position hasn't changed, the view
+            // matrix is stale — sending moves on stale data causes accumulation overshoot.
+            const float STALE_EPSILON = 0.01f;
+            if (_hasLastW2SResult &&
+                MathF.Abs(screenPos.X - _lastW2SResult.X) < STALE_EPSILON &&
+                MathF.Abs(screenPos.Y - _lastW2SResult.Y) < STALE_EPSILON)
+            {
+                return; // Skip — no new camera data yet
+            }
+            _lastW2SResult = screenPos;
+            _hasLastW2SResult = true;
+
+            // Measure actual update rate from time between fresh (non-stale) frames
+            long nowTicks = Stopwatch.GetTimestamp();
+            if (_lastFreshFrameTicks != 0)
+            {
+                double elapsedSec = (nowTicks - _lastFreshFrameTicks) / (double)Stopwatch.Frequency;
+                if (elapsedSec > 0.001 && elapsedSec < 0.5) // Sanity: 2Hz-1000Hz
+                {
+                    float instantRate = (float)(1.0 / elapsedSec);
+                    // EMA smoothing to avoid jitter — converges in ~10 frames
+                    _measuredUpdateRate = _measuredUpdateRate * 0.85f + instantRate * 0.15f;
+                }
+            }
+            _lastFreshFrameTicks = nowTicks;
 
             // Also W2S the raw bone position for velocity tracking (prevents prediction offset
             // from being misinterpreted as target movement)
             Vector3 rawForW2S = rawTargetPos;
-            if (!CameraManager.WorldToScreenFPS(in rawForW2S, out var rawScreenPos))
+            if (!CameraManager.WorldToScreen(in rawForW2S, out var rawScreenPos))
                 rawScreenPos = screenPos; // Fallback if raw W2S fails
 
             // Update target screen velocity using RAW bone position (Fix #2)
@@ -1012,60 +1108,128 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             float deltaX = screenPos.X - center.X;
             float deltaY = screenPos.Y - center.Y;
 
-            // Dead-reckoning: compensate for mouse movement already sent but not yet
-            // reflected in the DMA camera read. Compares current screen position against
-            // the anchored position from the last confirmed DMA camera update.
-            // Time-capped at ~20ms to prevent over-compensation from unit mismatch
-            // (dead-reckoning is in mouse counts, delta is in screen pixels).
-            if (_hasLastDmaScreenPos)
-            {
-                float dmaShift = Vector2.Distance(screenPos, _lastDmaScreenPos);
-                long age = _cacheTimer.ElapsedTicks - _deadReckonStartTick;
+            // === In-flight move compensation (Smith Predictor) ===
+            // Fixed render delay: ~1.2 game frames at 60 FPS ≈ 20ms.
+            // Tighter window than 31.7ms to prevent stale pending accumulation.
+            // At 60Hz fresh frames, queue depth is ~1-2 entries (was 4-5 at 31.7ms).
+            const float RENDER_DELAY_SEC = 1.2f / 60f;
+            long renderDelayTicks = (long)(RENDER_DELAY_SEC * Stopwatch.Frequency);
 
-                if (dmaShift > 0.5f || age > DeadReckonMaxAgeTicks)
-                {
-                    // Camera updated OR dead-reckoning expired — reset
-                    _deadReckonX = 0;
-                    _deadReckonY = 0;
-                    _lastDmaScreenPos = screenPos; // Anchor to new DMA position
-                }
-                // else: DMA hasn't caught up yet, keep compensating
-            }
-            else
+            while (_inflightMoves.Count > 0 && (nowTicks - _inflightMoves.Peek().ticks) > renderDelayTicks)
+                _inflightMoves.Dequeue();
+
+            // Cap queue to 3 entries. Prevents unbounded accumulation on DMA stalls.
+            while (_inflightMoves.Count > 3)
+                _inflightMoves.Dequeue();
+
+            // Sum pending (not-yet-rendered) corrections
+            float pendingX = 0f, pendingY = 0f;
+            foreach (var (_, px, py) in _inflightMoves)
             {
-                _lastDmaScreenPos = screenPos;
-                _hasLastDmaScreenPos = true;
+                pendingX += px;
+                pendingY += py;
             }
 
-            // Subtract already-sent mouse movement from the delta
-            deltaX -= _deadReckonX;
-            deltaY -= _deadReckonY;
+            // Direction-change detection: when the pending correction flips sign,
+            // the queued moves are predicting motion in the wrong direction (target
+            // reversed). Flush the stale entries to prevent overshoot on direction changes.
+            if ((_prevPendingX != 0 && pendingX != 0 && MathF.Sign(pendingX) != MathF.Sign(_prevPendingX)) ||
+                (_prevPendingY != 0 && pendingY != 0 && MathF.Sign(pendingY) != MathF.Sign(_prevPendingY)))
+            {
+                _inflightMoves.Clear();
+                pendingX = 0f;
+                pendingY = 0f;
+            }
+            _prevPendingX = pendingX;
+            _prevPendingY = pendingY;
+
+            // Effective delta: subtract moves the screen hasn't reflected yet.
+            // This prevents sending redundant corrections during the render delay,
+            // which is what causes the limit-cycle oscillation at high tick rates.
+            deltaX -= pendingX;
+            deltaY -= pendingY;
 
             // Check if player is aiming down sights
             bool isAiming = localPlayer.CheckIfADS();
 
+            // Scoped engagement ramp-up: limit move magnitude for the first few frames
+            // when scoped to prevent massive initial overshoot (scope sensitivity is very low,
+            // so capped 127-unit bursts create a pendulum effect).
+            bool isScoped = CameraManager.IsScoped;
+            if (isScoped)
+                _scopedEngageFrames++;
+            else
+                _scopedEngageFrames = 0;
+
             // Calculate smooth movement with fractional accumulation
             var (moveX, moveY) = CalculateSmoothMovement(deltaX, deltaY, isAiming);
 
-            // Apply movement and update dead-reckoning
+            // Record this tick's device-scale move as pending
+            _inflightMoves.Enqueue((nowTicks, _lastMoveDeviceX, _lastMoveDeviceY));
+
+            // Apply movement
             if (moveX != 0 || moveY != 0)
             {
                 SendDeviceMove(moveX, moveY);
             }
 
-            // Start tracking dead-reckoning age from first accumulated movement
-            if (_deadReckonX == 0 && _deadReckonY == 0 && (moveX != 0 || moveY != 0))
-                _deadReckonStartTick = _cacheTimer.ElapsedTicks;
+            // === Diagnostic logging ===
+            if (AIM_DIAG_ENABLED && _diagWriter != null)
+            {
+                try
+                {
+                    string tid = target.Base.ToString();
+                    if (tid != _diagLastTargetId)
+                    {
+                        _diagSeqId++;
+                        _diagFrameId = 0;
+                        _diagLastTargetId = tid;
+                    }
+                    _diagFrameId++;
 
-            _deadReckonX += moveX;
-            _deadReckonY += moveY;
+                    var entry = new
+                    {
+                        seq = _diagSeqId,
+                        frame = _diagFrameId,
+                        ts = _cacheTimer.Elapsed.TotalMilliseconds,
+                        target = target.Name,
+                        bone = (Config.HitscanEnabled && _hitscanCurrentBone != default ? _hitscanCurrentBone : selectedBone).ToString(),
+                        isADS = isAiming,
+                        isScoped = CameraManager.IsScoped,
+                        scopeSens = CameraManager.ScopeSensitivity,
+                        worldPos = new { x = targetPos.X, y = targetPos.Y, z = targetPos.Z },
+                        rawWorldPos = new { x = rawTargetPos.X, y = rawTargetPos.Y, z = rawTargetPos.Z },
+                        screenPos = new { x = screenPos.X, y = screenPos.Y },
+                        center = new { x = center.X, y = center.Y },
+                        rawDelta = new { x = screenPos.X - center.X, y = screenPos.Y - center.Y },
+                        adjDelta = new { x = deltaX, y = deltaY },
+                        pending = new { x = pendingX, y = pendingY, n = _inflightMoves.Count },
+                        distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY),
+                        moveOutput = new { x = moveX, y = moveY },
+                        accumBefore = new { x = _accumX + moveX, y = _accumY + moveY }, // before extraction
+                        worldSpeed = _targetWorldVelocity.Length(),
+                        screenVel = new { x = _targetScreenVelocity.X, y = _targetScreenVelocity.Y },
+                        smoothing = Config.Smoothing,
+                        pollingRate = Config.PollingRateHz,
+                        measuredRate = _measuredUpdateRate,
+                        ergoSens = _cachedAimingSens,
+                        maxErgoSens = _maxAimingSens,
+                        overweightMult = _cachedOverweightAimMult,
+                        ergoScale = _lastErgoScale,
+                        aspect = (float)CameraManager.Viewport.Width / CameraManager.Viewport.Height,
+                        viewport = new { w = CameraManager.Viewport.Width, h = CameraManager.Viewport.Height },
+                    };
+
+                    _diagWriter.WriteLine(JsonSerializer.Serialize(entry));
+                }
+                catch { /* never crash the aimbot for diagnostics */ }
+            }
         }
 
         /// <summary>
         /// Calculates smooth mouse movement with fractional accumulation.
-        /// Prevents rounding loss and adapts to polling rate for consistent feel.
+        /// Returns (deviceX, deviceY) with ergo compensation applied.
         /// </summary>
-        /// <param name="isAiming">True if player is aiming down sights (full speed), false for hipfire (reduced speed)</param>
         private (int dx, int dy) CalculateSmoothMovement(float deltaX, float deltaY, bool isAiming)
         {
             float distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
@@ -1086,11 +1250,12 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                 return (0, 0);
             }
 
-            // Rate compensation for high polling rates
-            // Higher polling rates need smaller movements per tick for same perceived speed
-            // Linear scaling ensures consistent movement speed regardless of polling rate
-            float pollingRate = Math.Max(30f, Config.PollingRateHz);
-            float rateScale = pollingRate / SMOOTHING_REFERENCE_RATE;
+            // Rate compensation based on ACTUAL update rate (measured from fresh frames)
+            // With stale-data detection, we only act on fresh camera data (~60-120Hz),
+            // not the configured polling rate (850Hz). Using measured rate prevents
+            // over-scaling that makes smoothing feel sluggish.
+            float actualRate = Math.Clamp(_measuredUpdateRate, 30f, 500f);
+            float rateScale = actualRate / SMOOTHING_REFERENCE_RATE;
 
             // Smoothing 1 = instant (no rate scaling)
             // Smoothing 2+ = apply rate scaling for consistent feel at high poll rates
@@ -1111,9 +1276,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             float Kp = 1.0f / effectiveSmoothing;
 
             // D term: Adds target velocity to "lead" the aim
-            // Velocity is in pixels/sec, so divide by polling rate to get per-tick contribution
-            // This keeps the D term effect consistent across different polling rates
-            float Kd = (Config.DerivativeGain * 0.01f) / pollingRate;
+            // Velocity is in pixels/sec, so divide by actual update rate to get per-tick contribution
+            float Kd = (Config.DerivativeGain * 0.01f) / actualRate;
 
             // === Aim Settling (soft dead zone) ===
             // When very close to target, reduce correction strength to prevent micro-oscillation
@@ -1131,35 +1295,63 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             }
 
             // Control output: P term + D term (velocity feed-forward), with settling
+            // This is in pixel-scale — matches the screen delta units.
             float moveX = (deltaX * Kp * settleFactor + _targetScreenVelocity.X * Kd) * speedFactor;
             float moveY = (deltaY * Kp * settleFactor + _targetScreenVelocity.Y * Kd) * speedFactor;
 
             // === Ergo/overweight compensation ===
-            // Only compensate for weapon ergo and carry weight — NOT zoom sensitivity.
-            // _aimingSens is cached at 1x (unscoped) to isolate the ergo component.
-            // Zoom sensitivity is already handled by the PD controller's screen-space error scaling.
+            // Inflates mouse counts to compensate for the game's reduced sensitivity
+            // with lower-ergo weapons / overweight.
+            // Sqrt dampening prevents extreme inflation (1.76x → 1.33x, 10.5x → 3.2x)
+            // which otherwise saturates the ±127 device cap and amplifies Smith Predictor errors.
+            float ergoScale = 1.0f;
             if (isAiming && Config.ErgoCompensation)
             {
                 float maxSens = _maxAimingSens;
                 if (maxSens > 0.01f)
                 {
-                    float ergoRatio = _cachedAimingSens / maxSens; // 1.0 for best weapon, <1.0 for worse
-                    float compensation = ergoRatio * _cachedOverweightAimMult; // combine with carry weight
+                    float ergoRatio = _cachedAimingSens / maxSens;
+                    float compensation = ergoRatio * _cachedOverweightAimMult;
                     if (compensation > 0.01f && compensation < 0.99f)
                     {
-                        moveX /= compensation;
-                        moveY /= compensation;
+                        float rawScale = 1.0f / compensation;
+                        // Sqrt dampening: preserves direction but compresses extreme values.
+                        // rawScale=1.76 → 1.33, rawScale=3.0 → 1.73, rawScale=10.5 → 3.24
+                        ergoScale = MathF.Sqrt(rawScale);
                     }
                 }
             }
 
+            // Convert pixel-space move to device-space (inflate for ergo)
+            float deviceX = moveX * ergoScale;
+            float deviceY = moveY * ergoScale;
+
+            // Scoped ramp-up: limit move magnitude for the first 8 fresh frames when scoped.
+            // Prevents the initial overshoot pendulum caused by capped 127-unit bursts
+            // interacting with low scope sensitivity.
+            if (_scopedEngageFrames > 0 && _scopedEngageFrames <= 8)
+            {
+                // Ramp from 30% to 100% over 8 frames
+                float ramp = 0.3f + 0.7f * (_scopedEngageFrames / 8f);
+                deviceX *= ramp;
+                deviceY *= ramp;
+            }
+
             // Clamp to device limits (-127 to 127)
-            moveX = Math.Clamp(moveX, -MAX_MOVE_PER_TICK, MAX_MOVE_PER_TICK);
-            moveY = Math.Clamp(moveY, -MAX_MOVE_PER_TICK, MAX_MOVE_PER_TICK);
+            deviceX = Math.Clamp(deviceX, -MAX_MOVE_PER_TICK, MAX_MOVE_PER_TICK);
+            deviceY = Math.Clamp(deviceY, -MAX_MOVE_PER_TICK, MAX_MOVE_PER_TICK);
+
+            // Save PIXEL-SPACE expected displacement for Smith Predictor.
+            // The predictor subtracts pending values from pixel-space delta (line ~1111),
+            // so pending must be in pixel-space too. If the device was cap-limited,
+            // back-calculate actual pixel displacement to prevent over-subtraction.
+            _lastMoveDeviceX = (ergoScale > 1.001f) ? deviceX / ergoScale : moveX;
+            _lastMoveDeviceY = (ergoScale > 1.001f) ? deviceY / ergoScale : moveY;
+            _lastErgoScale = ergoScale;
 
             // Accumulate fractional parts (prevents rounding loss)
-            _accumX += moveX;
-            _accumY += moveY;
+            _accumX += deviceX;
+            _accumY += deviceY;
 
             // Extract integer part for this frame
             int resultX = (int)_accumX;
@@ -1324,22 +1516,19 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
             const float stationaryThreshold = 1.5f;  // standing / turning
             const float fastThreshold = 5.0f;        // sprinting
 
+            // Monotonically decreasing: faster targets get lower smoothing (higher Kp)
+            // so the aimbot can keep up. The D term provides stability for fast movers.
+            const float stationaryMult = 0.50f;  // Stationary: 50% smoothing (fast lock)
+            const float fastMult = 0.35f;        // Fast movers: 35% smoothing (aggressive tracking)
+
             if (worldSpeed < stationaryThreshold)
-            {
-                // Stationary: reduce smoothing for faster lock (50% of base)
-                return baseSmoothing * 0.5f;
-            }
-            else if (worldSpeed > fastThreshold)
-            {
-                // Fast moving: increase smoothing for stability (150% of base)
-                return baseSmoothing * 1.5f;
-            }
-            else
-            {
-                // Linear interpolation
-                float t = (worldSpeed - stationaryThreshold) / (fastThreshold - stationaryThreshold);
-                return baseSmoothing * (0.5f + t * 1.0f);
-            }
+                return baseSmoothing * stationaryMult;
+            if (worldSpeed > fastThreshold)
+                return baseSmoothing * fastMult;
+
+            // Linear interpolation
+            float t = (worldSpeed - stationaryThreshold) / (fastThreshold - stationaryThreshold);
+            return baseSmoothing * (stationaryMult + t * (fastMult - stationaryMult));
         }
 
         private Vector3 PredictHitPoint(LocalPlayer localPlayer, AbstractPlayer target, Vector3 fireportPos, Vector3 targetPos)
@@ -1676,6 +1865,18 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
         /// Read by ESP render thread — atomic uint enum read, no lock needed.
         /// </summary>
         public Bones ActiveHitscanBone => _hitscanCurrentBone;
+
+        /// <summary>
+        /// Last predicted world-space aim point (bone + bullet drop + lead).
+        /// Read by ESP for debug marker overlay.
+        /// </summary>
+        public Vector3 PredictedAimPos => _lastPredictedAimPos;
+
+        /// <summary>
+        /// Last raw bone world position (before prediction offsets).
+        /// Read by ESP for debug marker overlay.
+        /// </summary>
+        public Vector3 RawBoneAimPos => _lastRawBoneAimPos;
 
         private readonly struct TargetCandidate
         {

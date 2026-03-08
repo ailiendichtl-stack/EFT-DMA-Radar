@@ -163,6 +163,10 @@
                                   ToolTip="Hides human player names from displaying in the Radar or Player Info Widget. Instead will show the (Height,Distance)."
                                   IsChecked="{Binding HideNames, Mode=TwoWay}"
                                   Margin="0,0,16,8" />
+                        <CheckBox Content="Show Player Value"
+                                  ToolTip="Shows gear/inventory value on living player labels"
+                                  IsChecked="{Binding ShowPlayerValue, Mode=TwoWay}"
+                                  Margin="0,0,16,8" />
                         <CheckBox Content="Show Mines"
                                   IsChecked="{Binding ShowMines, Mode=TwoWay}"
                                   Margin="0,0,16,8" />

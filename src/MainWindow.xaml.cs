@@ -1,7 +1,7 @@
-﻿/*
+/*
  * Lone EFT DMA Radar
  * Brought to you by Lone (Lone DMA)
- * 
+ *
 MIT License
 
 Copyright (c) 2025 Lone DMA
@@ -26,11 +26,13 @@ SOFTWARE.
  *
 */
 
+using System.Collections.ObjectModel;
 using LoneEftDmaRadar.UI.Radar.ViewModels;
 using LoneEftDmaRadar.UI.Radar.Views;
 using LoneEftDmaRadar.UI.Skia;
 using LoneEftDmaRadar.UI.Controls;
 using LoneEftDmaRadar.UI.ViewModels;
+using LoneEftDmaRadar.UI.Behaviors;
 using System.Diagnostics.CodeAnalysis;
 using System.Windows.Input;
 using LoneEftDmaRadar.UI.ESP;
@@ -44,6 +46,9 @@ namespace LoneEftDmaRadar
     /// </summary>
     public sealed partial class MainWindow : Window
     {
+        private Dictionary<string, DraggablePanel> _panelControls;
+        private Dictionary<string, object> _originalContent;
+
         public MainWindow()
         {
             if (Instance is not null)
@@ -58,10 +63,225 @@ namespace LoneEftDmaRadar
             DataContext = ViewModel = new MainWindowViewModel(this);
             Instance = this;
 
+            // Initialize panel tab grouping system
+            InitializePanelGrouping();
+
             // Start visibility worker if enabled
             if (App.Config.Visibility.Enabled)
                 VisibilityManager.Start();
         }
+
+        #region Panel Tab Grouping
+
+        private void InitializePanelGrouping()
+        {
+            _panelControls = new Dictionary<string, DraggablePanel>
+            {
+                ["SettingsPanel"] = SettingsPanel,
+                ["EspPanel"] = EspPanel,
+                ["LootFiltersPanel"] = LootFiltersPanel,
+                ["ContainersPanel"] = ContainersPanel,
+                ["LootListPanel"] = LootListPanel,
+                ["QuestsPanel"] = QuestsPanel,
+                ["HideoutPanel"] = HideoutPanel,
+                ["HotkeysPanel"] = HotkeysPanel,
+                ["AimbotPanel"] = AimbotPanel,
+                ["MemWritesPanel"] = MemWritesPanel,
+                ["WebRadarPanel"] = WebRadarPanel,
+                ["DebugPanel"] = DebugPanel,
+                ["VisibilityPanel"] = VisibilityPanel,
+                ["PlayersPanel"] = PlayersPanel,
+                ["LootPanel"] = LootPanel
+            };
+
+            // Snapshot original content (Tab UserControls) before any reparenting
+            _originalContent = new Dictionary<string, object>();
+            foreach (var kvp in _panelControls)
+                _originalContent[kvp.Key] = kvp.Value.PanelContent;
+
+            // Wire drag-drop grouping
+            DraggableBehavior.PanelDropped += OnPanelDropped;
+
+            // Wire tab group state changes
+            ViewModel.PanelManager.TabGroupChanged += OnTabGroupChanged;
+
+            // Provide tab order callback for config save
+            ViewModel.PanelManager.GetTabOrder = hostName =>
+            {
+                if (_panelControls.TryGetValue(hostName, out var hostPanel) && hostPanel.TabItems != null)
+                    return hostPanel.TabItems.Select(t => t.PanelName).ToList();
+                return null;
+            };
+
+            // Wire tab detach/close events from each panel
+            foreach (var panel in _panelControls.Values)
+            {
+                panel.TabDetachRequested += OnTabDetachRequested;
+                panel.TabCloseRequested += OnTabCloseRequested;
+            }
+
+            // Rebuild groups from config after panels are loaded
+            Loaded += (s, e) => ViewModel.PanelManager.RebuildGroupsFromConfig();
+        }
+
+        private void OnPanelDropped(object sender, (string Source, string Target) args)
+        {
+            ViewModel.PanelManager.GroupPanel(args.Source, args.Target);
+        }
+
+        private void OnTabGroupChanged(object sender, TabGroupChangedEventArgs e)
+        {
+            switch (e.Action)
+            {
+                case TabGroupAction.Added:
+                    ReparentContentToHost(e.HostName, e.PanelName);
+                    break;
+                case TabGroupAction.Removed:
+                    RestoreContentToStandalone(e.PanelName, e.HostName);
+                    break;
+                case TabGroupAction.Rebuilt:
+                    RestoreAllContent();
+                    break;
+            }
+        }
+
+        private void OnTabDetachRequested(object sender, string panelName)
+        {
+            ViewModel.PanelManager.UngroupPanel(panelName);
+
+            // Begin dragging the detached panel immediately under the cursor
+            if (_panelControls.TryGetValue(panelName, out var panel))
+            {
+                System.Windows.Controls.Canvas.SetZIndex(panel, int.MaxValue);
+                // Defer to let layout update after visibility change, then start drag
+                Dispatcher.InvokeAsync(() => DraggableBehavior.BeginDrag(panel),
+                    System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+        }
+
+        private void OnTabCloseRequested(object sender, string panelName)
+        {
+            ViewModel.PanelManager.UngroupPanel(panelName);
+            // Also close the now-standalone panel
+            if (ViewModel.PanelManager.PanelMap.TryGetValue(panelName, out var state))
+                ViewModel.PanelManager.ClosePanel(state);
+        }
+
+        private void ReparentContentToHost(string hostName, string sourceName)
+        {
+            if (!_panelControls.TryGetValue(hostName, out var hostPanel)) return;
+            if (!_panelControls.TryGetValue(sourceName, out var sourcePanel)) return;
+            if (!_originalContent.TryGetValue(sourceName, out var sourceContent)) return;
+
+            // Remove content from source panel (WPF single-parent rule)
+            sourcePanel.PanelContent = null;
+
+            // Transition host to tab mode if not already
+            if (hostPanel.TabItems == null)
+            {
+                // Clear host's single-content mode first so the UserControl is unparented
+                hostPanel.PanelContent = null;
+
+                hostPanel.TabItems = new ObservableCollection<TabItemModel>();
+
+                // Add host's own content as first tab
+                if (_originalContent.TryGetValue(hostName, out var hostContent))
+                {
+                    hostPanel.TabItems.Add(new TabItemModel
+                    {
+                        PanelName = hostName,
+                        Title = PanelManagerViewModel.GetPanelTitle(hostName),
+                        Content = hostContent
+                    });
+                    // Activate host tab immediately so content is visible
+                    hostPanel.ActiveTab = hostName;
+                }
+            }
+
+            // Check if source already exists in tabs (e.g., during rebuild or sidebar toggle)
+            var existingTab = hostPanel.TabItems.FirstOrDefault(t => t.PanelName == sourceName);
+            if (existingTab != null)
+            {
+                hostPanel.ActiveTab = sourceName;
+                return;
+            }
+
+            // Add source content as new tab
+            hostPanel.TabItems.Add(new TabItemModel
+            {
+                PanelName = sourceName,
+                Title = PanelManagerViewModel.GetPanelTitle(sourceName),
+                Content = sourceContent
+            });
+
+            // Activate the host's own tab (keep showing what was visible)
+            hostPanel.ActiveTab = hostName;
+        }
+
+        private void RestoreContentToStandalone(string panelName, string hostName)
+        {
+            if (!_panelControls.TryGetValue(panelName, out var panel)) return;
+            if (!_originalContent.TryGetValue(panelName, out var content)) return;
+
+            // Remove from host's TabItems
+            if (hostName != null && _panelControls.TryGetValue(hostName, out var hostPanel) && hostPanel.TabItems != null)
+            {
+                var tab = hostPanel.TabItems.FirstOrDefault(t => t.PanelName == panelName);
+                if (tab != null)
+                {
+                    tab.Content = null; // clear parent reference
+                    hostPanel.TabItems.Remove(tab);
+
+                    // If host down to 1 tab, revert to single-content mode
+                    if (hostPanel.TabItems.Count <= 1)
+                    {
+                        var lastTab = hostPanel.TabItems.FirstOrDefault();
+                        hostPanel.TabItems.Clear();
+                        hostPanel.TabItems = null;
+
+                        if (lastTab != null)
+                        {
+                            lastTab.Content = null;
+                            if (_originalContent.TryGetValue(lastTab.PanelName, out var lastContent))
+                                hostPanel.PanelContent = lastContent;
+                        }
+                    }
+                    else
+                    {
+                        // Switch to first remaining tab if active tab was removed
+                        if (hostPanel.ActiveTab == panelName)
+                            hostPanel.ActiveTab = hostPanel.TabItems[0].PanelName;
+                    }
+                }
+            }
+
+            // Restore content to the standalone panel
+            panel.PanelContent = content;
+        }
+
+        private void RestoreAllContent()
+        {
+            // Clear all tab collections
+            foreach (var panel in _panelControls.Values)
+            {
+                if (panel.TabItems != null)
+                {
+                    foreach (var tab in panel.TabItems)
+                        tab.Content = null;
+                    panel.TabItems.Clear();
+                    panel.TabItems = null;
+                }
+            }
+
+            // Restore all original content
+            foreach (var kvp in _originalContent)
+            {
+                if (_panelControls.TryGetValue(kvp.Key, out var panel))
+                    panel.PanelContent = kvp.Value;
+            }
+        }
+
+        #endregion
 
         private void BtnToggleESP_Click(object sender, RoutedEventArgs e)
         {
@@ -80,28 +300,9 @@ namespace LoneEftDmaRadar
         {
             if (sender is DraggablePanel panel)
             {
-                // Find the corresponding PanelState and close it via ViewModel
-                var panelName = panel.Name;
                 var pm = ViewModel.PanelManager;
-
-                switch (panelName)
-                {
-                    case "SettingsPanel": pm.SettingsPanel.IsOpen = false; break;
-                    case "EspPanel": pm.EspPanel.IsOpen = false; break;
-                    case "LootFiltersPanel": pm.LootFiltersPanel.IsOpen = false; break;
-                    case "ContainersPanel": pm.ContainersPanel.IsOpen = false; break;
-                    case "LootListPanel": pm.LootListPanel.IsOpen = false; break;
-                    case "QuestsPanel": pm.QuestsPanel.IsOpen = false; break;
-                    case "HideoutPanel": pm.HideoutPanel.IsOpen = false; break;
-                    case "HotkeysPanel": pm.HotkeysPanel.IsOpen = false; break;
-                    case "AimbotPanel": pm.AimbotPanel.IsOpen = false; break;
-                    case "MemWritesPanel": pm.MemWritesPanel.IsOpen = false; break;
-                    case "WebRadarPanel": pm.WebRadarPanel.IsOpen = false; break;
-                    case "DebugPanel": pm.DebugPanel.IsOpen = false; break;
-                    case "VisibilityPanel": pm.VisibilityPanel.IsOpen = false; break;
-                    case "PlayersPanel": pm.PlayersPanel.IsOpen = false; break;
-                    case "LootPanel": pm.LootPanel.IsOpen = false; break;
-                }
+                if (pm.PanelMap.TryGetValue(panel.Name, out var state))
+                    pm.ClosePanel(state);
             }
         }
 
@@ -126,21 +327,24 @@ namespace LoneEftDmaRadar
         #region Panel Content Accessors
 
         /// <summary>
-        /// Gets the SettingsTab from within the SettingsPanel.
+        /// Gets the SettingsTab — checks original content map first (handles tabbed mode).
         /// </summary>
-        public SettingsTab Settings => SettingsPanel?.PanelContent as SettingsTab;
+        public SettingsTab Settings =>
+            (_originalContent?.GetValueOrDefault("SettingsPanel") as SettingsTab)
+            ?? (SettingsPanel?.PanelContent as SettingsTab);
 
         /// <summary>
-        /// Gets the DeviceAimbotTab from within the AimbotPanel.
+        /// Gets the DeviceAimbotTab — checks original content map first (handles tabbed mode).
         /// </summary>
-        public DeviceAimbotTab DeviceAimbot => AimbotPanel?.PanelContent as DeviceAimbotTab;
+        public DeviceAimbotTab DeviceAimbot =>
+            (_originalContent?.GetValueOrDefault("AimbotPanel") as DeviceAimbotTab)
+            ?? (AimbotPanel?.PanelContent as DeviceAimbotTab);
 
         #endregion
 
         /// <summary>
         /// Make sure the program really closes.
         /// </summary>
-        /// <param name="e"></param>
         protected override void OnClosing(CancelEventArgs e)
         {
             try
@@ -163,6 +367,8 @@ namespace LoneEftDmaRadar
 
                 App.Config.Save(); // Save config before Environment.Exit(0) in OnClosed kills the process
 
+                // Cleanup
+                DraggableBehavior.PanelDropped -= OnPanelDropped;
                 Memory.Dispose(); // Close FPGA
                 VisibilityManager.Stop();
                 ESPManager.CloseESP();

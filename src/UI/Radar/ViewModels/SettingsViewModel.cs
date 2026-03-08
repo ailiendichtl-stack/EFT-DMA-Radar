@@ -460,6 +460,19 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        public bool ShowPlayerValue
+        {
+            get => App.Config.UI.ShowPlayerValue;
+            set
+            {
+                if (App.Config.UI.ShowPlayerValue != value)
+                {
+                    App.Config.UI.ShowPlayerValue = value;
+                    OnPropertyChanged(nameof(ShowPlayerValue));
+                }
+            }
+        }
+
         public bool ShowMines
         {
             get => App.Config.UI.ShowMines;

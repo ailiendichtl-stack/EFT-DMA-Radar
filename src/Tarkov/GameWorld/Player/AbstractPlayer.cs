@@ -1188,14 +1188,19 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                                 : $" ({observed.HealthStatus})"; // Only display abnormal health status
                         }
 
+                        // Value prefix (like corpses show [50K])
+                        string valuePrefix = "";
+                        if (App.Config.UI.ShowPlayerValue && Equipment is { } eq && eq.TotalValue > 0)
+                            valuePrefix = $"[{Utilities.FormatNumberKM(eq.TotalValue)}] ";
+
                         if (IsPmc)
                         {
                             char faction = PlayerSide.ToString()[0]; // Get faction letter (U/B)
-                            lines.Add($"[{faction}] {name}{health}");
+                            lines.Add($"{valuePrefix}[{faction}] {name}{health}");
                         }
                         else
                         {
-                            lines.Add($"{name}{health}");
+                            lines.Add($"{valuePrefix}{name}{health}");
                         }
 
                         if (!isFollowTarget)
@@ -1309,6 +1314,13 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             var paints = GetPaints();
             if (RadarViewModel.MouseoverGroup is int grp && grp == GroupID)
                 paints.Item2 = SKPaints.TextMouseoverGroup;
+            // Override text color if player carries an important filtered item
+            else if (App.Config.UI.ShowPlayerValue && Equipment is { } eq && eq.HasImportantItem)
+            {
+                var filterColor = eq.ImportantItemFilterColor;
+                if (!string.IsNullOrEmpty(filterColor))
+                    paints.Item2 = LootItem.GetFilterPaints(filterColor).Item2;
+            }
             point.Offset(9.5f * App.Config.UI.UIScale, 0);
             foreach (var line in lines)
             {

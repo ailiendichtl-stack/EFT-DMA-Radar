@@ -425,6 +425,12 @@ namespace LoneEftDmaRadar
         public bool HideNames { get; set; }
 
         /// <summary>
+        /// Show gear/inventory value on living player labels in Radar.
+        /// </summary>
+        [JsonPropertyName("showPlayerValue")]
+        public bool ShowPlayerValue { get; set; } = false;
+
+        /// <summary>
         /// Connects grouped players together via a semi-transparent line.
         /// </summary>
         [JsonPropertyName("connectGroups")]
@@ -532,6 +538,11 @@ namespace LoneEftDmaRadar
         /// </summary>
         [JsonPropertyName("espPlayerWeapons")]
         public bool EspPlayerWeapons { get; set; } = true;
+        /// <summary>
+        /// Show Player gear/inventory value in ESP.
+        /// </summary>
+        [JsonPropertyName("espPlayerValue")]
+        public bool EspPlayerValue { get; set; } = false;
 
         /// <summary>
         /// Show AI Names in ESP.
@@ -558,6 +569,11 @@ namespace LoneEftDmaRadar
         /// </summary>
         [JsonPropertyName("espAIWeapons")]
         public bool EspAIWeapons { get; set; } = true;
+        /// <summary>
+        /// Show AI gear/inventory value in ESP.
+        /// </summary>
+        [JsonPropertyName("espAIValue")]
+        public bool EspAIValue { get; set; } = false;
 
         /// <summary>
         /// Show ESP Overlay.
@@ -1498,6 +1514,12 @@ namespace LoneEftDmaRadar
 
         [JsonPropertyName("height")]
         public double Height { get; set; }
+
+        [JsonPropertyName("groupHost")]
+        public string GroupHost { get; set; }
+
+        [JsonPropertyName("groupOrder")]
+        public int GroupOrder { get; set; }
     }
 
     /// <summary>

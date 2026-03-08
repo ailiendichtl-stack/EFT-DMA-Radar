@@ -1,21 +1,23 @@
 /*
  * Twilight PVE Radar - WPF Modular GUI
- * DraggableBehavior: Attached behavior for Canvas-based panel dragging with grid snap
+ * DraggableBehavior: Attached behavior for Canvas-based panel dragging with grid snap and drop detection
  */
 
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using LoneEftDmaRadar.UI.Controls;
 
 namespace LoneEftDmaRadar.UI.Behaviors
 {
     /// <summary>
     /// Attached behavior that enables dragging of elements on a Canvas with 16px grid snap.
-    /// Attach to any FrameworkElement that is a child of a Canvas.
+    /// Supports drop detection for panel tab grouping.
     /// </summary>
     public static class DraggableBehavior
     {
         private const int GridSize = 16;
+        private const double TitleBarHeight = 32;
 
         #region Attached Properties
 
@@ -75,6 +77,57 @@ namespace LoneEftDmaRadar.UI.Behaviors
             public double StartLeft { get; set; }
             public double StartTop { get; set; }
             public FrameworkElement DragHandle { get; set; }
+        }
+
+        #endregion
+
+        #region Drop Detection
+
+        private static DraggablePanel _currentDropTarget;
+
+        /// <summary>
+        /// Fired when a panel is dropped onto another panel's title bar area.
+        /// Args: (SourcePanelName, TargetPanelName).
+        /// </summary>
+        public static event EventHandler<(string Source, string Target)> PanelDropped;
+
+        /// <summary>
+        /// Programmatically begins a drag on the given element using its drag handle.
+        /// The element is positioned so the cursor is centered on its title bar,
+        /// then mouse capture is started so the user can drag immediately.
+        /// </summary>
+        public static void BeginDrag(FrameworkElement element)
+        {
+            var state = GetDragState(element);
+            if (state?.DragHandle == null) return;
+            if (element.Parent is not Canvas canvas) return;
+
+            // Ensure layout is up to date (element may have just become visible)
+            element.UpdateLayout();
+
+            var elementWidth = element.ActualWidth > 0 ? element.ActualWidth : element.Width;
+            var elementHeight = element.ActualHeight > 0 ? element.ActualHeight : element.Height;
+            if (double.IsNaN(elementWidth)) elementWidth = 400;
+            if (double.IsNaN(elementHeight)) elementHeight = 400;
+
+            // Position the element so the cursor lands on the center of its title bar
+            var mousePos = Mouse.GetPosition(canvas);
+            var newLeft = mousePos.X - elementWidth / 2;
+            var newTop = mousePos.Y - TitleBarHeight / 2;
+
+            // Clamp to canvas bounds
+            newLeft = Math.Max(0, Math.Min(newLeft, canvas.ActualWidth - elementWidth));
+            newTop = Math.Max(0, Math.Min(newTop, canvas.ActualHeight - elementHeight));
+
+            Canvas.SetLeft(element, newLeft);
+            Canvas.SetTop(element, newTop);
+
+            // Start drag state
+            state.StartPoint = mousePos;
+            state.StartLeft = newLeft;
+            state.StartTop = newTop;
+            state.IsDragging = true;
+            state.DragHandle.CaptureMouse();
         }
 
         #endregion
@@ -232,6 +285,43 @@ namespace LoneEftDmaRadar.UI.Behaviors
             // Direct assignment (no animation)
             Canvas.SetLeft(element, newLeft);
             Canvas.SetTop(element, newTop);
+
+            // Drop detection: check if dragged panel overlaps another panel's title bar
+            if (element is DraggablePanel draggedPanel)
+            {
+                var centerX = newLeft + elementWidth / 2;
+                var centerY = newTop + 16; // center of title bar
+
+                DraggablePanel dropTarget = null;
+                foreach (UIElement child in canvas.Children)
+                {
+                    if (child is DraggablePanel other && other != draggedPanel
+                        && other.Visibility == Visibility.Visible)
+                    {
+                        var otherLeft = Canvas.GetLeft(other);
+                        var otherTop = Canvas.GetTop(other);
+                        if (double.IsNaN(otherLeft) || double.IsNaN(otherTop)) continue;
+
+                        // Check if center of dragged title bar is over target's title bar area
+                        if (centerX >= otherLeft && centerX <= otherLeft + other.ActualWidth
+                            && centerY >= otherTop && centerY <= otherTop + TitleBarHeight)
+                        {
+                            dropTarget = other;
+                            break;
+                        }
+                    }
+                }
+
+                // Update drop target highlight
+                if (_currentDropTarget != dropTarget)
+                {
+                    if (_currentDropTarget != null)
+                        _currentDropTarget.IsDropHighlighted = false;
+                    _currentDropTarget = dropTarget;
+                    if (_currentDropTarget != null)
+                        _currentDropTarget.IsDropHighlighted = true;
+                }
+            }
         }
 
         private static void DragHandle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -271,6 +361,35 @@ namespace LoneEftDmaRadar.UI.Behaviors
                 return;
 
             dragHandle?.ReleaseMouseCapture();
+            state.IsDragging = false;
+
+            // Check for drop target (panel grouping)
+            if (element is DraggablePanel draggedPanel && _currentDropTarget != null)
+            {
+                var target = _currentDropTarget;
+                _currentDropTarget.IsDropHighlighted = false;
+                _currentDropTarget = null;
+
+                var sourceName = draggedPanel.Name;
+                var targetName = target.Name;
+
+                if (!string.IsNullOrEmpty(sourceName) && !string.IsNullOrEmpty(targetName))
+                {
+                    // Restore source to original position (it will be hidden by grouping)
+                    Canvas.SetLeft(element, state.StartLeft);
+                    Canvas.SetTop(element, state.StartTop);
+
+                    PanelDropped?.Invoke(null, (sourceName, targetName));
+                    return;
+                }
+            }
+
+            // Clear any lingering highlight
+            if (_currentDropTarget != null)
+            {
+                _currentDropTarget.IsDropHighlighted = false;
+                _currentDropTarget = null;
+            }
 
             // Apply grid snap if enabled (direct assignment, no animation)
             if (GetEnableGridSnap(element))
@@ -284,8 +403,6 @@ namespace LoneEftDmaRadar.UI.Behaviors
                 Canvas.SetLeft(element, snappedLeft);
                 Canvas.SetTop(element, snappedTop);
             }
-
-            state.IsDragging = false;
         }
 
         private static double SnapToGrid(double value)
