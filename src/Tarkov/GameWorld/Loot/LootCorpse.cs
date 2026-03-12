@@ -138,6 +138,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             if (Player is not null && Player.LootObject is null)
                 Player.LootObject = this;
 
+            // Try to read dogtag data for killfeed
+            DogtagReader.Instance?.TryReadFromCorpse(_corpse);
+
             // Refresh inventory contents after syncing player
             RefreshContents();
         }
@@ -328,6 +331,17 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
             else
             {
                 lines.Add(Name);
+            }
+
+            // Show dogtag info if available
+            if (Player is not null)
+            {
+                var dogtag = DogtagReader.Instance?.Entries
+                    .FirstOrDefault(d => d.Nickname == Player.Name);
+                if (dogtag is not null)
+                {
+                    lines.Add($"Killed by: {dogtag.KillerName} [{dogtag.WeaponName}]");
+                }
             }
 
             // Show inventory contents if available (works for all corpse types, including pre-existing)

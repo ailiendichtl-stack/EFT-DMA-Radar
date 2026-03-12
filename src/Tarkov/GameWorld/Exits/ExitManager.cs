@@ -27,7 +27,9 @@ SOFTWARE.
 */
 
 using LoneEftDmaRadar.DMA;
+using LoneEftDmaRadar.Tarkov.Unity;
 using LoneEftDmaRadar.Tarkov.Unity.Collections;
+using LoneEftDmaRadar.Tarkov.Unity.Structures;
 using LoneEftDmaRadar.UI.Misc;
 using SDK;
 using VmmSharpEx.Options;
@@ -40,18 +42,21 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
     /// </summary>
     public sealed class ExitManager : IReadOnlyCollection<IExitPoint>
     {
-        private readonly IReadOnlyList<IExitPoint> _exits;
+        private readonly List<IExitPoint> _exits;
         private readonly List<Exfil> _exfils = new();
+        private readonly List<TransitPoint> _transits = new();
         private readonly ulong _localGameWorld;
         private readonly bool _isPMC;
+        private readonly Player.LocalPlayer _localPlayer;
         private bool _memoryExfilsLoaded = false;
         private DateTime _lastRefresh = DateTime.MinValue;
         private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(2);
 
-        public ExitManager(string mapId, bool isPMC, ulong localGameWorld = 0)
+        public ExitManager(string mapId, bool isPMC, ulong localGameWorld = 0, Player.LocalPlayer localPlayer = null)
         {
             _localGameWorld = localGameWorld;
             _isPMC = isPMC;
+            _localPlayer = localPlayer;
 
             var list = new List<IExitPoint>();
             if (TarkovDataManager.MapData.TryGetValue(mapId, out var map))
@@ -67,11 +72,13 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
                 }
                 foreach (var transit in map.Transits)
                 {
-                    list.Add(new TransitPoint(transit));
+                    var transitObj = new TransitPoint(transit);
+                    list.Add(transitObj);
+                    _transits.Add(transitObj);
                 }
             }
 
-            _exits = list;
+            _exits = list; // mutable to allow adding secret exfils from memory
 
             // Try to load memory exfil addresses on construction
             if (localGameWorld != 0)
@@ -132,6 +139,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
                         if (matchingExfil != null)
                         {
                             matchingExfil.SetMemoryAddress(exfilPointAddr);
+
+                            // Load eligibility data
+                            if (_isPMC)
+                                matchingExfil.LoadEligibleEntryPoints(exfilPointAddr);
+                            else
+                                matchingExfil.LoadEligibleScavIds(exfilPointAddr);
                         }
                     }
                     catch
@@ -140,11 +153,150 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
                     }
                 }
 
+                // Also load secret exfils (available to both PMC and Scav)
+                TryLoadSecretExfils(exfilController);
+
+                // Load transit point active status from memory
+                TryLoadTransitStatus();
+
                 _memoryExfilsLoaded = true;
             }
             catch (Exception ex)
             {
                 DebugLogger.LogDebug($"[ExitManager] Failed to load memory exfils: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Loads secret exfiltration points from memory. These are not in static map data,
+        /// so we create Exfil objects dynamically with positions read from their Transforms.
+        /// </summary>
+        private void TryLoadSecretExfils(ulong exfilController)
+        {
+            try
+            {
+                var secretArrayAddr = Memory.ReadPtr(exfilController + Offsets.ExfiltrationController.SecretExfiltrationPoints);
+                if (secretArrayAddr == 0)
+                    return;
+
+                using var secretArray = UnityArray<ulong>.Create(secretArrayAddr, useCache: false);
+
+                foreach (var exfilPointAddr in secretArray)
+                {
+                    if (exfilPointAddr == 0)
+                        continue;
+
+                    try
+                    {
+                        var settingsAddr = Memory.ReadPtr(exfilPointAddr + Offsets.ExfiltrationPoint.Settings);
+                        if (settingsAddr == 0)
+                            continue;
+
+                        var namePtr = Memory.ReadPtr(settingsAddr + Offsets.ExitSettings.Name);
+                        if (namePtr == 0)
+                            continue;
+
+                        var exfilName = Memory.ReadUnicodeString(namePtr, 64);
+                        if (string.IsNullOrEmpty(exfilName))
+                            continue;
+
+                        // Check if already matched to static data
+                        var existing = _exfils.FirstOrDefault(e =>
+                            e.Name.Equals(exfilName, StringComparison.OrdinalIgnoreCase));
+
+                        if (existing != null)
+                        {
+                            existing.SetMemoryAddress(exfilPointAddr);
+                            continue;
+                        }
+
+                        // Secret exfil not in static data — read position from Transform
+                        var ti = Memory.ReadPtrChain(exfilPointAddr, false, UnitySDK.UnityOffsets.TransformChain);
+                        if (ti == 0)
+                            continue;
+
+                        var transform = new UnityTransform(ti);
+                        var position = transform.UpdatePosition();
+
+                        var secretExfil = new Exfil(exfilName, position, exfilPointAddr, Exfil.EFaction.Shared);
+                        _exits.Add(secretExfil);
+                        _exfils.Add(secretExfil);
+                    }
+                    catch
+                    {
+                        // Skip this secret exfil on error
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogDebug($"[ExitManager] Failed to load secret exfils: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Reads transit controller from memory and updates active status of transit points.
+        /// </summary>
+        private void TryLoadTransitStatus()
+        {
+            if (_transits.Count == 0)
+                return;
+
+            try
+            {
+                var transitController = Memory.ReadPtr(_localGameWorld + Offsets.GameWorld.TransitController);
+                if (transitController == 0)
+                    return;
+
+                // TransitPoints is a Dictionary<int, TransitPoint> at offset 0x18
+                var transitDictAddr = Memory.ReadPtr(transitController + Offsets.TransitController.TransitPoints);
+                if (transitDictAddr == 0)
+                    return;
+
+                using var transitDict = UnityDictionary<int, ulong>.Create(transitDictAddr, useCache: false);
+
+                foreach (var entry in transitDict)
+                {
+                    if (entry.Value == 0)
+                        continue;
+
+                    try
+                    {
+                        // Read TransitParameters from the transit point object
+                        var paramsAddr = Memory.ReadPtr(entry.Value + Offsets.TransitPoint.parameters);
+                        if (paramsAddr == 0)
+                            continue;
+
+                        var isActive = Memory.ReadValue<bool>(paramsAddr + Offsets.TransitParameters.active);
+
+                        // Read transit name for matching
+                        var namePtr = Memory.ReadPtr(paramsAddr + Offsets.TransitParameters.name);
+                        if (namePtr == 0)
+                            continue;
+
+                        var transitName = Memory.ReadUnicodeString(namePtr, 64);
+                        if (string.IsNullOrEmpty(transitName))
+                            continue;
+
+                        // Match to static transit data by description
+                        var match = _transits.FirstOrDefault(t =>
+                            t.Description.Equals(transitName, StringComparison.OrdinalIgnoreCase));
+
+                        if (match != null)
+                        {
+                            match.IsActive = isActive;
+                            match.SetMemoryAddress(paramsAddr);
+                        }
+                    }
+                    catch
+                    {
+                        // Skip this transit point on error
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogDebug($"[ExitManager] Failed to load transit status: {ex.Message}");
             }
         }
 
@@ -169,6 +321,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
             foreach (var exfil in _exfils)
                 exfil.OnRefresh(scatter);
             scatter.Execute();
+
         }
 
         #region IReadOnlyCollection

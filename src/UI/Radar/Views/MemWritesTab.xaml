@@ -14,19 +14,20 @@
         <SolidColorBrush x:Key="AccentBrush" Color="#5DA8FF" />
         <SolidColorBrush x:Key="WarningBrush" Color="#F3B04D" />
         <SolidColorBrush x:Key="DangerBrush" Color="#EF596F" />
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Orientation="Vertical" Margin="0,0,0,10">
 
-            <!-- Transparent header -->
+            <!-- Header -->
             <TextBlock Text="Memory Writes"
                        FontSize="16"
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource Neon.PurpleSoftBrush}"
                        Margin="0,0,0,4" />
 
-            <!-- Critical Warning banner -->
+            <!-- Warning banner -->
             <Border Background="#0C11151F"
                     BorderBrush="{StaticResource DangerBrush}"
                     BorderThickness="1"
@@ -52,76 +53,48 @@
                 </DockPanel>
             </Border>
 
-            <!-- Master toggle (transparent) -->
+            <!-- Master toggle -->
             <CheckBox Content="Enable Memory Writes"
                       IsChecked="{Binding Enabled, Mode=TwoWay}"
                       FontWeight="SemiBold"
                       FontSize="14"
                       Margin="0,4,0,12" />
 
-            <UniformGrid Columns="2" Rows="0" Margin="0,0,0,8">
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- COMBAT                                                      -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <GroupBox Header="Combat" Margin="0,0,0,8">
+                <StackPanel IsEnabled="{Binding Enabled}">
 
-                <!-- Silent Aim card -->
-                <GroupBox Header="Silent Aim" Margin="0,0,8,8">
-                    <StackPanel IsEnabled="{Binding Enabled}">
-                        <CheckBox Content="Enable Silent Aim"
+                    <!-- Silent Aim -->
+                    <StackPanel Margin="0,0,0,10">
+                        <CheckBox Content="Silent Aim"
                                   IsChecked="{Binding MemoryAimEnabled, Mode=TwoWay}"
                                   FontWeight="SemiBold"
-                                  Margin="0,0,0,8" />
-
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                            <TextBlock Text="Target bone:"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,8,0" />
+                                  Margin="0,0,0,4" />
+                        <StackPanel Orientation="Horizontal" Margin="20,0,0,4">
+                            <TextBlock Text="Target bone:" VerticalAlignment="Center" Margin="0,0,8,0" />
                             <ComboBox ItemsSource="{Binding AvailableBones}"
                                       SelectedItem="{Binding MemoryAimTargetBone, Mode=TwoWay}"
-                                      Width="200" />
+                                      Width="160" />
                         </StackPanel>
-
-                        <TextBlock Text="Writes shot direction in memory instead of moving the mouse. Shares the same aim key as Device Aimbot."
+                        <TextBlock Text="Writes shot direction in memory. Shares aim key with Device Aimbot."
                                    TextWrapping="Wrap"
                                    Foreground="{DynamicResource App.TextMutedBrush}"
-                                   FontSize="12"
-                                   Margin="0,0,0,8" />
-
-                        <Border Background="#0C1A1618"
-                                BorderBrush="{StaticResource DangerBrush}"
-                                BorderThickness="0.5"
-                                CornerRadius="6"
-                                Padding="10"
-                                Margin="0,4,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Detection risk: very high"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource DangerBrush}" />
-                                <TextBlock Text="Silent aim behavior is extremely obvious to anti-cheat systems."
-                                           TextWrapping="Wrap"
-                                           Foreground="{DynamicResource App.TextMutedBrush}"
-                                           FontSize="12"
-                                           Margin="0,4,0,0" />
-                            </StackPanel>
-                        </Border>
+                                   FontSize="11"
+                                   Margin="20,0,0,0" />
                     </StackPanel>
-                </GroupBox>
 
-                <!-- No Recoil card -->
-                <GroupBox Header="No Recoil" Margin="0,0,0,8">
-                    <StackPanel IsEnabled="{Binding Enabled}">
-                        <CheckBox Content="Enable No Recoil"
+                    <!-- No Recoil -->
+                    <StackPanel Margin="0,0,0,10">
+                        <CheckBox Content="No Recoil"
                                   IsChecked="{Binding NoRecoilEnabled, Mode=TwoWay}"
                                   FontWeight="SemiBold"
-                                  Margin="0,0,0,8" />
-
-                        <TextBlock Text="Adjust recoil and sway written into memory. 100% removes recoil; 0% keeps it stock."
-                                   TextWrapping="Wrap"
-                                   Foreground="{DynamicResource App.TextMutedBrush}"
-                                   FontSize="12"
-                                   Margin="0,0,0,8" />
-
-                        <StackPanel Margin="0,4,0,0" IsEnabled="{Binding NoRecoilEnabled}">
-                            <Grid>
+                                  Margin="0,0,0,4" />
+                        <StackPanel Margin="20,0,0,0" IsEnabled="{Binding NoRecoilEnabled}">
+                            <Grid Margin="0,0,0,2">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="140" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Recoil reduction" />
@@ -132,17 +105,12 @@
                                            HorizontalAlignment="Right" />
                             </Grid>
                             <Slider Value="{Binding NoRecoilAmount, Mode=TwoWay}"
-                                    Minimum="0"
-                                    Maximum="100"
-                                    TickFrequency="5"
-                                    IsSnapToTickEnabled="True"
-                                    Margin="0,6,0,0" />
-                        </StackPanel>
-
-                        <StackPanel Margin="0,10,0,0" IsEnabled="{Binding NoRecoilEnabled}">
-                            <Grid>
+                                    Minimum="0" Maximum="100"
+                                    TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Margin="0,0,0,6" />
+                            <Grid Margin="0,0,0,2">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="140" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Sway reduction" />
@@ -153,179 +121,201 @@
                                            HorizontalAlignment="Right" />
                             </Grid>
                             <Slider Value="{Binding NoSwayAmount, Mode=TwoWay}"
-                                    Minimum="0"
-                                    Maximum="100"
-                                    TickFrequency="5"
-                                    IsSnapToTickEnabled="True"
-                                    Margin="0,6,0,0" />
+                                    Minimum="0" Maximum="100"
+                                    TickFrequency="5" IsSnapToTickEnabled="True" />
                         </StackPanel>
-
-                        <Border Background="#0C1A1618"
-                                BorderBrush="{StaticResource WarningBrush}"
-                                BorderThickness="0.5"
-                                CornerRadius="6"
-                                Padding="10"
-                                Margin="0,10,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Detection risk: high"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource WarningBrush}" />
-                                <TextBlock Text="Directly changes weapon behavior in memory and is simple to flag."
-                                           TextWrapping="Wrap"
-                                           Foreground="{DynamicResource App.TextMutedBrush}"
-                                           FontSize="12"
-                                           Margin="0,4,0,0" />
-                            </StackPanel>
-                        </Border>
                     </StackPanel>
-                </GroupBox>
 
-                <!-- Infinite Stamina card -->
-                <GroupBox Header="Infinite Stamina" Margin="0,0,8,8">
-                    <StackPanel IsEnabled="{Binding Enabled}">
-                        <CheckBox Content="Enable Infinite Stamina"
-                                  IsChecked="{Binding InfiniteStaminaEnabled, Mode=TwoWay}"
-                                  FontWeight="SemiBold"
-                                  Margin="0,0,0,8" />
+                    <!-- Weapon toggles -->
+                    <WrapPanel Margin="0,0,0,4">
+                        <CheckBox Content="No Weapon Malfunctions"
+                                  IsChecked="{Binding NoWeaponMalfunctionsEnabled, Mode=TwoWay}"
+                                  ToolTip="Prevents jams, misfires, feed failures, and slide locks"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="No Weapon Collision"
+                                  IsChecked="{Binding DisableWeaponCollisionEnabled, Mode=TwoWay}"
+                                  ToolTip="Weapon no longer folds or lowers near walls"
+                                  Margin="0,0,16,4" />
+                    </WrapPanel>
 
-                        <TextBlock Text="Refills stamina and oxygen when they drop below roughly one-third. Also attempts to bypass fatigue states."
-                                   TextWrapping="Wrap"
-                                   Foreground="{DynamicResource App.TextMutedBrush}"
-                                   FontSize="12"
-                                   Margin="0,0,0,8" />
-
-                        <Border Background="#0C1A1618"
-                                BorderBrush="{StaticResource WarningBrush}"
-                                BorderThickness="0.5"
-                                CornerRadius="6"
-                                Padding="10"
-                                Margin="0,4,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Detection risk: medium"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource WarningBrush}" />
-                                <TextBlock Text="Player stat changes are less blatant than recoil removal but remain detectable."
-                                           TextWrapping="Wrap"
-                                           Foreground="{DynamicResource App.TextMutedBrush}"
-                                           FontSize="12"
-                                           Margin="0,4,0,0" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </GroupBox>
-
-                <!-- Anti-AFK card -->
-                <GroupBox Header="Anti-AFK" Margin="0,0,0,8">
-                    <StackPanel IsEnabled="{Binding Enabled}">
-                        <CheckBox Content="Enable Anti-AFK"
-                                  IsChecked="{Binding AntiAfkEnabled, Mode=TwoWay}"
-                                  FontWeight="SemiBold"
-                                  Margin="0,0,0,8" />
-
-                        <TextBlock Text="Prevents AFK timeout by setting a 7-day inactivity delay. Applied once per raid."
-                                   TextWrapping="Wrap"
-                                   Foreground="{DynamicResource App.TextMutedBrush}"
-                                   FontSize="12" />
-                    </StackPanel>
-                </GroupBox>
-
-                <!-- Fast Weapon Ops card -->
-                <GroupBox Header="Fast Weapon Ops" Margin="0,0,8,8">
-                    <StackPanel IsEnabled="{Binding Enabled}">
-                        <CheckBox Content="Enable Fast Weapon Ops"
+                    <WrapPanel Margin="0,0,0,4">
+                        <CheckBox Content="Fast Weapon Ops (4x)"
                                   IsChecked="{Binding FastWeaponOpsEnabled, Mode=TwoWay}"
-                                  FontWeight="SemiBold"
-                                  Margin="0,0,0,8" />
-
-                        <TextBlock Text="Speeds up reload, chamber, and other weapon animations (4x). Also increases aiming speed."
-                                   TextWrapping="Wrap"
-                                   Foreground="{DynamicResource App.TextMutedBrush}"
-                                   FontSize="12"
-                                   Margin="0,0,0,8" />
-
-                        <Border Background="#0C1A1618"
-                                BorderBrush="{StaticResource WarningBrush}"
-                                BorderThickness="0.5"
-                                CornerRadius="6"
-                                Padding="10"
-                                Margin="0,4,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Detection risk: high"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource WarningBrush}" />
-                                <TextBlock Text="Abnormal animation speeds are easily flagged."
-                                           TextWrapping="Wrap"
-                                           Foreground="{DynamicResource App.TextMutedBrush}"
-                                           FontSize="12"
-                                           Margin="0,4,0,0" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </GroupBox>
-
-                <!-- Mag Drills card -->
-                <GroupBox Header="Mag Drills" Margin="0,0,0,8">
-                    <StackPanel IsEnabled="{Binding Enabled}">
-                        <CheckBox Content="Enable Fast Mag Drills"
+                                  ToolTip="Speeds up reload, chamber, and other weapon animations"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="Fast Mag Drills"
                                   IsChecked="{Binding MagDrillsEnabled, Mode=TwoWay}"
-                                  FontWeight="SemiBold"
-                                  Margin="0,0,0,8" />
+                                  ToolTip="Increases magazine load/unload speed via SkillManager"
+                                  Margin="0,0,16,4" />
+                    </WrapPanel>
 
-                        <TextBlock Text="Increases magazine load and unload speed via the SkillManager."
-                                   TextWrapping="Wrap"
-                                   Foreground="{DynamicResource App.TextMutedBrush}"
-                                   FontSize="12" />
-                    </StackPanel>
-                </GroupBox>
+                </StackPanel>
+            </GroupBox>
 
-                <!-- Disable Head Bobbing card -->
-                <GroupBox Header="Disable Head Bobbing" Margin="0,0,8,8">
-                    <StackPanel IsEnabled="{Binding Enabled}">
-                        <CheckBox Content="Disable Head Bobbing"
-                                  IsChecked="{Binding DisableHeadBobbingEnabled, Mode=TwoWay}"
-                                  FontWeight="SemiBold"
-                                  Margin="0,0,0,8" />
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- MOVEMENT                                                    -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <GroupBox Header="Movement" Margin="0,0,0,8">
+                <StackPanel IsEnabled="{Binding Enabled}">
 
-                        <TextBlock Text="Removes camera head bob effect by writing to the game settings. Purely visual QoL."
-                                   TextWrapping="Wrap"
-                                   Foreground="{DynamicResource App.TextMutedBrush}"
-                                   FontSize="12" />
-                    </StackPanel>
-                </GroupBox>
+                    <!-- Simple toggles -->
+                    <WrapPanel Margin="0,0,0,4">
+                        <CheckBox Content="Infinite Stamina"
+                                  IsChecked="{Binding InfiniteStaminaEnabled, Mode=TwoWay}"
+                                  ToolTip="Refills stamina when low, bypasses fatigue states"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="Fast Duck"
+                                  IsChecked="{Binding FastDuckEnabled, Mode=TwoWay}"
+                                  ToolTip="Instant crouch/stand transitions"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="No Inertia"
+                                  IsChecked="{Binding NoInertiaEnabled, Mode=TwoWay}"
+                                  ToolTip="Removes movement momentum for instant direction changes"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="Mule Mode"
+                                  IsChecked="{Binding MuleModeEnabled, Mode=TwoWay}"
+                                  ToolTip="Removes all overweight penalties"
+                                  Margin="0,0,16,4" />
+                    </WrapPanel>
 
-                <!-- Disable Inventory Blur card -->
-                <GroupBox Header="Disable Inventory Blur" Margin="0,0,0,8">
-                    <StackPanel IsEnabled="{Binding Enabled}">
-                        <CheckBox Content="Disable Inventory Blur"
-                                  IsChecked="{Binding DisableInventoryBlurEnabled, Mode=TwoWay}"
-                                  FontWeight="SemiBold"
-                                  Margin="0,0,0,8" />
-
-                        <TextBlock Text="Removes the blur effect when opening inventory for a clearer view."
-                                   TextWrapping="Wrap"
-                                   Foreground="{DynamicResource App.TextMutedBrush}"
-                                   FontSize="12" />
-                    </StackPanel>
-                </GroupBox>
-
-                <!-- Time of Day card -->
-                <GroupBox Header="Time of Day" Margin="0,0,8,8">
-                    <StackPanel IsEnabled="{Binding Enabled}">
-                        <CheckBox Content="Lock Time of Day"
-                                  IsChecked="{Binding TimeOfDayEnabled, Mode=TwoWay}"
-                                  FontWeight="SemiBold"
-                                  Margin="0,0,0,8" />
-
-                        <TextBlock Text="Locks the in-game time to the selected hour. Disabled on Factory and Labs."
-                                   TextWrapping="Wrap"
-                                   Foreground="{DynamicResource App.TextMutedBrush}"
-                                   FontSize="12"
-                                   Margin="0,0,0,8" />
-
-                        <StackPanel Margin="0,4,0,0" IsEnabled="{Binding TimeOfDayEnabled}">
+                    <!-- Move Speed with slider -->
+                    <StackPanel Margin="0,4,0,6">
+                        <CheckBox Content="Move Speed"
+                                  IsChecked="{Binding MoveSpeedEnabled, Mode=TwoWay}"
+                                  ToolTip="Multiplies movement animation speed. Auto-limits when overweight."
+                                  Margin="0,0,0,4" />
+                        <StackPanel Margin="20,0,0,0" IsEnabled="{Binding MoveSpeedEnabled}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Speed multiplier" />
+                                <TextBlock Text="{Binding MoveSpeedMultiplier, StringFormat='{}{0:F1}x'}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           Grid.Column="1"
+                                           HorizontalAlignment="Right" />
+                            </Grid>
+                            <Slider Value="{Binding MoveSpeedMultiplier, Mode=TwoWay}"
+                                    Minimum="1.0" Maximum="3.0"
+                                    TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Long Jump with slider -->
+                    <StackPanel Margin="0,0,0,0">
+                        <CheckBox Content="Long Jump"
+                                  IsChecked="{Binding LongJumpEnabled, Mode=TwoWay}"
+                                  ToolTip="Increases air control for longer jumps"
+                                  Margin="0,0,0,4" />
+                        <StackPanel Margin="20,0,0,0" IsEnabled="{Binding LongJumpEnabled}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Air control" />
+                                <TextBlock Text="{Binding LongJumpMultiplier, StringFormat='{}{0:F1}x'}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           Grid.Column="1"
+                                           HorizontalAlignment="Right" />
+                            </Grid>
+                            <Slider Value="{Binding LongJumpMultiplier, Mode=TwoWay}"
+                                    Minimum="1.0" Maximum="5.0"
+                                    TickFrequency="0.5" IsSnapToTickEnabled="True" />
+                        </StackPanel>
+                    </StackPanel>
+
+                </StackPanel>
+            </GroupBox>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- VISUAL                                                      -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <GroupBox Header="Visual" Margin="0,0,0,8">
+                <StackPanel IsEnabled="{Binding Enabled}">
+
+                    <!-- Vision toggles -->
+                    <WrapPanel Margin="0,0,0,4">
+                        <CheckBox Content="Night Vision"
+                                  IsChecked="{Binding NightVisionEnabled, Mode=TwoWay}"
+                                  ToolTip="Toggles NVG effect without wearing NVGs"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="Thermal Vision"
+                                  IsChecked="{Binding ThermalVisionEnabled, Mode=TwoWay}"
+                                  ToolTip="Toggles thermal effect. Auto-disables when ADS."
+                                  Margin="0,0,16,4" />
+                    </WrapPanel>
+
+                    <!-- Effect removal toggles -->
+                    <WrapPanel Margin="0,0,0,4">
+                        <CheckBox Content="No Visor"
+                                  IsChecked="{Binding NoVisorEnabled, Mode=TwoWay}"
+                                  ToolTip="Removes visor overlay effects (rain drops, scratches)"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="No Frostbite"
+                                  IsChecked="{Binding DisableFrostbiteEnabled, Mode=TwoWay}"
+                                  ToolTip="Removes cold screen effect on cold maps"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="No Head Bob"
+                                  IsChecked="{Binding DisableHeadBobbingEnabled, Mode=TwoWay}"
+                                  ToolTip="Removes camera head bob effect"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="No Inventory Blur"
+                                  IsChecked="{Binding DisableInventoryBlurEnabled, Mode=TwoWay}"
+                                  ToolTip="Removes blur effect when opening inventory"
+                                  Margin="0,0,16,4" />
+                    </WrapPanel>
+
+                    <!-- World toggles -->
+                    <WrapPanel Margin="0,0,0,4">
+                        <CheckBox Content="Clear Weather"
+                                  IsChecked="{Binding ClearWeatherEnabled, Mode=TwoWay}"
+                                  ToolTip="Forces clear sky, no rain/fog. Skips Factory/Lab."
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="No Grass"
+                                  IsChecked="{Binding DisableGrassEnabled, Mode=TwoWay}"
+                                  ToolTip="Removes grass/foliage rendering. Skips Factory/Lab."
+                                  Margin="0,0,16,4" />
+                    </WrapPanel>
+
+                    <!-- Full Bright with slider -->
+                    <StackPanel Margin="0,4,0,6">
+                        <CheckBox Content="Full Bright"
+                                  IsChecked="{Binding FullBrightEnabled, Mode=TwoWay}"
+                                  ToolTip="Boosts ambient lighting. Skips Factory/Lab/Labyrinth."
+                                  Margin="0,0,0,4" />
+                        <StackPanel Margin="20,0,0,0" IsEnabled="{Binding FullBrightEnabled}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Intensity" />
+                                <TextBlock Text="{Binding FullBrightIntensity, StringFormat='{}{0:F1}'}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           Grid.Column="1"
+                                           HorizontalAlignment="Right" />
+                            </Grid>
+                            <Slider Value="{Binding FullBrightIntensity, Mode=TwoWay}"
+                                    Minimum="0.1" Maximum="2.0"
+                                    TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Time of Day with slider -->
+                    <StackPanel Margin="0,0,0,0">
+                        <CheckBox Content="Lock Time of Day"
+                                  IsChecked="{Binding TimeOfDayEnabled, Mode=TwoWay}"
+                                  ToolTip="Locks in-game time to selected hour. Skips Factory/Lab."
+                                  Margin="0,0,0,4" />
+                        <StackPanel Margin="20,0,0,0" IsEnabled="{Binding TimeOfDayEnabled}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Hour" />
@@ -336,16 +326,103 @@
                                            HorizontalAlignment="Right" />
                             </Grid>
                             <Slider Value="{Binding TimeOfDayHour, Mode=TwoWay}"
-                                    Minimum="0"
-                                    Maximum="24"
-                                    TickFrequency="1"
-                                    IsSnapToTickEnabled="True"
-                                    Margin="0,6,0,0" />
+                                    Minimum="0" Maximum="24"
+                                    TickFrequency="1" IsSnapToTickEnabled="True" />
                         </StackPanel>
                     </StackPanel>
-                </GroupBox>
 
-            </UniformGrid>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- UTILITY                                                     -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <GroupBox Header="Utility" Margin="0,0,0,8">
+                <StackPanel IsEnabled="{Binding Enabled}">
+
+                    <!-- Simple toggles -->
+                    <WrapPanel Margin="0,0,0,4">
+                        <CheckBox Content="Anti-AFK"
+                                  IsChecked="{Binding AntiAfkEnabled, Mode=TwoWay}"
+                                  ToolTip="Prevents AFK timeout (7-day delay). Applied once per raid."
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="Instant Plant"
+                                  IsChecked="{Binding InstantPlantEnabled, Mode=TwoWay}"
+                                  ToolTip="Quest item planting completes instantly"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="Loot Through Walls"
+                                  IsChecked="{Binding LootThroughWallsEnabled, Mode=TwoWay}"
+                                  ToolTip="Interact with loot and containers through walls"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="Med Panel"
+                                  IsChecked="{Binding MedPanelEnabled, Mode=TwoWay}"
+                                  ToolTip="Shows the medical effect panel in-game"
+                                  Margin="0,0,16,4" />
+                    </WrapPanel>
+
+                    <WrapPanel Margin="0,0,0,4">
+                        <CheckBox Content="Owl Mode (360 Head)"
+                                  IsChecked="{Binding OwlModeEnabled, Mode=TwoWay}"
+                                  ToolTip="Removes free-look angle limits for full rotation"
+                                  Margin="0,0,16,4" />
+                        <CheckBox Content="Third Person"
+                                  IsChecked="{Binding ThirdPersonEnabled, Mode=TwoWay}"
+                                  ToolTip="Pulls camera back to third-person view"
+                                  Margin="0,0,16,4" />
+                    </WrapPanel>
+
+                    <!-- Extended Reach with slider -->
+                    <StackPanel Margin="0,4,0,6">
+                        <CheckBox Content="Extended Reach"
+                                  IsChecked="{Binding ExtendedReachEnabled, Mode=TwoWay}"
+                                  ToolTip="Increases loot and door interaction distance"
+                                  Margin="0,0,0,4" />
+                        <StackPanel Margin="20,0,0,0" IsEnabled="{Binding ExtendedReachEnabled}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Distance" />
+                                <TextBlock Text="{Binding ExtendedReachDistance, StringFormat='{}{0:F1}m'}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           Grid.Column="1"
+                                           HorizontalAlignment="Right" />
+                            </Grid>
+                            <Slider Value="{Binding ExtendedReachDistance, Mode=TwoWay}"
+                                    Minimum="1.3" Maximum="10.0"
+                                    TickFrequency="0.5" IsSnapToTickEnabled="True" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Wide Lean with slider -->
+                    <StackPanel Margin="0,0,0,0">
+                        <CheckBox Content="Wide Lean"
+                                  IsChecked="{Binding WideLeanEnabled, Mode=TwoWay}"
+                                  ToolTip="Extends lean distance. Use Q/E lean keys to activate."
+                                  Margin="0,0,0,4" />
+                        <StackPanel Margin="20,0,0,0" IsEnabled="{Binding WideLeanEnabled}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Lean amount" />
+                                <TextBlock Text="{Binding WideLeanAmount, StringFormat='{}{0:F1}'}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           Grid.Column="1"
+                                           HorizontalAlignment="Right" />
+                            </Grid>
+                            <Slider Value="{Binding WideLeanAmount, Mode=TwoWay}"
+                                    Minimum="1.0" Maximum="15.0"
+                                    TickFrequency="0.5" IsSnapToTickEnabled="True" />
+                        </StackPanel>
+                    </StackPanel>
+
+                </StackPanel>
+            </GroupBox>
 
         </StackPanel>
     </ScrollViewer>

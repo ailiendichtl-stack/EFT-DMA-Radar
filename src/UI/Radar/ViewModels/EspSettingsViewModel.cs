@@ -908,6 +908,21 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         }
         #endregion
 
+        #region Killfeed
+        public bool KillfeedEnabled
+        {
+            get => App.Config.UI.Killfeed.Enabled;
+            set
+            {
+                if (App.Config.UI.Killfeed.Enabled != value)
+                {
+                    App.Config.UI.Killfeed.Enabled = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        #endregion
+
         public string EspFontFamily
         {
             get => App.Config.UI.EspFontFamily;

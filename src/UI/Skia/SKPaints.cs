@@ -471,6 +471,21 @@ namespace LoneEftDmaRadar.UI.Skia
             IsAntialias = true,
         };
 
+        public static SKPaint PaintWishlistItem { get; } = new()
+        {
+            Color = new SKColor(0x9B, 0x59, 0xB6), // Purple/Violet (#9B59B6)
+            StrokeWidth = 0.25f,
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true,
+        };
+
+        public static SKPaint TextWishlistItem { get; } = new()
+        {
+            Color = new SKColor(0x9B, 0x59, 0xB6), // Purple/Violet (#9B59B6)
+            IsStroke = false,
+            IsAntialias = true,
+        };
+
         #endregion
 
         #region Render/Misc Paints
@@ -535,6 +550,7 @@ namespace LoneEftDmaRadar.UI.Skia
             Style = SKPaintStyle.Fill,
             IsAntialias = true,
         };
+
 
         public static SKPaint TextExfil { get; } = new()
         {

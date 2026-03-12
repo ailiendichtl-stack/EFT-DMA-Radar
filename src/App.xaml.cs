@@ -209,11 +209,21 @@ namespace LoneEftDmaRadar
         /// </summary>
         private async Task ConfigureProgramAsync(LoadingWindow loadingWindow)
         {
-            await loadingWindow.ViewModel.UpdateProgressAsync(15, "Loading, Please Wait...");
-            _ = Task.Run(CheckForUpdatesAsync); // Run continuations on the thread pool
+            var vm = loadingWindow.ViewModel;
+
+            await vm.UpdateProgressAsync(5, "Checking for updates...");
+            _ = Task.Run(CheckForUpdatesAsync);
+
+            await vm.UpdateProgressAsync(10, "Loading game data...");
             var tarkovDataManager = TarkovDataManager.ModuleInitAsync();
+
+            await vm.UpdateProgressAsync(15, "Loading map data...");
             var eftMapManager = EftMapManager.ModuleInitAsync();
+
+            await vm.UpdateProgressAsync(20, "Initializing memory interface...");
             var memoryInterface = MemoryInterface.ModuleInitAsync();
+
+            await vm.UpdateProgressAsync(25, "Detecting system settings...");
             var misc = Task.Run(() =>
             {
                 IsDarkMode = GetIsDarkMode();
@@ -224,8 +234,21 @@ namespace LoneEftDmaRadar
                 }
                 RuntimeHelpers.RunClassConstructor(typeof(ColorPickerViewModel).TypeHandle);
             });
-            await Task.WhenAll(tarkovDataManager, eftMapManager, memoryInterface, misc);
-            await loadingWindow.ViewModel.UpdateProgressAsync(100, "Loading Completed!");
+
+            // Await each task individually to show progress as they complete
+            await misc;
+            await vm.UpdateProgressAsync(40, "System settings loaded.");
+
+            await tarkovDataManager;
+            await vm.UpdateProgressAsync(60, "Game data loaded.");
+
+            await eftMapManager;
+            await vm.UpdateProgressAsync(80, "Map data loaded.");
+
+            await memoryInterface;
+            await vm.UpdateProgressAsync(95, "Memory interface ready.");
+
+            await vm.UpdateProgressAsync(100, "Loading complete!");
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         }
 

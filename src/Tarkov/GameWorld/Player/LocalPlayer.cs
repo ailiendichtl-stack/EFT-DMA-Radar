@@ -107,15 +107,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             FirearmManager = new FirearmManager(this);
             RaidId = GetRaidId();
 
+            // Read profile ID for all player types (needed for exfil eligibility checks)
+            var profileIdPtr = Memory.ReadPtr(Profile + Offsets.Profile.Id);
+            ProfileId = Memory.ReadUnicodeString(profileIdPtr);
+
             if (IsPmc)
             {
                 var entryPtr = Memory.ReadPtr(Info + Offsets.PlayerInfo.EntryPoint);
                 EntryPoint = Memory.ReadUnicodeString(entryPtr);
-            }
-            else if (IsScav)
-            {
-                var profileIdPtr = Memory.ReadPtr(Profile + Offsets.Profile.Id);
-                ProfileId = Memory.ReadUnicodeString(profileIdPtr);
             }
         }
 

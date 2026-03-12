@@ -140,6 +140,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
         public bool IsHideoutItem => Hideout.HideoutManager.Instance?.IsHideoutItem(ID) ?? false;
 
         /// <summary>
+        /// True if this item is on the player's wishlist.
+        /// </summary>
+        public bool IsWishlistItem => WishlistTracker.Instance?.IsWishlistItem(ID) ?? false;
+
+        /// <summary>
         /// True if the item is blacklisted via the UI.
         /// </summary>
         public bool Blacklisted => CustomFilter?.Blacklisted ?? false;
@@ -270,6 +275,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 accentColor = TooltipColors.LootQuest;
             else if (IsHideoutItem)
                 accentColor = TooltipColors.LootHideout;
+            else if (IsWishlistItem)
+                accentColor = new SKColor(0x9B, 0x59, 0xB6); // Purple/Violet
             else if (IsValuableLoot)
                 accentColor = TooltipColors.LootValuable;
             else if (!string.IsNullOrEmpty(CustomFilter?.Color) && SKColor.TryParse(CustomFilter.Color, out var filterColor))
@@ -301,6 +308,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 tooltip.AddRow("Tag", "Quest Item", TooltipColors.LootQuest);
             else if (IsHideoutItem)
                 tooltip.AddRow("Tag", "Hideout Item", TooltipColors.LootHideout);
+            else if (IsWishlistItem)
+                tooltip.AddRow("Tag", "Wishlist", new SKColor(0x9B, 0x59, 0xB6));
             else if (Important)
                 tooltip.AddRow("Tag", "Important", SKColors.MediumPurple);
 
@@ -346,6 +355,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Loot
                 return new(SKPaints.PaintQuestItem, SKPaints.TextQuestItem);
             if (IsHideoutItem)
                 return new(SKPaints.PaintHideoutItem, SKPaints.TextHideoutItem);
+            if (IsWishlistItem)
+                return new(SKPaints.PaintWishlistItem, SKPaints.TextWishlistItem);
             if (LootFilter.ShowMeds && IsMeds)
                 return new(SKPaints.PaintMeds, SKPaints.TextMeds);
             if (LootFilter.ShowFood && IsFood)

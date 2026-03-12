@@ -306,7 +306,7 @@
             </GroupBox>
 
             <!-- Misc card -->
-            <GroupBox Header="Misc" Margin="0,0,0,8">
+            <GroupBox Header="World Objects" Margin="0,0,0,8">
                 <StackPanel>
                     <WrapPanel>
                         <CheckBox Content="Show Exfils" IsChecked="{Binding EspExfils, Mode=TwoWay}" Margin="0,0,16,8" />
@@ -325,51 +325,33 @@
                 </StackPanel>
             </GroupBox>
 
-            <!-- Mini Radar card -->
-            <GroupBox Header="Mini Radar" Margin="0,0,0,8">
+            <!-- Widgets -->
+            <GroupBox Header="Widgets" Margin="0,0,0,8">
                 <StackPanel>
-                    <CheckBox Content="Enable Mini Radar" IsChecked="{Binding MiniRadarEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
-
-                    <StackPanel Visibility="{Binding MiniRadarEnabled, Converter={StaticResource BoolToVis}}">
-                        <WrapPanel Margin="0,0,0,8">
-                             <TextBlock Text="Size:" VerticalAlignment="Center" Width="60"/>
-                             <Slider Width="150" Minimum="150" Maximum="512" Value="{Binding MiniRadarSize, Mode=TwoWay}" SmallChange="10" LargeChange="50"/>
-                             <TextBlock Text="{Binding MiniRadarSize, StringFormat='{}{0} px'}" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                        </WrapPanel>
-
-                        <WrapPanel Margin="0,0,0,8">
-                            <TextBlock Text="Position:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                            <TextBox Width="50" Text="{Binding MiniRadarScreenX, Mode=TwoWay}" ToolTip="-1 = Auto (Right)"/>
-                            <TextBlock Text="Y" VerticalAlignment="Center" Margin="8,0,4,0"/>
-                            <TextBox Width="50" Text="{Binding MiniRadarScreenY, Mode=TwoWay}"/>
-                        </WrapPanel>
-
-                        <TextBlock Text="Visibility Layers" FontWeight="SemiBold" Margin="0,4,0,4"/>
-                        <WrapPanel>
+                    <CheckBox Content="Mini Radar" IsChecked="{Binding MiniRadarEnabled, Mode=TwoWay}" Margin="0,0,0,4"/>
+                    <StackPanel Visibility="{Binding MiniRadarEnabled, Converter={StaticResource BoolToVis}}" Margin="16,0,0,0">
+                        <TextBlock Text="Drag to reposition, drag corner to resize." Foreground="{DynamicResource App.TextTertiaryBrush}" FontSize="11" Margin="0,0,0,4"/>
+                        <WrapPanel Margin="0,0,0,4">
                              <CheckBox Content="Players" IsChecked="{Binding MiniRadarShowPlayers, Mode=TwoWay}" Margin="0,0,12,0"/>
                              <CheckBox Content="Loot" IsChecked="{Binding MiniRadarShowLoot, Mode=TwoWay}" Margin="0,0,12,0"/>
                              <CheckBox Content="Containers" IsChecked="{Binding MiniRadarShowContainers, Mode=TwoWay}" Margin="0,0,12,0"/>
                              <CheckBox Content="Exits" IsChecked="{Binding MiniRadarShowExits, Mode=TwoWay}" Margin="0,0,12,0"/>
                              <CheckBox Content="Grenades" IsChecked="{Binding MiniRadarShowGrenades, Mode=TwoWay}" Margin="0,0,12,0"/>
                         </WrapPanel>
-                        <CheckBox Content="Invert Map Colors (Dark)" IsChecked="{Binding MiniRadarInvertColors, Mode=TwoWay}" Margin="0,8,0,0"/>
+                        <CheckBox Content="Invert Map Colors" IsChecked="{Binding MiniRadarInvertColors, Mode=TwoWay}" Margin="0,0,0,0"/>
                     </StackPanel>
-                </StackPanel>
-            </GroupBox>
-
-            <!-- Ammo Counter card -->
-            <GroupBox Header="Ammo Counter" Margin="0,0,0,8">
-                <StackPanel>
+                    <Separator Margin="0,6,0,6" Opacity="0.3"/>
                     <WrapPanel>
-                        <CheckBox Content="Enable Ammo Counter" IsChecked="{Binding AmmoCounterEnabled, Mode=TwoWay}" Margin="0,0,16,8"
-                                  ToolTip="Displays ammo count on ESP. Drag to reposition, drag corner to resize. Shows ammo type below count."/>
+                        <CheckBox Content="Ammo Counter" IsChecked="{Binding AmmoCounterEnabled, Mode=TwoWay}" Margin="0,0,16,0"/>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="Text Color:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <controls:NeonColorSwatch
                                               SelectedColor="{Binding AmmoCounterTextColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"/>
                         </StackPanel>
                     </WrapPanel>
+                    <Separator Margin="0,6,0,6" Opacity="0.3"/>
+                    <CheckBox Content="Killfeed" IsChecked="{Binding KillfeedEnabled, Mode=TwoWay}"
+                              ToolTip="PMC killfeed on ESP overlay. Drag to reposition, drag corner to resize."/>
                 </StackPanel>
             </GroupBox>
 

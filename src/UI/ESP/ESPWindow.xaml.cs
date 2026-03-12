@@ -86,7 +86,21 @@ namespace LoneEftDmaRadar.UI.ESP
 
         // Ammo Counter Widget
         private AmmoCounterWidget _ammoWidget;
+        private KillfeedWidget _killfeedWidget;
         private float _mouseX;
+
+        // Mini Radar drag/resize state
+        private const float MINIRADAR_RESIZE_HANDLE = 14f;
+        private const float MINIRADAR_MIN_SIZE = 128f;
+        private const float MINIRADAR_HOVER_FADE_MS = 1500f;
+        private bool _miniRadarDragging;
+        private bool _miniRadarResizing;
+        private bool _miniRadarHovering;
+        private long _miniRadarLastHoverTicks;
+        private float _miniRadarDragOffsetX;
+        private float _miniRadarDragOffsetY;
+        private float _miniRadarResizeStartMouse;
+        private float _miniRadarResizeStartSize;
         private float _mouseY;
 
         // Reusable point buffer for grenade blast/trail rendering (avoids per-frame allocation)
@@ -160,8 +174,8 @@ namespace LoneEftDmaRadar.UI.ESP
             _skeletonPaint = new SKPaint
             {
                 Color = SKColors.White,
-                StrokeWidth = 1.5f,
-                IsAntialias = true,
+                StrokeWidth = 1.0f,
+                IsAntialias = false, // Crisper skeleton lines
                 Style = SKPaintStyle.Stroke
             };
 
@@ -190,8 +204,9 @@ namespace LoneEftDmaRadar.UI.ESP
                 dueTime: 0,
                 period: App.Config.Debug.EspTimerPeriodMs); // Default 2ms, configurable in Debug panel
 
-            // Initialize ammo counter widget
+            // Initialize widgets
             _ammoWidget = new AmmoCounterWidget();
+            _killfeedWidget = new KillfeedWidget();
         }
 
         private void InitializeRenderSurface()
@@ -329,14 +344,12 @@ namespace LoneEftDmaRadar.UI.ESP
                         {
                             foreach (var exit in Exits)
                             {
-                                if (exit is Exfil exfil && (exfil.Status == Exfil.EStatus.Open || exfil.Status == Exfil.EStatus.Pending))
+                                if (exit is Exfil exfil && exfil.Status != Exfil.EStatus.Closed && exfil.IsAvailableForPlayer(localPlayer))
                                 {
                                      if (WorldToScreen2WithScale(exfil.Position, out var screen, out var scale, screenWidth, screenHeight))
                                      {
-                                         var dotColor = exfil.Status == Exfil.EStatus.Pending
-                                             ? ToColor(SKPaints.PaintExfilPending)
-                                             : ToColor(SKPaints.PaintExfilOpen);
-                                         var textColor = GetExfilColorForRender();
+                                         var dotColor = GetExfilDotColor(exfil);
+                                         var textColor = GetExfilTextColor(exfil);
 
                                          // Apply distance-based scaling
                                          float markerSize = 4f * scale;
@@ -409,6 +422,14 @@ namespace LoneEftDmaRadar.UI.ESP
                             int maxAmmo = snapshot?.HasValidAmmo == true ? snapshot.MaxAmmo : -1;
                             string ammoTypeName = snapshot?.HasValidAmmo == true ? snapshot.AmmoTypeName : null;
                             _ammoWidget.Draw(ctx, currentAmmo, maxAmmo, ammoTypeName);
+                        }
+
+                        // Draw Killfeed Widget
+                        if (App.Config.UI.Killfeed.Enabled && _killfeedWidget != null)
+                        {
+                            int entryCount = LoneEftDmaRadar.Tarkov.GameWorld.Loot.DogtagReader.Instance?.Count ?? 0;
+                            _killfeedWidget.UpdateHoverState(_mouseX, _mouseY, screenWidth, screenHeight, entryCount);
+                            _killfeedWidget.Draw(ctx, screenWidth, screenHeight);
                         }
 
                         DrawFPS(ctx, screenWidth, screenHeight);
@@ -1142,8 +1163,8 @@ namespace LoneEftDmaRadar.UI.ESP
 
                  if (map is null) return;
 
-                 // Check if map changed or size changed
-                 if (_lastMapId != map.ID || _lastMiniRadarSize != cfg.Size)
+                 // Check if map changed, size changed, or invert toggled
+                 if (_lastMapId != map.ID || _lastMiniRadarSize != cfg.Size || _lastMiniRadarInvert != cfg.InvertColors)
                  {
                      UpdateMiniRadarTexture(map, cfg.Size);
                  }
@@ -1172,7 +1193,7 @@ namespace LoneEftDmaRadar.UI.ESP
                  // Draw Exits (if enabled)
                  if (Exits is not null && cfg.ShowExits && App.Config.UI.EspExfils)
                  {
-                     DrawMiniRadarExits(ctx, map);
+                     DrawMiniRadarExits(ctx, map, localPlayer);
                  }
 
                 // Draw Loot (if enabled)
@@ -1209,8 +1230,47 @@ namespace LoneEftDmaRadar.UI.ESP
                      }
                  }
                  
-                 // Draw Border Outline
-                 ctx.DrawRect(destRect, new DxColor(100, 100, 100, 255), 1.0f);
+                 // Draw Border — subtle default, Twilight purple on hover/interaction
+                 bool miniRadarInteracting = _miniRadarDragging || _miniRadarResizing;
+                 bool miniRadarShowBorder = _miniRadarHovering || miniRadarInteracting;
+                 if (!miniRadarShowBorder)
+                 {
+                     var fadeElapsed = (System.Diagnostics.Stopwatch.GetTimestamp() - _miniRadarLastHoverTicks) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+                     miniRadarShowBorder = fadeElapsed < MINIRADAR_HOVER_FADE_MS;
+                 }
+
+                 if (miniRadarShowBorder)
+                 {
+                     float opacity;
+                     if (_miniRadarHovering || miniRadarInteracting)
+                         opacity = 1.0f;
+                     else
+                     {
+                         var fadeElapsed = (System.Diagnostics.Stopwatch.GetTimestamp() - _miniRadarLastHoverTicks) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+                         opacity = fadeElapsed >= MINIRADAR_HOVER_FADE_MS ? 0.0f : 1.0f - (float)(fadeElapsed / MINIRADAR_HOVER_FADE_MS);
+                     }
+
+                     var borderColor = miniRadarInteracting
+                         ? new DxColor(0xFF, 0x45, 0x99, (byte)(opacity * 204))  // Purple #9945FF @ 80%
+                         : new DxColor(0xFF, 0x7B, 0xA5, (byte)(opacity * 140)); // Purple soft #A57BFF @ 55%
+                     ctx.DrawRect(destRect, borderColor, 1f);
+
+                     // Resize handle — filled square, bottom-right corner
+                     var handleColor = miniRadarInteracting
+                         ? new DxColor(0xFF, 0x45, 0x99, (byte)(opacity * 204))
+                         : new DxColor(0xFF, 0x7B, 0xA5, (byte)(opacity * 200));
+                     var handleRect = new RectangleF(
+                         destRect.Right - MINIRADAR_RESIZE_HANDLE,
+                         destRect.Bottom - MINIRADAR_RESIZE_HANDLE,
+                         MINIRADAR_RESIZE_HANDLE,
+                         MINIRADAR_RESIZE_HANDLE);
+                     ctx.DrawFilledRect(handleRect, handleColor);
+                 }
+                 else
+                 {
+                     // Subtle default border
+                     ctx.DrawRect(destRect, new DxColor(0x2A, 0x2A, 0x30, 0x80), 1f);
+                 }
              }
              catch
              {
@@ -1329,15 +1389,15 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private void DrawMiniRadarExits(Dx9RenderContext ctx, IEftMap map)
+        private void DrawMiniRadarExits(Dx9RenderContext ctx, IEftMap map, LocalPlayer localPlayer)
         {
             if (Exits is null) return;
 
             foreach (var exit in Exits)
             {
-                if (exit is Exfil exfil && (exfil.Status == Exfil.EStatus.Open || exfil.Status == Exfil.EStatus.Pending))
+                if (exit is Exfil exfil && exfil.Status != Exfil.EStatus.Closed && exfil.IsAvailableForPlayer(localPlayer))
                 {
-                    var color = exfil.Status == Exfil.EStatus.Pending ? SKColors.Yellow : SKColors.LimeGreen;
+                    var color = GetExfilMiniRadarColor(exfil);
                     DrawMiniRadarDot(ctx, exfil.Position, map, color, 2.5f);
                 }
             }
@@ -1391,6 +1451,7 @@ namespace LoneEftDmaRadar.UI.ESP
         }
 
         private int _lastMiniRadarSize = -1;
+        private bool _lastMiniRadarInvert;
         private DateTime _lastMiniRadarErrorTime = DateTime.MinValue;
 
         private void UpdateMiniRadarTexture(IEftMap map, int size)
@@ -1467,6 +1528,7 @@ namespace LoneEftDmaRadar.UI.ESP
                  
                  _lastMapId = map.ID;
                  _lastMiniRadarSize = size;
+                 _lastMiniRadarInvert = App.Config.UI.MiniRadar.InvertColors;
                  DebugLogger.LogInfo($"[MiniRadar] Texture updated for '{map.ID}' @ {size}px (Scale: {screenScale:F3})");
              }
              catch (Exception ex)
@@ -1528,64 +1590,40 @@ namespace LoneEftDmaRadar.UI.ESP
             private bool TryGetBoundingBox(AbstractPlayer player, float w, float h, out RectangleF rect)
         {
             rect = default;
-            
-            // Validate player position before calculating bounding box
-            var playerPos = player.Position;
-            if (playerPos == Vector3.Zero || 
-                float.IsNaN(playerPos.X) || float.IsInfinity(playerPos.X))
-                return false;
-            
-            var projectedPoints = new List<SKPoint>();
-            var mins = new Vector3((float)-0.4, 0, (float)-0.4);
-            var maxs = new Vector3((float)0.4, (float)1.75, (float)0.4);
 
-            mins = playerPos + mins;
-            maxs = playerPos + maxs;
+            // Use head bone + foot position for accurate screen-space box sizing
+            var headPos = player.GetBonePos(Bones.HumanHead);
+            var footPos = player.Position;
 
-            var points = new List<Vector3> {
-                new Vector3(mins.X, mins.Y, mins.Z),
-                new Vector3(mins.X, maxs.Y, mins.Z),
-                new Vector3(maxs.X, maxs.Y, mins.Z),
-                new Vector3(maxs.X, mins.Y, mins.Z),
-                new Vector3(maxs.X, maxs.Y, maxs.Z),
-                new Vector3(mins.X, maxs.Y, maxs.Z),
-                new Vector3(mins.X, mins.Y, maxs.Z),
-                new Vector3(maxs.X, mins.Y, maxs.Z)
-            };
-
-            foreach (var position in points)
-            {
-                if (TryProject(position, w, h, out var s))
-                    projectedPoints.Add(s);
-            }
-
-            if (projectedPoints.Count < 2)
+            if (headPos == Vector3.Zero || footPos == Vector3.Zero)
                 return false;
 
-            float minX = float.MaxValue, minY = float.MaxValue;
-            float maxX = float.MinValue, maxY = float.MinValue;
+            // Offset above head bone to cover top of skull
+            headPos.Y += 0.2f;
 
-            foreach (var point in projectedPoints)
-            {
-                if (point.X < minX) minX = point.X;
-                if (point.X > maxX) maxX = point.X;
-                if (point.Y < minY) minY = point.Y;
-                if (point.Y > maxY) maxY = point.Y;
-            }
-
-            float boxWidth = maxX - minX;
-            float boxHeight = maxY - minY;
-
-            if (boxWidth < 1f || boxHeight < 1f || boxWidth > w * 2f || boxHeight > h * 2f)
+            if (!TryProject(headPos, w, h, out var headScreen) ||
+                !TryProject(footPos, w, h, out var footScreen))
                 return false;
 
-            minX = Math.Clamp(minX, -50f, w + 50f);
-            maxX = Math.Clamp(maxX, -50f, w + 50f);
-            minY = Math.Clamp(minY, -50f, h + 50f);
-            maxY = Math.Clamp(maxY, -50f, h + 50f);
+            float boxHeight = MathF.Abs(footScreen.Y - headScreen.Y);
+            if (boxHeight < 1f || boxHeight > h * 2f)
+                return false;
 
-            float padding = 2f;
-            rect = new RectangleF(minX - padding, minY - padding, (maxX - minX) + padding * 2f, (maxY - minY) + padding * 2f);
+            // Width derived from height with natural body aspect ratio
+            float boxWidth = boxHeight / 1.8f;
+
+            float centerX = (headScreen.X + footScreen.X) * 0.5f;
+            float top = MathF.Min(headScreen.Y, footScreen.Y);
+            float bottom = MathF.Max(headScreen.Y, footScreen.Y);
+
+            float left = centerX - boxWidth * 0.5f;
+
+            left = Math.Clamp(left, -50f, w + 50f);
+            float right = Math.Clamp(left + boxWidth, -50f, w + 50f);
+            top = Math.Clamp(top, -50f, h + 50f);
+            bottom = Math.Clamp(bottom, -50f, h + 50f);
+
+            rect = new RectangleF(left, top, right - left, bottom - top);
             return true;
         }
 
@@ -1597,15 +1635,20 @@ namespace LoneEftDmaRadar.UI.ESP
         private bool TryGet3DCorners(AbstractPlayer player, float w, float h, out SKPoint[] corners)
         {
             corners = new SKPoint[8];
-            var playerPos = player.Position;
-            if (playerPos == Vector3.Zero ||
-                float.IsNaN(playerPos.X) || float.IsInfinity(playerPos.X))
+            var footPos = player.Position;
+            if (footPos == Vector3.Zero ||
+                float.IsNaN(footPos.X) || float.IsInfinity(footPos.X))
                 return false;
 
-            var mins = new Vector3(-0.4f, 0, -0.4f);
-            var maxs = new Vector3(0.4f, 1.75f, 0.4f);
-            mins = playerPos + mins;
-            maxs = playerPos + maxs;
+            // Use actual head bone height for accurate box sizing (crouching/prone)
+            var headPos = player.GetBonePos(Bones.HumanHead);
+            float height = (headPos != Vector3.Zero && headPos != footPos)
+                ? (headPos.Y - footPos.Y) + 0.2f  // head + skull cap (matches 2D box)
+                : 1.75f;                            // fallback
+            float halfW = height / (1.8f * 2f);    // match 2D box aspect ratio
+
+            var mins = footPos + new Vector3(-halfW, 0, -halfW);
+            var maxs = footPos + new Vector3(halfW, height, halfW);
 
             // 8 corners: bottom 4 (0-3), top 4 (4-7)
             var points3D = new Vector3[] {
@@ -1676,7 +1719,10 @@ namespace LoneEftDmaRadar.UI.ESP
 
         private void Draw3DCorners(Dx9RenderContext ctx, SKPoint[] corners, DxColor color, float thickness)
         {
-            float cornerLen = 8f;
+            // Derive corner length from average edge size so it scales with distance
+            float edgeSum = SKPoint.Distance(corners[0], corners[1])
+                          + SKPoint.Distance(corners[0], corners[4]);
+            float cornerLen = Math.Clamp(edgeSum * 0.12f, 3f, 16f);
 
             // Each corner draws 3 lines toward adjacent corners
             // Bottom corners (0-3)
@@ -1791,7 +1837,7 @@ namespace LoneEftDmaRadar.UI.ESP
 
             string valueText = null;
             if (showValue && player.Equipment is { } eq && eq.TotalValue > 0)
-                valueText = $"${LoneEftDmaRadar.Misc.Utilities.FormatNumberKM(eq.TotalValue)}";
+                valueText = LoneEftDmaRadar.Misc.Utilities.FormatNumberKM(eq.TotalValue);
 
             string text = name;
             if (!string.IsNullOrWhiteSpace(healthText))
@@ -2067,6 +2113,41 @@ namespace LoneEftDmaRadar.UI.ESP
 
         private DxColor GetLootColorForRender() => ToColor(ColorFromHex(App.Config.UI.EspColorLoot));
         private DxColor GetExfilColorForRender() => ToColor(ColorFromHex(App.Config.UI.EspColorExfil));
+
+        private static readonly DxColor ExfilDotOpen = new(0x32, 0xCD, 0x32, 0xFF);       // LimeGreen
+        private static readonly DxColor ExfilDotPending = new(0x00, 0xD7, 0xFF, 0xFF);     // Gold/Yellow
+        private static readonly DxColor ExfilDotClosed = new(0x5C, 0x5C, 0xCD, 0x80);      // IndianRed @ 50%
+        private static readonly DxColor ExfilTextDimmed = new(0x80, 0x80, 0x80, 0xA0);      // Gray text for closed
+
+        private static DxColor GetExfilDotColor(Exfil exfil)
+        {
+            return exfil.Status switch
+            {
+                Exfil.EStatus.Open => ExfilDotOpen,
+                Exfil.EStatus.Pending => ExfilDotPending,
+                Exfil.EStatus.Closed => ExfilDotClosed,
+                _ => ExfilDotOpen
+            };
+        }
+
+        private DxColor GetExfilTextColor(Exfil exfil)
+        {
+            return exfil.Status == Exfil.EStatus.Closed
+                ? ExfilTextDimmed
+                : GetExfilColorForRender();
+        }
+
+        private static SKColor GetExfilMiniRadarColor(Exfil exfil)
+        {
+            return exfil.Status switch
+            {
+                Exfil.EStatus.Open => SKColors.LimeGreen,
+                Exfil.EStatus.Pending => SKColors.Yellow,
+                Exfil.EStatus.Closed => SKColors.Red.WithAlpha(128),
+                _ => SKColors.LimeGreen
+            };
+        }
+
         private DxColor GetTripwireColorForRender() => ToColor(ColorFromHex(App.Config.UI.EspColorTripwire));
         private DxColor GetGrenadeColorForRender() => ToColor(ColorFromHex(App.Config.UI.EspColorGrenade));
         private DxColor GetContainerColorForRender() => ToColor(ColorFromHex(App.Config.UI.EspColorContainers));
@@ -2131,8 +2212,6 @@ namespace LoneEftDmaRadar.UI.ESP
         /// <summary>
         /// Gets the display name for a player.
         /// </summary>
-        /// <param name="player">The player to get the display name for</param>
-        /// <returns>The player's name</returns>
         private static string GetPlayerDisplayName(AbstractPlayer player)
         {
             return player?.Name;
@@ -2178,13 +2257,55 @@ namespace LoneEftDmaRadar.UI.ESP
         {
             if (e.Button == WinForms.MouseButtons.Left)
             {
+                float screenWidth = _dxOverlay?.Width ?? 1920;
+                float screenHeight = _dxOverlay?.Height ?? 1080;
+
                 // Check if ammo widget handles the click first
                 if (_ammoWidget != null && App.Config.UI.AmmoCounter.Enabled)
                 {
-                    float screenWidth = _dxOverlay?.Width ?? 1920;
-                    float screenHeight = _dxOverlay?.Height ?? 1080;
                     if (_ammoWidget.OnMouseDown(e.X, e.Y, screenWidth, screenHeight))
-                        return; // Widget handled the click
+                        return;
+                }
+
+                // Check if killfeed widget handles the click
+                if (_killfeedWidget != null && App.Config.UI.Killfeed.Enabled)
+                {
+                    int entryCount = LoneEftDmaRadar.Tarkov.GameWorld.Loot.DogtagReader.Instance?.Count ?? 0;
+                    if (_killfeedWidget.OnMouseDown(e.X, e.Y, screenWidth, screenHeight, entryCount))
+                        return;
+                }
+
+                // Check if mini radar handles the click (drag or resize)
+                if (App.Config.UI.MiniRadar.Enabled && _miniRadarParams.IsValid)
+                {
+                    var cfg = App.Config.UI.MiniRadar;
+                    float mrX = cfg.ScreenX < 0 ? screenWidth - cfg.Size - 20f : cfg.ScreenX;
+                    float mrY = cfg.ScreenY;
+                    var mrBounds = new RectangleF(mrX, mrY, cfg.Size, cfg.Size);
+
+                    if (mrBounds.Contains(e.X, e.Y))
+                    {
+                        // Fix auto-position
+                        if (cfg.ScreenX < 0) cfg.ScreenX = mrX;
+
+                        // Check resize handle (bottom-right corner)
+                        if (e.X >= mrBounds.Right - MINIRADAR_RESIZE_HANDLE &&
+                            e.Y >= mrBounds.Bottom - MINIRADAR_RESIZE_HANDLE)
+                        {
+                            _miniRadarResizing = true;
+                            _miniRadarResizeStartMouse = e.X > e.Y ? e.X : e.Y; // Use whichever axis has more movement
+                            _miniRadarResizeStartSize = cfg.Size;
+                            // Use diagonal distance for square resize
+                            _miniRadarResizeStartMouse = (e.X + e.Y) / 2f;
+                        }
+                        else
+                        {
+                            _miniRadarDragging = true;
+                            _miniRadarDragOffsetX = e.X - mrBounds.X;
+                            _miniRadarDragOffsetY = e.Y - mrBounds.Y;
+                        }
+                        return;
+                    }
                 }
 
                 try { this.DragMove(); } catch { /* ignore dragging errors */ }
@@ -2197,19 +2318,62 @@ namespace LoneEftDmaRadar.UI.ESP
             _mouseX = e.X;
             _mouseY = e.Y;
 
+            float screenWidth = _dxOverlay?.Width ?? 1920;
+            float screenHeight = _dxOverlay?.Height ?? 1080;
+
             if (_ammoWidget != null && _ammoWidget.IsInteracting)
-            {
-                float screenWidth = _dxOverlay?.Width ?? 1920;
-                float screenHeight = _dxOverlay?.Height ?? 1080;
                 _ammoWidget.OnMouseMove(e.X, e.Y, screenWidth, screenHeight);
+
+            if (_killfeedWidget != null && _killfeedWidget.IsInteracting)
+                _killfeedWidget.OnMouseMove(e.X, e.Y, screenWidth, screenHeight);
+
+            if (_miniRadarDragging)
+            {
+                var cfg = App.Config.UI.MiniRadar;
+                cfg.ScreenX = Math.Clamp(e.X - _miniRadarDragOffsetX, 0, screenWidth - cfg.Size);
+                cfg.ScreenY = Math.Clamp(e.Y - _miniRadarDragOffsetY, 0, screenHeight - cfg.Size);
+            }
+            else if (_miniRadarResizing)
+            {
+                var cfg = App.Config.UI.MiniRadar;
+                float delta = ((e.X + e.Y) / 2f) - _miniRadarResizeStartMouse;
+                int newSize = (int)Math.Clamp(_miniRadarResizeStartSize + delta, MINIRADAR_MIN_SIZE, 512);
+                if (newSize != cfg.Size)
+                {
+                    cfg.Size = newSize;
+                    // Clamp position to screen
+                    if (cfg.ScreenX + cfg.Size > screenWidth)
+                        cfg.ScreenX = screenWidth - cfg.Size;
+                    if (cfg.ScreenY + cfg.Size > screenHeight)
+                        cfg.ScreenY = screenHeight - cfg.Size;
+                }
+            }
+
+            // Mini radar hover tracking
+            if (App.Config.UI.MiniRadar.Enabled && _miniRadarParams.IsValid)
+            {
+                var mrCfg = App.Config.UI.MiniRadar;
+                float mrX = mrCfg.ScreenX < 0 ? screenWidth - mrCfg.Size - 20f : mrCfg.ScreenX;
+                var mrBounds = new RectangleF(mrX, mrCfg.ScreenY, mrCfg.Size, mrCfg.Size);
+                bool wasHovering = _miniRadarHovering;
+                _miniRadarHovering = mrBounds.Contains(e.X, e.Y);
+                if (wasHovering && !_miniRadarHovering)
+                    _miniRadarLastHoverTicks = System.Diagnostics.Stopwatch.GetTimestamp();
             }
         }
 
         private void GlControl_MouseUp(object sender, WinForms.MouseEventArgs e)
         {
             if (_ammoWidget != null && _ammoWidget.IsInteracting)
-            {
                 _ammoWidget.OnMouseUp();
+
+            if (_killfeedWidget != null && _killfeedWidget.IsInteracting)
+                _killfeedWidget.OnMouseUp();
+
+            if (_miniRadarDragging || _miniRadarResizing)
+            {
+                _miniRadarDragging = false;
+                _miniRadarResizing = false;
             }
         }
 

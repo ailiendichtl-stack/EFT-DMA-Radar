@@ -211,7 +211,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
             ArgumentOutOfRangeException.ThrowIfLessThan(playerCount, 1, nameof(_rgtPlayers));
             ArgumentOutOfRangeException.ThrowIfGreaterThan(playerCount, 100, nameof(_rgtPlayers));
             Loot = new(localGameWorld: Base);
-            _exfilManager = new(MapID, _rgtPlayers.LocalPlayer.IsPmc, Base);
+            _exfilManager = new(MapID, _rgtPlayers.LocalPlayer.IsPmc, Base, _rgtPlayers.LocalPlayer);
             _explosivesManager = new(Base);
             if (TarkovDataManager.MapData.TryGetValue(MapID, out var mapData) && mapData.Hazards?.Count > 0)
             {
@@ -231,6 +231,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
             }
             _memWritesManager = new MemWritesManager();
             _questManager = new QuestManager(_rgtPlayers.LocalPlayer.Profile);
+            GameWorld.Loot.WishlistTracker.Initialize(_rgtPlayers.LocalPlayer.Profile);
+            GameWorld.Loot.DogtagReader.Initialize();
             _t4 = new WorkerThread()
             {
                 Name = "MemWrites Worker",
@@ -724,6 +726,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld
                 _t2?.Dispose();
                 _t3?.Dispose();
                 _t4?.Dispose();
+                GameWorld.Loot.WishlistTracker.Clear();
+                GameWorld.Loot.DogtagReader.Clear();
             }
         }
 

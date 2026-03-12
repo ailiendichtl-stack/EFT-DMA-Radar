@@ -142,11 +142,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
 
             try
             {
-                // When scoped, use optic camera VP (projects from scope's position,
-                // naturally handles zoom level). Scale by FPS/Optic VP magnitude ratio
+                // Use optic camera VP whenever ADS with a valid optic camera — even at 1x.
+                // The optic VP projects from the scope's position so screen center = reticle.
+                // Using FPS VP at 1x ADS causes a small offset (scope height above bore)
+                // that makes aimbot miss at distance. Scale by FPS/Optic VP magnitude ratio
                 // to map the optic's square projection to the widescreen viewport.
-                // When unscoped (or forceFpsVP for aimbot), use FPS VP directly.
-                bool useOptic = !forceFpsVP && IsScoped && _opticRightMag1x > 0.1f && _opticUpMag1x > 0.1f;
+                bool useOptic = !forceFpsVP && IsADS && OpticCameraPtr != 0 && _opticRightMag1x > 0.1f && _opticUpMag1x > 0.1f;
                 var vm = useOptic ? _opticViewMatrix : _viewMatrix;
 
                 float w = Vector3.Dot(vm.Translation, worldPos) + vm.M44;
@@ -372,10 +373,24 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
             }
         }
 
+        /// <summary>
+        /// Consecutive frames where the FPS VP matrix read failed or was invalid.
+        /// Used to trigger re-acquisition of the FPS camera pointer.
+        /// </summary>
+        private static int _fpsInvalidFrames;
+        private const int FPS_REACQUIRE_THRESHOLD = 10;
+
         public void OnRealtimeLoop(VmmScatter scatter, LocalPlayer localPlayer)
         {
             try
             {
+                // Re-acquire FPS camera if the pointer has gone stale
+                if (_fpsInvalidFrames >= FPS_REACQUIRE_THRESHOLD)
+                {
+                    TryReacquireFpsCamera();
+                    _fpsInvalidFrames = 0;
+                }
+
                 IsADS = localPlayer?.CheckIfADS() ?? false;
 
                 if (!IsADS)
@@ -430,16 +445,28 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                 scatter.Completed += (sender, s) =>
                 {
                     // FPS camera VP (always used as reference, and for unscoped W2S)
-                    if (s.ReadValue<Matrix4x4>(fpsVmAddr, out var fpsVm))
+                    bool fpsValid = false;
+                    if (s.ReadValue<Matrix4x4>(fpsVmAddr, out var fpsVm) && !Unsafe.IsNullRef(ref fpsVm))
                     {
-                        if (!Unsafe.IsNullRef(ref fpsVm))
+                        // Validate VP matrix isn't garbage (stale pointer reads zeroes or NaN)
+                        float rightMag = MathF.Sqrt(fpsVm.M11 * fpsVm.M11 + fpsVm.M21 * fpsVm.M21 + fpsVm.M31 * fpsVm.M31);
+                        float upMag = MathF.Sqrt(fpsVm.M12 * fpsVm.M12 + fpsVm.M22 * fpsVm.M22 + fpsVm.M32 * fpsVm.M32);
+
+                        if (rightMag > 0.01f && upMag > 0.01f &&
+                            !float.IsNaN(rightMag) && !float.IsInfinity(rightMag) &&
+                            MathF.Abs(fpsVm.M44) > 0.001f)
                         {
                             _viewMatrix.Update(ref fpsVm);
-                            // Column magnitudes of raw VP matrix (= what ViewMatrix uses after transpose)
-                            _fpsRightMag = MathF.Sqrt(fpsVm.M11 * fpsVm.M11 + fpsVm.M21 * fpsVm.M21 + fpsVm.M31 * fpsVm.M31);
-                            _fpsUpMag = MathF.Sqrt(fpsVm.M12 * fpsVm.M12 + fpsVm.M22 * fpsVm.M22 + fpsVm.M32 * fpsVm.M32);
+                            _fpsRightMag = rightMag;
+                            _fpsUpMag = upMag;
+                            fpsValid = true;
                         }
                     }
+
+                    if (fpsValid)
+                        _fpsInvalidFrames = 0;
+                    else
+                        _fpsInvalidFrames++;
 
                     if (s.ReadValue<float>(fovAddr, out var fov) && fov > 1f && fov < 180f)
                         _fov = fov;
@@ -499,6 +526,45 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
             catch (Exception ex)
             {
                 DebugLogger.LogDebug($"ERROR in CameraManager OnRealtimeLoop: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// Re-scans AllCameras to find a fresh FPS camera pointer when the current one goes stale.
+        /// Also refreshes the optic camera cache.
+        /// </summary>
+        private void TryReacquireFpsCamera()
+        {
+            try
+            {
+                var allCamerasPtr = AllCameras.GetPtr(Memory.UnityBase);
+                if (allCamerasPtr == 0) return;
+
+                var listItemsPtr = Memory.ReadPtr(allCamerasPtr + 0x0, false);
+                var count = Memory.ReadValue<int>(allCamerasPtr + 0x8, false);
+
+                if (listItemsPtr == 0 || count <= 0) return;
+
+                var newFps = FindFpsCamera(listItemsPtr, count);
+                if (newFps != 0 && newFps != FPSCameraPtr)
+                {
+                    FPSCameraPtr = newFps;
+                    DebugLogger.LogDebug($"[CameraManager] Re-acquired FPS camera @ 0x{newFps:X}");
+                }
+
+                // Also refresh optic camera cache
+                _potentialOpticCameras.Clear();
+                OpticCameraPtr = 0;
+                _useFpsCameraForCurrentAds = false;
+                _maxOpticFov = 0f;
+                _calibratedOpticPtr = 0;
+                _opticRightMag1x = 0f;
+                _opticUpMag1x = 0f;
+                CacheOpticCameras(listItemsPtr, count);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.LogDebug($"[CameraManager] Re-acquire failed: {ex.Message}");
             }
         }
 

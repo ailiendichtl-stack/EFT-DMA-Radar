@@ -35,6 +35,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
 {
     public sealed class TransitPoint : IExitPoint, IWorldEntity, IMapEntity, IMouseoverEntity
     {
+        private ulong _memoryAddr;
+
         public TransitPoint(TarkovDataManager.TransitElement transit)
         {
             Description = transit.Description;
@@ -42,6 +44,22 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
         }
 
         public string Description { get; }
+
+        /// <summary>
+        /// Whether this transit point is currently active in-raid.
+        /// Defaults to true until memory data says otherwise.
+        /// </summary>
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Sets the memory address for live status updates.
+        /// </summary>
+        public void SetMemoryAddress(ulong addr) => _memoryAddr = addr;
+
+        /// <summary>
+        /// Memory address of the transit parameters object (0 if not loaded).
+        /// </summary>
+        public ulong MemoryAddr => _memoryAddr;
 
         #region Interfaces
 
@@ -51,6 +69,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Exits
 
         public void Draw(SKCanvas canvas, EftMapParams mapParams, LocalPlayer localPlayer)
         {
+            if (!IsActive)
+                return;
+
             var heightDiff = Position.Y - localPlayer.ReferenceHeight;
             var paint = SKPaints.PaintExfilTransit;
             var point = Position.ToMapPos(mapParams.Map).ToZoomedPos(mapParams);

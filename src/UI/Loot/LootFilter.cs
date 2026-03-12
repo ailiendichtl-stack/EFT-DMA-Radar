@@ -59,6 +59,8 @@ namespace LoneEftDmaRadar.UI.Loot
                         return true;
                     if (x.IsHideoutItem && showHideoutItems)
                         return true;
+                    if (x.IsWishlistItem)
+                        return true;
                     return (x.IsRegularLoot || x.IsValuableLoot || x.IsImportant) ||
                                 (showMeds && x.IsMeds) ||
                                 (showFood && x.IsFood);

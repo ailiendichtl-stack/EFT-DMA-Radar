@@ -1301,9 +1301,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
 
             // === Ergo/overweight compensation ===
             // Inflates mouse counts to compensate for the game's reduced sensitivity
-            // with lower-ergo weapons / overweight.
-            // Sqrt dampening prevents extreme inflation (1.76x → 1.33x, 10.5x → 3.2x)
-            // which otherwise saturates the ±127 device cap and amplifies Smith Predictor errors.
+            // with lower-ergo weapons / overweight / scope sensitivity.
+            // Linear compensation (capped at 4x to prevent ±127 saturation).
             float ergoScale = 1.0f;
             if (isAiming && Config.ErgoCompensation)
             {
@@ -1314,10 +1313,7 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
                     float compensation = ergoRatio * _cachedOverweightAimMult;
                     if (compensation > 0.01f && compensation < 0.99f)
                     {
-                        float rawScale = 1.0f / compensation;
-                        // Sqrt dampening: preserves direction but compresses extreme values.
-                        // rawScale=1.76 → 1.33, rawScale=3.0 → 1.73, rawScale=10.5 → 3.24
-                        ergoScale = MathF.Sqrt(rawScale);
+                        ergoScale = Math.Min(1.0f / compensation, 4.0f);
                     }
                 }
             }

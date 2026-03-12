@@ -258,10 +258,10 @@ namespace LoneEftDmaRadar.UI.ESP
                 var bgColor = new DxColor(0, 0, 0, (byte)(alpha * 0.5f));
                 ctx.DrawFilledRect(bounds, bgColor);
 
-                // Draw border (highlight when interacting)
+                // Draw border (highlight when interacting) — Twilight purple theme
                 var borderColor = IsInteracting
-                    ? new DxColor(255, 200, 100, (byte)(opacity * 255))  // Cyan when dragging/resizing
-                    : new DxColor(200, 200, 200, alpha); // White/gray normally
+                    ? new DxColor(0xFF, 0x45, 0x99, (byte)(opacity * 204))  // Purple #9945FF @ 80%
+                    : new DxColor(0xFF, 0x7B, 0xA5, (byte)(opacity * 140)); // Purple soft #A57BFF @ 55%
                 ctx.DrawRect(bounds, borderColor, 1f);
 
                 // Draw resize handle
@@ -323,8 +323,8 @@ namespace LoneEftDmaRadar.UI.ESP
         {
             byte alpha = (byte)(opacity * 200);
             var handleColor = _isResizing
-                ? new DxColor(255, 200, 100, (byte)(opacity * 255))  // Cyan when resizing
-                : new DxColor(200, 200, 200, alpha); // White/gray normally
+                ? new DxColor(0xFF, 0x45, 0x99, (byte)(opacity * 204))  // Purple #9945FF @ 80%
+                : new DxColor(0xFF, 0x7B, 0xA5, alpha); // Purple soft #A57BFF
 
             // Draw a small filled square in the corner
             var handleRect = new RectangleF(

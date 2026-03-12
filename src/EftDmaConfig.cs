@@ -499,6 +499,13 @@ namespace LoneEftDmaRadar
         public AmmoCounterConfig AmmoCounter { get; private set; } = new();
 
         /// <summary>
+        /// Killfeed Widget Configuration.
+        /// </summary>
+        [JsonPropertyName("killfeed")]
+        [JsonInclude]
+        public KillfeedConfig Killfeed { get; private set; } = new();
+
+        /// <summary>
         /// Show Player Names in ESP.
         /// </summary>
         [JsonPropertyName("espPlayerNames")]
@@ -1113,6 +1120,40 @@ namespace LoneEftDmaRadar
         public bool DisableInventoryBlurEnabled { get; set; }
         public bool TimeOfDayEnabled { get; set; }
         public float TimeOfDayHour { get; set; } = 12f;
+
+        // Movement
+        public bool MoveSpeedEnabled { get; set; }
+        public float MoveSpeedMultiplier { get; set; } = 1.5f;
+        public bool FastDuckEnabled { get; set; }
+        public bool NoInertiaEnabled { get; set; }
+        public bool LongJumpEnabled { get; set; }
+        public float LongJumpMultiplier { get; set; } = 1.5f;
+        public bool MuleModeEnabled { get; set; }
+
+        // Visual
+        public bool NightVisionEnabled { get; set; }
+        public bool ThermalVisionEnabled { get; set; }
+        public bool NoVisorEnabled { get; set; }
+        public bool DisableFrostbiteEnabled { get; set; }
+        public bool FullBrightEnabled { get; set; }
+        public float FullBrightIntensity { get; set; } = 1.0f;
+        public bool ClearWeatherEnabled { get; set; }
+        public bool DisableGrassEnabled { get; set; }
+
+        // Weapon
+        public bool NoWeaponMalfunctionsEnabled { get; set; }
+        public bool DisableWeaponCollisionEnabled { get; set; }
+
+        // Utility
+        public bool ExtendedReachEnabled { get; set; }
+        public float ExtendedReachDistance { get; set; } = 3.0f;
+        public bool InstantPlantEnabled { get; set; }
+        public bool LootThroughWallsEnabled { get; set; }
+        public bool MedPanelEnabled { get; set; }
+        public bool OwlModeEnabled { get; set; }
+        public bool ThirdPersonEnabled { get; set; }
+        public bool WideLeanEnabled { get; set; }
+        public float WideLeanAmount { get; set; } = 5.0f;
     }
 
     /// <summary>
@@ -1354,6 +1395,24 @@ namespace LoneEftDmaRadar
         /// </summary>
         [JsonPropertyName("fontSize")]
         public int FontSize { get; set; } = 24;
+    }
+
+    /// <summary>
+    /// Killfeed Widget configuration.
+    /// </summary>
+    public sealed class KillfeedConfig
+    {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = true;
+
+        [JsonPropertyName("positionX")]
+        public float PositionX { get; set; } = -1;
+
+        [JsonPropertyName("positionY")]
+        public float PositionY { get; set; } = -1;
+
+        [JsonPropertyName("width")]
+        public float Width { get; set; } = 330;
     }
 
     /// <summary>

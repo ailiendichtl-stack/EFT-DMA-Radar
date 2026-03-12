@@ -235,6 +235,11 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
         protected int _verticesCount;
         protected Vector3 _cachedPosition; // Fallback position cache
 
+        /// <summary>
+        /// Cached last-valid bone positions — prevents skeleton jitter when DMA reads fail.
+        /// </summary>
+        private readonly ConcurrentDictionary<Bones, Vector3> _lastValidBonePos = new();
+
         // Cached bone data — avoids ConcurrentDictionary enumerator allocations in hot path
         private KeyValuePair<Bones, UnityTransform>[] _cachedBoneArray;
         protected int _cachedMaxBoneRequirement;
@@ -551,14 +556,15 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
 
             if (isActive)
             {
-                // Player still in registered list — but may have died (bots stay registered after death)
+                // Player in registered list — mark alive immediately (synchronous)
+                SetAlive();
+
+                // Also check for corpse — bots can die but stay in registered list
                 scatter.PrepareReadPtr(CorpseAddr);
                 scatter.Completed += (sender, x1) =>
                 {
                     if (x1.ReadPtr(CorpseAddr, out var corpsePtr) && corpsePtr != 0)
                         SetDead(corpsePtr);
-                    else
-                        SetAlive();
                 };
             }
             else if (IsAlive) // Not in list, but alive — player left or died
@@ -1578,13 +1584,19 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
                     var pos = boneTransform.Position;
                     // Validate the position is reasonable (not zero, not NaN/Infinity)
                     if (pos != Vector3.Zero && !float.IsNaN(pos.X) && !float.IsInfinity(pos.X))
+                    {
+                        _lastValidBonePos[bone] = pos; // Cache valid position
                         return pos;
+                    }
                 }
             }
             catch { }
 
+            // Fallback to last known valid position for this bone (prevents jitter)
+            if (_lastValidBonePos.TryGetValue(bone, out var cached) && cached != Vector3.Zero)
+                return cached;
+
             // Fallback to skeleton root position instead of zero
-            // This prevents players from "teleporting" to the origin
             var rootPos = SkeletonRoot?.Position ?? Vector3.Zero;
             if (rootPos != Vector3.Zero && !float.IsNaN(rootPos.X) && !float.IsInfinity(rootPos.X))
                 return rootPos;
