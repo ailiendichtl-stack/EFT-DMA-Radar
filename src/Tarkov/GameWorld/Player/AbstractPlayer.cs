@@ -1592,9 +1592,14 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player
             }
             catch { }
 
-            // Fallback to last known valid position for this bone (prevents jitter)
+            // Fallback to last known valid position — but only if it's still near the player.
+            // Stale cached positions (player moved away) must fall through to root position.
             if (_lastValidBonePos.TryGetValue(bone, out var cached) && cached != Vector3.Zero)
-                return cached;
+            {
+                var rootPos2 = SkeletonRoot?.Position ?? _cachedPosition;
+                if (rootPos2 != Vector3.Zero && Vector3.DistanceSquared(cached, rootPos2) < 25f) // 5m radius
+                    return cached;
+            }
 
             // Fallback to skeleton root position instead of zero
             var rootPos = SkeletonRoot?.Position ?? Vector3.Zero;

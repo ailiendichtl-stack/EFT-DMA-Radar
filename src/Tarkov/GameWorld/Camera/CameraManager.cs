@@ -77,6 +77,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
         private static bool _useFpsCameraForCurrentAds = false;
         private static float _maxOpticFov;
         private static ulong _calibratedOpticPtr; // Tracks which optic _maxOpticFov belongs to
+        private static bool _weaponHasOptic; // True when current weapon has an optic (not iron sights)
 
         public static void UpdateViewportRes()
         {
@@ -147,7 +148,7 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                 // Using FPS VP at 1x ADS causes a small offset (scope height above bore)
                 // that makes aimbot miss at distance. Scale by FPS/Optic VP magnitude ratio
                 // to map the optic's square projection to the widescreen viewport.
-                bool useOptic = !forceFpsVP && IsADS && OpticCameraPtr != 0 && _opticRightMag1x > 0.1f && _opticUpMag1x > 0.1f;
+                bool useOptic = !forceFpsVP && IsADS && OpticCameraPtr != 0 && !_useFpsCameraForCurrentAds && _opticRightMag1x > 0.1f && _opticUpMag1x > 0.1f;
                 var vm = useOptic ? _opticViewMatrix : _viewMatrix;
 
                 float w = Vector3.Dot(vm.Translation, worldPos) + vm.M44;
@@ -356,7 +357,13 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                 var opticsPtr = Memory.ReadPtr(localPlayer.PWA + Offsets.ProceduralWeaponAnimation._optics);
                 using var optics = UnityList<VmmPointer>.Create(opticsPtr, true);
 
-                if (optics.Count <= 0) return;
+                if (optics.Count <= 0)
+                {
+                    _weaponHasOptic = false;
+                    return;
+                }
+
+                _weaponHasOptic = true;
 
                 var pSightComponent = Memory.ReadPtr(optics[0] + Offsets.SightNBone.Mod);
                 var sightComponent = Memory.ReadValue<SightComponent>(pSightComponent);
@@ -396,16 +403,19 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                 if (!IsADS)
                 {
                     _useFpsCameraForCurrentAds = false;
-                    // Don't reset _maxOpticFov here — preserve the 1x FOV reference
-                    // across ADS cycles so scoping in at 6x works after first calibration.
-                    // It only resets when the optic camera pointer changes (different scope).
+                    OpticCameraPtr = 0;
                     ScopeZoom = 1f;
                     IsScoped = false;
                 }
 
+                // Read optics list first — determines if weapon has a sight or iron sights
+                if (IsADS)
+                    UpdateScopeSensitivity(localPlayer);
+
+                // Only try to find optic camera if weapon actually has an optic
                 if (IsADS && OpticCameraPtr == 0 && !_useFpsCameraForCurrentAds)
                 {
-                    if (_potentialOpticCameras.Count > 0)
+                    if (_weaponHasOptic && _potentialOpticCameras.Count > 0)
                     {
                         if (!ValidateOpticCameras())
                             _useFpsCameraForCurrentAds = true;
@@ -415,9 +425,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                         _useFpsCameraForCurrentAds = true;
                     }
                 }
-
-                if (IsADS)
-                    UpdateScopeSensitivity(localPlayer);
 
                 // Always read FPS camera VP matrix + FOV + aspect
                 ulong fpsVmAddr = FPSCameraPtr + UnitySDK.UnityOffsets.Camera_ViewMatrixOffset;
