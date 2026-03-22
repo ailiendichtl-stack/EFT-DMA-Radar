@@ -44,6 +44,7 @@ namespace LoneEftDmaRadar.UI.ESP
         private readonly ConcurrentDictionary<int, D3D9Font> _fontCache = new();
 
         private readonly object _deviceLock = new();
+        private bool _vsync;
         private byte[] _pendingMapPixels;
         private int _pendingMapW, _pendingMapH;
         private bool _mapUpdatePending;
@@ -165,7 +166,7 @@ namespace LoneEftDmaRadar.UI.ESP
                 EnableAutoDepthStencil = false,
                 PresentFlags = PresentFlags.None,
                 Windowed = true,
-                PresentationInterval = PresentInterval.Immediate,
+                PresentationInterval = _vsync ? PresentInterval.One : PresentInterval.Immediate,
                 DeviceWindowHandle = Handle
             };
         }
@@ -207,6 +208,7 @@ namespace LoneEftDmaRadar.UI.ESP
 
                 _presentParameters.BackBufferWidth = Math.Max(Width, 1);
                 _presentParameters.BackBufferHeight = Math.Max(Height, 1);
+                _presentParameters.PresentationInterval = _vsync ? PresentInterval.One : PresentInterval.Immediate;
 
                 try
                 {
@@ -276,6 +278,23 @@ namespace LoneEftDmaRadar.UI.ESP
                 {
                     RebuildFonts();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Enable or disable VSync. Resets the device to apply the change.
+        /// </summary>
+        public void SetVSync(bool enabled)
+        {
+            lock (_deviceLock)
+            {
+                if (_vsync == enabled)
+                    return;
+
+                _vsync = enabled;
+
+                if (_device != null)
+                    ResetDevice();
             }
         }
 

@@ -718,10 +718,16 @@ namespace LoneEftDmaRadar
         public int EspScreenHeight { get; set; } = 0;
 
         /// <summary>
-        /// ESP Max FPS (0 = VSync/Unlimited).
+        /// ESP Max FPS (0 = Unlimited).
         /// </summary>
         [JsonPropertyName("espMaxFPS")]
         public int EspMaxFPS { get; set; } = 0;
+
+        /// <summary>
+        /// Enable VSync for the ESP overlay (caps FPS to monitor refresh rate).
+        /// </summary>
+        [JsonPropertyName("espVSync")]
+        public bool EspVSync { get; set; } = false;
 
         // ESP Colors (independent from radar colors)
         [JsonPropertyName("espColorPlayers")]

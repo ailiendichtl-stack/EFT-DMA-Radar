@@ -702,6 +702,20 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             }
         }
 
+        public bool EspVSync
+        {
+            get => App.Config.UI.EspVSync;
+            set
+            {
+                if (App.Config.UI.EspVSync != value)
+                {
+                    App.Config.UI.EspVSync = value;
+                    OnPropertyChanged();
+                    ESPManager.ApplyVSync(value);
+                }
+            }
+        }
+
         public float EspPlayerMaxDistance
         {
             get => App.Config.UI.EspPlayerMaxDistance;

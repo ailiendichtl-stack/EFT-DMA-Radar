@@ -219,6 +219,7 @@ namespace LoneEftDmaRadar.UI.ESP
             };
 
             ApplyDxFontConfig();
+            _dxOverlay.SetVSync(App.Config.UI.EspVSync);
             _dxOverlay.RenderFrame = RenderSurface;
             _dxOverlay.DeviceInitFailed += Overlay_DeviceInitFailed;
             _dxOverlay.MouseDown += GlControl_MouseDown;
@@ -2581,6 +2582,11 @@ namespace LoneEftDmaRadar.UI.ESP
         {
             ApplyDxFontConfig();
             RefreshESP();
+        }
+
+        public void ApplyVSync(bool enabled)
+        {
+            _dxOverlay?.SetVSync(enabled);
         }
 
         /// <summary>

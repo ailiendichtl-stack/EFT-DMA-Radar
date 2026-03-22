@@ -117,6 +117,12 @@ namespace LoneEftDmaRadar.UI.ESP
             _espWindow.ApplyFontConfig();
         }
 
+        public static void ApplyVSync(bool enabled)
+        {
+            if (!_isInitialized || _espWindow is null) return;
+            _espWindow.ApplyVSync(enabled);
+        }
+
         /// <summary>
         /// Resets camera state and forces ESP refresh. Useful when ESP appears broken.
         /// </summary>

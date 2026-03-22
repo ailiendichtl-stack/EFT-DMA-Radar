@@ -378,6 +378,11 @@
                         </StackPanel>
                     </StackPanel>
 
+                    <CheckBox Content="VSync"
+                                  ToolTip="Syncs ESP frame rate to your monitor's refresh rate. Eliminates tearing but adds slight input latency."
+                                  IsChecked="{Binding EspVSync, Mode=TwoWay}"
+                                  Margin="0,0,16,8" />
+
                     <CheckBox Content="Crosshair"
                                   ToolTip="Displays a simple crosshair at the center of the ESP window."
                                   IsChecked="{Binding EspCrosshair, Mode=TwoWay}"
