@@ -120,8 +120,8 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Explosives
         {
             try
             {
-                var tripwireListPtr = Memory.ReadPtrChain(_localGameWorld, true, _toTripwireList);
-                using var tripwires = UnityList<ulong>.Create(tripwireListPtr, true);
+                var tripwireListPtr = Memory.ReadPtrChain(_localGameWorld, false, _toTripwireList);
+                using var tripwires = UnityList<ulong>.Create(tripwireListPtr, false);
 
                 // Purge tripwires no longer in the live list
                 foreach (var key in _explosives.Keys)
