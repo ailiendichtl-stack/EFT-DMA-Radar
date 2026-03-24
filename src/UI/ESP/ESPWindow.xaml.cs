@@ -61,7 +61,7 @@ namespace LoneEftDmaRadar.UI.ESP
         private int _renderPending;
 
         // Render surface
-        private Dx9OverlayControl _dxOverlay;
+        private Dx11OverlayControl _dxOverlay;
         private WindowsFormsHost _dxHost;
         private bool _isClosing;
 
@@ -213,7 +213,7 @@ namespace LoneEftDmaRadar.UI.ESP
         {
             RenderRoot.Children.Clear();
 
-            _dxOverlay = new Dx9OverlayControl
+            _dxOverlay = new Dx11OverlayControl
             {
                 Dock = WinForms.DockStyle.Fill
             };
@@ -298,7 +298,7 @@ namespace LoneEftDmaRadar.UI.ESP
         /// <summary>
         /// Main ESP Render Event.
         /// </summary>
-        private void RenderSurface(Dx9RenderContext ctx)
+        private void RenderSurface(Dx11RenderContext ctx)
         {
             if (_dxInitFailed)
                 return;
@@ -439,7 +439,7 @@ namespace LoneEftDmaRadar.UI.ESP
 
         }
 
-        private void DrawLoot(Dx9RenderContext ctx, float screenWidth, float screenHeight, LocalPlayer localPlayer)
+        private void DrawLoot(Dx11RenderContext ctx, float screenWidth, float screenHeight, LocalPlayer localPlayer)
         {
             var lootItems = Memory.Game?.Loot?.FilteredLoot;
             if (lootItems is null) return;
@@ -576,7 +576,7 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private void DrawStaticContainers(Dx9RenderContext ctx, float screenWidth, float screenHeight, LocalPlayer localPlayer)
+        private void DrawStaticContainers(Dx11RenderContext ctx, float screenWidth, float screenHeight, LocalPlayer localPlayer)
         {
             if (!App.Config.Containers.Enabled)
                 return;
@@ -680,7 +680,7 @@ namespace LoneEftDmaRadar.UI.ESP
         private static readonly DxColor _cardReaderColor = new(0, 220, 220, 255);
         private static readonly DxColor _cardReaderLockedColor = new(255, 0, 255, 255);
 
-        private void DrawInteractables(Dx9RenderContext ctx, LocalPlayer localPlayer, float screenWidth, float screenHeight)
+        private void DrawInteractables(Dx11RenderContext ctx, LocalPlayer localPlayer, float screenWidth, float screenHeight)
         {
             if (Doors is null)
                 return;
@@ -802,7 +802,7 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private void DrawTripwires(Dx9RenderContext ctx, float screenWidth, float screenHeight)
+        private void DrawTripwires(Dx11RenderContext ctx, float screenWidth, float screenHeight)
         {
             if (Explosives is null)
                 return;
@@ -834,7 +834,7 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private void DrawGrenades(Dx9RenderContext ctx, float screenWidth, float screenHeight)
+        private void DrawGrenades(Dx11RenderContext ctx, float screenWidth, float screenHeight)
         {
             if (Explosives is null)
                 return;
@@ -923,7 +923,7 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private void DrawQuestLocations(Dx9RenderContext ctx, float screenWidth, float screenHeight)
+        private void DrawQuestLocations(Dx11RenderContext ctx, float screenWidth, float screenHeight)
         {
             var locations = Memory.Quests?.LocationConditions;
             if (locations is null || locations.Count == 0)
@@ -967,7 +967,7 @@ namespace LoneEftDmaRadar.UI.ESP
         /// Renders player on ESP
         /// </summary>
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        private void DrawPlayerESP(Dx9RenderContext ctx, AbstractPlayer player, LocalPlayer localPlayer, float screenWidth, float screenHeight)
+        private void DrawPlayerESP(Dx11RenderContext ctx, AbstractPlayer player, LocalPlayer localPlayer, float screenWidth, float screenHeight)
         {
             if (player is null || player == localPlayer || !player.IsAlive || !player.IsActive)
                 return;
@@ -1143,7 +1143,7 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private void DrawMiniRadar(Dx9RenderContext ctx, LocalPlayer localPlayer, IEnumerable<AbstractPlayer> allPlayers, float screenWidth, float screenHeight)
+        private void DrawMiniRadar(Dx11RenderContext ctx, LocalPlayer localPlayer, IEnumerable<AbstractPlayer> allPlayers, float screenWidth, float screenHeight)
         {
              try
              {
@@ -1279,7 +1279,7 @@ namespace LoneEftDmaRadar.UI.ESP
              }
         }
 
-        private void DrawMiniRadarExplosives(Dx9RenderContext ctx, IEftMap map)
+        private void DrawMiniRadarExplosives(Dx11RenderContext ctx, IEftMap map)
         {
             if (Explosives is null) return;
 
@@ -1303,7 +1303,7 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private void DrawMiniRadarContainers(Dx9RenderContext ctx, IEftMap map)
+        private void DrawMiniRadarContainers(Dx11RenderContext ctx, IEftMap map)
         {
              if (!App.Config.Containers.Enabled) return;
              var containers = Memory.Game?.Loot?.StaticContainers;
@@ -1349,7 +1349,7 @@ namespace LoneEftDmaRadar.UI.ESP
              }
         }
 
-        private void DrawMiniRadarLoot(Dx9RenderContext ctx, IEftMap map)
+        private void DrawMiniRadarLoot(Dx11RenderContext ctx, IEftMap map)
         {
             var lootItems = Memory.Game?.Loot?.FilteredLoot;
             if (lootItems is null) return;
@@ -1390,7 +1390,7 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private void DrawMiniRadarExits(Dx9RenderContext ctx, IEftMap map, LocalPlayer localPlayer)
+        private void DrawMiniRadarExits(Dx11RenderContext ctx, IEftMap map, LocalPlayer localPlayer)
         {
             if (Exits is null) return;
 
@@ -1404,13 +1404,13 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private void DrawMiniRadarDot(Dx9RenderContext ctx, Vector3 worldPos, IEftMap map, SKColor color, float size)
+        private void DrawMiniRadarDot(Dx11RenderContext ctx, Vector3 worldPos, IEftMap map, SKColor color, float size)
         {
             var unused = Vector2.Zero; // Dummy rotation
             DrawMiniRadarDot(ctx, worldPos, unused, map, color, size, false);
         }
 
-        private void DrawMiniRadarDot(Dx9RenderContext ctx, Vector3 worldPos, Vector2 rotation, IEftMap map, SKColor color, float size, bool drawLookDir)
+        private void DrawMiniRadarDot(Dx11RenderContext ctx, Vector3 worldPos, Vector2 rotation, IEftMap map, SKColor color, float size, bool drawLookDir)
         {
              // Transform
              var mapPos = worldPos.ToMapPos(map.Config);
@@ -1436,7 +1436,7 @@ namespace LoneEftDmaRadar.UI.ESP
              ctx.DrawCircle(new SharpDX.Mathematics.Interop.RawVector2(screenX, screenY), size, ToColor(color), true);
         }
 
-        private void DrawMiniRadarLookDirection(Dx9RenderContext ctx, float screenX, float screenY, Vector2 rotation, SKColor color)
+        private void DrawMiniRadarLookDirection(Dx11RenderContext ctx, float screenX, float screenY, Vector2 rotation, SKColor color)
         {
              float rX = rotation.X; // Yaw
              float rad = (rX - 90) * (MathF.PI / 180f);
@@ -1542,7 +1542,7 @@ namespace LoneEftDmaRadar.UI.ESP
              }
         }
 
-        private void DrawSkeleton(Dx9RenderContext ctx, AbstractPlayer player, float w, float h,
+        private void DrawSkeleton(Dx11RenderContext ctx, AbstractPlayer player, float w, float h,
             DxColor color, float thickness, PlayerVisibility? vis = null)
         {
             var visCfg = App.Config.Visibility;
@@ -1628,7 +1628,7 @@ namespace LoneEftDmaRadar.UI.ESP
             return true;
         }
 
-        private void DrawBoundingBox(Dx9RenderContext ctx, RectangleF rect, DxColor color, float thickness)
+        private void DrawBoundingBox(Dx11RenderContext ctx, RectangleF rect, DxColor color, float thickness)
         {
             ctx.DrawRect(rect, color, thickness);
         }
@@ -1675,7 +1675,7 @@ namespace LoneEftDmaRadar.UI.ESP
             return projected >= 4;
         }
 
-        private void Draw2DCorners(Dx9RenderContext ctx, RectangleF rect, DxColor color, float thickness)
+        private void Draw2DCorners(Dx11RenderContext ctx, RectangleF rect, DxColor color, float thickness)
         {
             float cornerLen = Math.Min(rect.Width, rect.Height) * 0.25f;
             cornerLen = Math.Clamp(cornerLen, 4f, 20f);
@@ -1697,7 +1697,7 @@ namespace LoneEftDmaRadar.UI.ESP
             ctx.DrawLine(new RawVector2(rect.Right, rect.Bottom), new RawVector2(rect.Right, rect.Bottom - cornerLen), color, thickness);
         }
 
-        private void Draw3DBox(Dx9RenderContext ctx, SKPoint[] corners, DxColor color, float thickness)
+        private void Draw3DBox(Dx11RenderContext ctx, SKPoint[] corners, DxColor color, float thickness)
         {
             // Bottom face (4 edges)
             ctx.DrawLine(ToRaw(corners[0]), ToRaw(corners[1]), color, thickness);
@@ -1718,7 +1718,7 @@ namespace LoneEftDmaRadar.UI.ESP
             ctx.DrawLine(ToRaw(corners[3]), ToRaw(corners[7]), color, thickness);
         }
 
-        private void Draw3DCorners(Dx9RenderContext ctx, SKPoint[] corners, DxColor color, float thickness)
+        private void Draw3DCorners(Dx11RenderContext ctx, SKPoint[] corners, DxColor color, float thickness)
         {
             // Derive corner length from average edge size so it scales with distance
             float edgeSum = SKPoint.Distance(corners[0], corners[1])
@@ -1738,7 +1738,7 @@ namespace LoneEftDmaRadar.UI.ESP
             DrawCornerLines(ctx, corners, 7, new[] { 4, 6, 3 }, cornerLen, color, thickness);
         }
 
-        private void DrawCornerLines(Dx9RenderContext ctx, SKPoint[] corners, int corner, int[] adjacents, float len, DxColor color, float thickness)
+        private void DrawCornerLines(Dx11RenderContext ctx, SKPoint[] corners, int corner, int[] adjacents, float len, DxColor color, float thickness)
         {
             var c = corners[corner];
             foreach (var adj in adjacents)
@@ -1747,7 +1747,7 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private void DrawPartialLine(Dx9RenderContext ctx, SKPoint from, SKPoint to, float maxLen, DxColor color, float thickness)
+        private void DrawPartialLine(Dx11RenderContext ctx, SKPoint from, SKPoint to, float maxLen, DxColor color, float thickness)
         {
             var dx = to.X - from.X;
             var dy = to.Y - from.Y;
@@ -1816,7 +1816,7 @@ namespace LoneEftDmaRadar.UI.ESP
         /// Draws player label (name/distance) relative to the bounding box or head fallback.
         /// </summary>
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        private void DrawPlayerLabel(Dx9RenderContext ctx, AbstractPlayer player, float distance, DxColor color, RectangleF? bbox, float screenWidth, float screenHeight, bool showName, bool showDistance, bool showHealth, bool showGroup, bool showValue)
+        private void DrawPlayerLabel(Dx11RenderContext ctx, AbstractPlayer player, float distance, DxColor color, RectangleF? bbox, float screenWidth, float screenHeight, bool showName, bool showDistance, bool showHealth, bool showGroup, bool showValue)
         {
             if (!showName && !showDistance && !showHealth && !showGroup && !showValue)
                 return;
@@ -1903,12 +1903,12 @@ namespace LoneEftDmaRadar.UI.ESP
         /// Draw 'ESP Hidden' notification.
         /// </summary>
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        private void DrawNotShown(Dx9RenderContext ctx, float width, float height)
+        private void DrawNotShown(Dx11RenderContext ctx, float width, float height)
         {
             ctx.DrawText("ESP Hidden", width / 2f, height / 2f, new DxColor(255, 255, 255, 255), DxTextSize.Large, centerX: true, centerY: true);
         }
 
-        private void DrawCrosshair(Dx9RenderContext ctx, float width, float height)
+        private void DrawCrosshair(Dx11RenderContext ctx, float width, float height)
         {
             float centerX = width / 2f;
             float centerY = height / 2f;
@@ -1919,7 +1919,7 @@ namespace LoneEftDmaRadar.UI.ESP
             ctx.DrawLine(new RawVector2(centerX, centerY - length), new RawVector2(centerX, centerY + length), color, _crosshairPaint.StrokeWidth);
         }
 
-        private void DrawDeviceAimbotTargetLine(Dx9RenderContext ctx, float width, float height)
+        private void DrawDeviceAimbotTargetLine(Dx11RenderContext ctx, float width, float height)
         {
             var deviceAimbot = MemDMA.DeviceAimbot;
             if (deviceAimbot?.LockedTarget is not { } target)
@@ -1945,7 +1945,7 @@ namespace LoneEftDmaRadar.UI.ESP
             ctx.DrawLine(center, ToRaw(screen), ToColor(skColor), 2f);
         }
 
-        private void DrawDeviceAimbotFovCircle(Dx9RenderContext ctx, float width, float height)
+        private void DrawDeviceAimbotFovCircle(Dx11RenderContext ctx, float width, float height)
         {
             var cfg = App.Config.Device;
             if (!cfg.ShowFovCircle || cfg.FOV <= 0)
@@ -1966,7 +1966,7 @@ namespace LoneEftDmaRadar.UI.ESP
             ctx.DrawCircle(new RawVector2(width / 2f, height / 2f), radius, ToColor(skColor), filled: false);
         }
 
-        private void DrawDeviceAimbotDebugOverlay(Dx9RenderContext ctx, float width, float height)
+        private void DrawDeviceAimbotDebugOverlay(Dx11RenderContext ctx, float width, float height)
         {
             if (!App.Config.Device.ShowDebug)
                 return;
@@ -2018,9 +2018,10 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private void DrawFPS(Dx9RenderContext ctx, float width, float height)
+        private void DrawFPS(Dx11RenderContext ctx, float width, float height)
         {
-            var fpsText = $"FPS: {_fps}";
+            var featureLevel = _dxOverlay?.FeatureLevelString ?? "?";
+            var fpsText = $"FPS: {_fps} | DX{featureLevel}";
             ctx.DrawText(fpsText, 10, 10, new DxColor(255, 255, 255, 255), DxTextSize.Small);
 
             // LOS diagnostic overlay (only when debug overlay is enabled)

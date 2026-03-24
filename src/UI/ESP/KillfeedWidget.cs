@@ -180,7 +180,7 @@ namespace LoneEftDmaRadar.UI.ESP
                 _lastHoverTicks = Stopwatch.GetTimestamp();
         }
 
-        public void Draw(Dx9RenderContext ctx, float screenWidth, float screenHeight)
+        public void Draw(Dx11RenderContext ctx, float screenWidth, float screenHeight)
         {
             var reader = DogtagReader.Instance;
             if (reader is null || reader.Count == 0)
@@ -272,7 +272,7 @@ namespace LoneEftDmaRadar.UI.ESP
             }
         }
 
-        private static float DrawSegment(Dx9RenderContext ctx, string text, float x, float y, DxColor color)
+        private static float DrawSegment(Dx11RenderContext ctx, string text, float x, float y, DxColor color)
         {
             ctx.DrawText(text, x, y, color, DxTextSize.Small);
             var measured = ctx.MeasureText(text, DxTextSize.Small);

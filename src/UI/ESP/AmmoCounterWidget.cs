@@ -238,7 +238,7 @@ namespace LoneEftDmaRadar.UI.ESP
         /// <summary>
         /// Draw the ammo counter widget.
         /// </summary>
-        public void Draw(Dx9RenderContext ctx, int currentAmmo, int maxAmmo, string ammoTypeName = null)
+        public void Draw(Dx11RenderContext ctx, int currentAmmo, int maxAmmo, string ammoTypeName = null)
         {
             var cfg = App.Config.UI.AmmoCounter;
             if (!cfg.Enabled)
@@ -319,7 +319,7 @@ namespace LoneEftDmaRadar.UI.ESP
         /// <summary>
         /// Draw the resize handle indicator in the bottom-right corner.
         /// </summary>
-        private void DrawResizeHandle(Dx9RenderContext ctx, RectangleF bounds, float opacity)
+        private void DrawResizeHandle(Dx11RenderContext ctx, RectangleF bounds, float opacity)
         {
             byte alpha = (byte)(opacity * 200);
             var handleColor = _isResizing
