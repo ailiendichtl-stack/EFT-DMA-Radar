@@ -25,15 +25,26 @@ namespace LoneEftDmaRadar.UI.Radar.Views
             {
                 Interval = TimeSpan.FromSeconds(15)
             };
-            _autoRefreshTimer.Tick += (_, _) => _vm.RefreshQuests();
+            _autoRefreshTimer.Tick += async (_, _) =>
+            {
+                _autoRefreshTimer.Stop();
+                try
+                {
+                    await Task.Run(() => _vm.RefreshQuests());
+                }
+                finally
+                {
+                    _autoRefreshTimer.Start();
+                }
+            };
 
             Loaded += OnLoaded;
             Unloaded += OnUnloaded;
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private async void OnLoaded(object sender, RoutedEventArgs e)
         {
-            _vm.RefreshQuests();
+            await Task.Run(() => _vm.RefreshQuests());
             _autoRefreshTimer.Start();
         }
 
@@ -42,9 +53,9 @@ namespace LoneEftDmaRadar.UI.Radar.Views
             _autoRefreshTimer.Stop();
         }
 
-        private void RefreshButton_Click(object sender, RoutedEventArgs e)
+        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            _vm.RefreshQuests();
+            await Task.Run(() => _vm.RefreshQuests());
         }
     }
 }

@@ -8,6 +8,7 @@ using LoneEftDmaRadar.Tarkov.GameWorld.Quests;
 using LoneEftDmaRadar.UI.Data;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows;
 using static LoneEftDmaRadar.Tarkov.TarkovDataManager.TaskElement;
 
 namespace LoneEftDmaRadar.UI.Radar.ViewModels
@@ -79,11 +80,14 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             catch (Exception)
             {
                 // DMA not connected or memory read failed — silently retry next cycle
-                if (MapGroups.Count == 0)
+                Application.Current?.Dispatcher?.Invoke(() =>
                 {
-                    SourceText = "Waiting...";
-                    OnPropertyChanged(nameof(SourceText));
-                }
+                    if (MapGroups.Count == 0)
+                    {
+                        SourceText = "Waiting...";
+                        OnPropertyChanged(nameof(SourceText));
+                    }
+                });
             }
         }
 
@@ -91,15 +95,19 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         {
             // Collect all entries into a flat list first
             var allEntries = new List<ActiveQuestEntry>();
+            var sourceText = "";
 
             var taskData = TarkovDataManager.TaskData;
             if (taskData == null)
             {
-                SourceText = "No data";
-                MapGroups.Clear();
-                ActiveQuestCount = 0;
-                OnPropertyChanged(nameof(ActiveQuestCount));
-                OnPropertyChanged(nameof(SourceText));
+                Application.Current?.Dispatcher?.Invoke(() =>
+                {
+                    SourceText = "No data";
+                    MapGroups.Clear();
+                    ActiveQuestCount = 0;
+                    OnPropertyChanged(nameof(ActiveQuestCount));
+                    OnPropertyChanged(nameof(SourceText));
+                });
                 return;
             }
 
@@ -107,7 +115,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             var questManager = Memory?.Quests;
             if (questManager?.Quests != null && questManager.Quests.Count > 0)
             {
-                SourceText = "In Raid";
+                sourceText = "In Raid";
                 foreach (var kvp in questManager.Quests)
                 {
                     if (!taskData.TryGetValue(kvp.Key, out var task))
@@ -133,7 +141,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 // Lobby: use LobbyQuestReader
                 if (LobbyQuestReader.TryRefresh())
                 {
-                    SourceText = "Lobby";
+                    sourceText = "Lobby";
                     var questIds = LobbyQuestReader.StartedQuestIds;
                     var lobbyCompleted = LobbyQuestReader.CompletedConditions;
                     var lobbyCounters = LobbyQuestReader.ConditionCounters;
@@ -166,43 +174,50 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 }
                 else
                 {
-                    SourceText = "No data";
+                    sourceText = "No data";
                 }
             }
 
             // Build bring lists per map
             var bringListsByMap = BuildBringLists(allEntries, taskData);
 
-            // Remember which maps were collapsed before refresh
-            var collapsedMaps = new HashSet<string>(
-                MapGroups.Where(g => !g.IsExpanded).Select(g => g.MapName),
-                StringComparer.OrdinalIgnoreCase);
-
-            // Group by map, sort maps alphabetically with "Any" last, quests alphabetically within each map
-            var groups = allEntries
-                .GroupBy(e => e.MapName)
-                .OrderBy(g => g.Key == "Any" ? "zzz" : g.Key)
-                .Select(g =>
-                {
-                    bringListsByMap.TryGetValue(g.Key, out var bringItems);
-                    var group = new MapQuestGroup(
-                        g.Key,
-                        g.OrderBy(e => e.QuestName).ToList(),
-                        bringItems ?? []);
-                    if (collapsedMaps.Contains(g.Key))
-                        group.IsExpanded = false;
-                    return group;
-                })
-                .ToList();
-
-            MapGroups.Clear();
-            foreach (var group in groups)
-                MapGroups.Add(group);
-
             // Count unique quest IDs (not duplicated across maps)
-            ActiveQuestCount = allEntries.Select(e => e.Id).Distinct().Count();
-            OnPropertyChanged(nameof(ActiveQuestCount));
-            OnPropertyChanged(nameof(SourceText));
+            var questCount = allEntries.Select(e => e.Id).Distinct().Count();
+
+            // Marshal all UI updates to the dispatcher thread
+            Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                // Remember which maps were collapsed before refresh
+                var collapsedMaps = new HashSet<string>(
+                    MapGroups.Where(g => !g.IsExpanded).Select(g => g.MapName),
+                    StringComparer.OrdinalIgnoreCase);
+
+                // Group by map, sort maps alphabetically with "Any" last, quests alphabetically within each map
+                var groups = allEntries
+                    .GroupBy(e => e.MapName)
+                    .OrderBy(g => g.Key == "Any" ? "zzz" : g.Key)
+                    .Select(g =>
+                    {
+                        bringListsByMap.TryGetValue(g.Key, out var bringItems);
+                        var group = new MapQuestGroup(
+                            g.Key,
+                            g.OrderBy(e => e.QuestName).ToList(),
+                            bringItems ?? []);
+                        if (collapsedMaps.Contains(g.Key))
+                            group.IsExpanded = false;
+                        return group;
+                    })
+                    .ToList();
+
+                MapGroups.Clear();
+                foreach (var group in groups)
+                    MapGroups.Add(group);
+
+                SourceText = sourceText;
+                ActiveQuestCount = questCount;
+                OnPropertyChanged(nameof(ActiveQuestCount));
+                OnPropertyChanged(nameof(SourceText));
+            });
         }
 
         /// <summary>
