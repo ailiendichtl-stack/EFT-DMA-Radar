@@ -1973,45 +1973,51 @@ namespace LoneEftDmaRadar.UI.ESP
 
             var snapshot = MemDMA.DeviceAimbot?.GetDebugSnapshot();
 
-            var lines = snapshot == null
-                ? new[] { "Device Aimbot: no data" }
-                : new[]
-                {
-                    "=== Device Aimbot ===",
-                    $"Status: {snapshot.Status}",
-                    $"Key: {(snapshot.KeyEngaged ? "ENGAGED" : "Idle")} | Enabled: {snapshot.Enabled} | Device: {(snapshot.DeviceConnected ? "Connected" : "Disconnected")}",
-                    $"InRaid: {snapshot.InRaid} | FOV: {snapshot.ConfigFov:F0}px | MaxDist: {snapshot.ConfigMaxDistance:F0}m | Mode: {snapshot.TargetingMode}",
-                    $"Candidates t:{snapshot.CandidateTotal} type:{snapshot.CandidateTypeOk} dist:{snapshot.CandidateInDistance} skel:{snapshot.CandidateWithSkeleton} w2s:{snapshot.CandidateW2S} final:{snapshot.CandidateCount}",
-                    $"Target: {(snapshot.LockedTargetName ?? "None")} [{snapshot.LockedTargetType?.ToString() ?? "-"}] valid={snapshot.TargetValid}",
-                    snapshot.LockedTargetDistance.HasValue ? $"  Dist {snapshot.LockedTargetDistance.Value:F1}m | FOV { (float.IsNaN(snapshot.LockedTargetFov) ? "n/a" : snapshot.LockedTargetFov.ToString("F1")) } | Bone {snapshot.TargetBone}" : string.Empty,
-                    $"Fireport: {(snapshot.HasFireport ? snapshot.FireportPosition?.ToString() : "None")}",
-                    $"Ballistics: {(snapshot.BallisticsValid ? $"OK (Speed {(snapshot.BulletSpeed.HasValue ? snapshot.BulletSpeed.Value.ToString("F1") : "?")} m/s, Predict {(snapshot.PredictionEnabled ? "ON" : "OFF")})" : "Invalid/None")}"
-                }.Where(l => !string.IsNullOrEmpty(l)).ToArray();
-
             float x = 10f;
             float y = 40f;
             float lineStep = 16f;
             var color = ToColor(SKColors.White);
 
-            foreach (var line in lines)
+            if (snapshot == null)
             {
-                ctx.DrawText(line, x, y, color, DxTextSize.Small);
+                ctx.DrawText("Device Aimbot: no data", x, y, color, DxTextSize.Small);
                 y += lineStep;
+            }
+            else
+            {
+                ctx.DrawText("=== Device Aimbot ===", x, y, color, DxTextSize.Small); y += lineStep;
+                ctx.DrawText($"Status: {snapshot.Status}", x, y, color, DxTextSize.Small); y += lineStep;
+                ctx.DrawText($"Key: {(snapshot.KeyEngaged ? "ENGAGED" : "Idle")} | Enabled: {snapshot.Enabled} | Device: {(snapshot.DeviceConnected ? "Connected" : "Disconnected")}", x, y, color, DxTextSize.Small); y += lineStep;
+                ctx.DrawText($"InRaid: {snapshot.InRaid} | FOV: {snapshot.ConfigFov:F0}px | MaxDist: {snapshot.ConfigMaxDistance:F0}m | Mode: {snapshot.TargetingMode}", x, y, color, DxTextSize.Small); y += lineStep;
+                ctx.DrawText($"Candidates t:{snapshot.CandidateTotal} type:{snapshot.CandidateTypeOk} dist:{snapshot.CandidateInDistance} skel:{snapshot.CandidateWithSkeleton} w2s:{snapshot.CandidateW2S} final:{snapshot.CandidateCount}", x, y, color, DxTextSize.Small); y += lineStep;
+                ctx.DrawText($"Target: {(snapshot.LockedTargetName ?? "None")} [{snapshot.LockedTargetType?.ToString() ?? "-"}] valid={snapshot.TargetValid}", x, y, color, DxTextSize.Small); y += lineStep;
+                if (snapshot.LockedTargetDistance.HasValue)
+                {
+                    ctx.DrawText($"  Dist {snapshot.LockedTargetDistance.Value:F1}m | FOV {(float.IsNaN(snapshot.LockedTargetFov) ? "n/a" : snapshot.LockedTargetFov.ToString("F1"))} | Bone {snapshot.TargetBone}", x, y, color, DxTextSize.Small); y += lineStep;
+                }
+                ctx.DrawText($"Fireport: {(snapshot.HasFireport ? snapshot.FireportPosition?.ToString() : "None")}", x, y, color, DxTextSize.Small); y += lineStep;
+                ctx.DrawText($"Ballistics: {(snapshot.BallisticsValid ? $"OK (Speed {(snapshot.BulletSpeed.HasValue ? snapshot.BulletSpeed.Value.ToString("F1") : "?")} m/s, Predict {(snapshot.PredictionEnabled ? "ON" : "OFF")})" : "Invalid/None")}", x, y, color, DxTextSize.Small); y += lineStep;
             }
 
             // Add raid mode detection info
-            y += lineStep; // Extra spacing
+            y += lineStep;
             var players = Memory.Players;
             if (players != null && Memory.InRaid)
             {
-                // Check if any non-local players are ObservedPlayers (indicates online raid)
-                bool hasObservedPlayers = players.Any(p => !(p is LocalPlayer) && (p is ObservedPlayer));
+                bool hasObservedPlayers = false;
+                foreach (var p in players)
+                {
+                    if (!(p is LocalPlayer) && p is ObservedPlayer)
+                    {
+                        hasObservedPlayers = true;
+                        break;
+                    }
+                }
                 string raidMode = hasObservedPlayers ? "ONLINE" : "OFFLINE/PVE";
                 var modeColor = hasObservedPlayers ? new DxColor(0, 0, 255, 255) : new DxColor(0, 255, 0, 255);
                 ctx.DrawText($"Raid Mode: {raidMode}", x, y, modeColor, DxTextSize.Small);
                 y += lineStep;
 
-                // Show offline raid status (auto-detected)
                 bool isOffline = Memory.Game?.IsOfflineRaid == true;
                 var scanColor = isOffline ? new DxColor(0, 255, 0, 255) : new DxColor(0, 0, 255, 255);
                 ctx.DrawText($"Content Scan: {(isOffline ? "AUTO" : "N/A")}", x, y, scanColor, DxTextSize.Small);
