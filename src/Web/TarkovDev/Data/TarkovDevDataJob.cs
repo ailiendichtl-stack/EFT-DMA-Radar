@@ -87,7 +87,7 @@ namespace LoneEftDmaRadar.Web.TarkovDev.Data
                 DebugLogger.LogDebug("[TarkovDevDataJob] WARNING: 'tasks' not found in raw JSON!");
             }
 
-            var data = JsonSerializer.Deserialize<TarkovDevDataQuery>(json, _jsonOptions) ??
+            var data = JsonSerializer.Deserialize<TarkovDevDataQuery>(json!, _jsonOptions) ??
                 throw new InvalidOperationException("Failed to deserialize Tarkov data.");
 
             // Debug: Log counts after deserialization

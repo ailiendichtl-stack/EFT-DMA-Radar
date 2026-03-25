@@ -201,6 +201,7 @@ namespace LoneEftDmaRadar.UI.Misc
         // === Aim Diagnostic Logger ===
         // Captures every frame of aim sequences to JSON Lines for analysis.
         // Enable: set AIM_DIAG_ENABLED = true, rebuild, do a few runs, then set back to false.
+#pragma warning disable CS0162 // Unreachable code detected (intentional compile-time toggle)
         private const bool AIM_DIAG_ENABLED = false;
         private static readonly string AIM_DIAG_PATH = Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory, $"aim_diag_{DateTime.Now:yyyyMMdd_HHmmss}.jsonl");
@@ -2089,7 +2090,8 @@ private bool ShouldTargetPlayer(AbstractPlayer player, LocalPlayer localPlayer)
         }
         #endregion
         #endregion
-        
+#pragma warning restore CS0162
+
     }
 
     public sealed class DeviceAimbotDebugSnapshot

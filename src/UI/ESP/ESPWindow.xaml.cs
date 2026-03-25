@@ -1566,7 +1566,7 @@ namespace LoneEftDmaRadar.UI.ESP
                 var segColor = color;
                 if (perBone)
                 {
-                    bool fVis = BoneMappings.IsBoneSet(vis.Value.VisibleMask, from);
+                    bool fVis = BoneMappings.IsBoneSet(vis!.Value.VisibleMask, from);
                     bool tVis = BoneMappings.IsBoneSet(vis.Value.VisibleMask, to);
                     if (fVis || tVis)
                     {

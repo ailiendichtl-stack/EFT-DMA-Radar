@@ -35,7 +35,7 @@ namespace LoneEftDmaRadar.UI.Loot
     /// </summary>
     internal static class LootFilter
     {
-        public static string SearchString;
+        public static string SearchString = string.Empty;
         public static bool ShowMeds;
         public static bool ShowFood;
         public static bool ShowHideoutItems;

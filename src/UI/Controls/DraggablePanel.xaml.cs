@@ -74,7 +74,9 @@ namespace LoneEftDmaRadar.UI.Controls
         private const double TitleBarHeight = 36;
         private Point? _tabDragStartPoint;
         private TabItemModel _tabDragSource;
+#pragma warning disable CS0414 // Reserved for tab reorder feature
         private bool _tabReorderActive;
+#pragma warning restore CS0414
         private const double TabDetachVerticalThreshold = 24;
 
         #endregion
