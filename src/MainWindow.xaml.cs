@@ -411,7 +411,7 @@ namespace LoneEftDmaRadar
                 else if (e.Key is Key.F11)
                 {
                     var toFullscreen = this.WindowStyle is WindowStyle.SingleBorderWindow;
-                    ViewModel.ToggleFullscreen(toFullscreen);
+                    ViewModel!.ToggleFullscreen(toFullscreen);
                 }
             }
             finally

@@ -106,7 +106,9 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Player.Helpers
             var now = DateTime.UtcNow;
             bossName = "";
 
+#nullable enable
             BossSpawnRecord? closestBoss = null;
+#nullable restore
             float closestDistance = float.MaxValue;
 
             foreach (var bossSpawn in _recentBossSpawns)

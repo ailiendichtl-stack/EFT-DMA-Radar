@@ -481,7 +481,7 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                         }
                     }
 
-                    if (App.Config.UI.ShowMines &&
+                    if (mapID != null && App.Config.UI.ShowMines &&
                         StaticGameData.Mines.TryGetValue(mapID, out var mines)) // Draw Mines
                     {
                         foreach (ref var mine in mines.Span)

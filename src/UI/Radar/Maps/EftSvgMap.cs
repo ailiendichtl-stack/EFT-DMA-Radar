@@ -413,7 +413,9 @@ namespace LoneEftDmaRadar.UI.Radar.Maps
             /// <summary>
             /// The SKPicture representing this layer's vector content.
             /// </summary>
+#nullable enable
             public SKPicture? Picture => _svg.Picture;
+#nullable restore
 
             /// <summary>
             /// Create a vector layer from a loaded SKSvg and its configuration.

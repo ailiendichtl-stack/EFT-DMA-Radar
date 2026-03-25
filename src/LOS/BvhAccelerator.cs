@@ -149,20 +149,22 @@ namespace LoneEftDmaRadar.LOS
             float parentArea = SurfaceArea(bMin, bMax);
             if (parentArea <= 0) parentArea = 1e-10f;
 
+            // Pre-allocate bins outside the loop to avoid stackalloc in a loop (CA2014)
+            Span<int> binCount = stackalloc int[SAH_BINS];
+            Span<float> binMinX = stackalloc float[SAH_BINS];
+            Span<float> binMinY = stackalloc float[SAH_BINS];
+            Span<float> binMinZ = stackalloc float[SAH_BINS];
+            Span<float> binMaxX = stackalloc float[SAH_BINS];
+            Span<float> binMaxY = stackalloc float[SAH_BINS];
+            Span<float> binMaxZ = stackalloc float[SAH_BINS];
+            Span<float> leftAreaBuf = stackalloc float[SAH_BINS - 1];
+            Span<int> leftCountBuf = stackalloc int[SAH_BINS - 1];
+
             for (int axis = 0; axis < 3; axis++)
             {
                 float cMinA = GetAxis(cMin, axis);
                 float cMaxA = GetAxis(cMax, axis);
                 if (cMaxA - cMinA < 1e-8f) continue; // Flat on this axis
-
-                // Bin triangles
-                Span<int> binCount = stackalloc int[SAH_BINS];
-                Span<float> binMinX = stackalloc float[SAH_BINS];
-                Span<float> binMinY = stackalloc float[SAH_BINS];
-                Span<float> binMinZ = stackalloc float[SAH_BINS];
-                Span<float> binMaxX = stackalloc float[SAH_BINS];
-                Span<float> binMaxY = stackalloc float[SAH_BINS];
-                Span<float> binMaxZ = stackalloc float[SAH_BINS];
 
                 for (int b = 0; b < SAH_BINS; b++)
                 {
@@ -185,9 +187,9 @@ namespace LoneEftDmaRadar.LOS
                     binMaxZ[bin] = Math.Max(binMaxZ[bin], triMax[ti].Z);
                 }
 
-                // Sweep from left to find costs
-                Span<float> leftArea = stackalloc float[SAH_BINS - 1];
-                Span<int> leftCount = stackalloc int[SAH_BINS - 1];
+                // Sweep from left to find costs (reuse stack spans allocated outside loop)
+                Span<float> leftArea = leftAreaBuf;
+                Span<int> leftCount = leftCountBuf;
                 {
                     var lMin = new Vector3(float.MaxValue);
                     var lMax = new Vector3(float.MinValue);

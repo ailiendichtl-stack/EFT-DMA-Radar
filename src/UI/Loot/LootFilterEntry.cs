@@ -26,6 +26,7 @@ SOFTWARE.
  *
 */
 
+#nullable enable
 using LoneEftDmaRadar.Tarkov;
 
 namespace LoneEftDmaRadar.UI.Loot
@@ -155,8 +156,8 @@ namespace LoneEftDmaRadar.UI.Loot
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-        private void OnPropertyChanged([CallerMemberName] string propName = null)
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string? propName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
 
         /// <summary>
@@ -170,7 +171,7 @@ namespace LoneEftDmaRadar.UI.Loot
         public sealed class EntryType
         {
             public int Id { get; init; }
-            public string Name { get; init; }
+            public string Name { get; init; } = string.Empty;
             public override string ToString() => Name;
         }
     }
