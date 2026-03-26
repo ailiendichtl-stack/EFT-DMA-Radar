@@ -354,6 +354,13 @@ namespace LoneEftDmaRadar
         /// </summary>
         protected override void OnClosing(CancelEventArgs e)
         {
+            // Failsafe: if shutdown hangs for any reason, force-kill after 5 seconds
+            var failsafe = new System.Threading.Timer(
+                _ => System.Diagnostics.Process.GetCurrentProcess().Kill(),
+                null,
+                TimeSpan.FromSeconds(5),
+                Timeout.InfiniteTimeSpan);
+
             try
             {
                 App.Config.UI.WindowSize = new Size(this.Width, this.Height);
@@ -386,6 +393,7 @@ namespace LoneEftDmaRadar
             try { ESPManager.CloseESP(); } catch { }
             try { DebugLogger.Close(); } catch { }
 
+            GC.KeepAlive(failsafe); // prevent GC from collecting the timer before it fires
             base.OnClosing(e);
         }
 
