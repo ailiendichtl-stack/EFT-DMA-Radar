@@ -389,9 +389,15 @@ namespace LoneEftDmaRadar.UI.Controls
             // let the event bubble naturally so that control scrolls instead of this outer panel.
             if (e.OriginalSource is DependencyObject source)
             {
-                var innerScroller = FindParentScrollViewer(source, (ScrollViewer)sender);
-                if (innerScroller != null)
-                    return; // Don't handle — let the inner control scroll
+                var current = source;
+                while (current != null && current != sender)
+                {
+                    if (current is System.Windows.Controls.ScrollViewer sv && sv.ScrollableHeight > 0)
+                        return; // Let the inner control handle scrolling — but only if it actually has content to scroll
+                    if (current is ListBox lb && lb.Items.Count > 0)
+                        return;
+                    current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+                }
             }
 
             try
@@ -404,24 +410,6 @@ namespace LoneEftDmaRadar.UI.Controls
                 // Guard against layout race during content changes
             }
             e.Handled = true;
-        }
-
-        /// <summary>
-        /// Walk up the visual tree from source looking for a ScrollViewer that isn't the outer panel scroller.
-        /// Returns null if no inner ScrollViewer is found before reaching the outer one.
-        /// </summary>
-        private static ScrollViewer FindParentScrollViewer(DependencyObject source, ScrollViewer outerScroller)
-        {
-            var current = source;
-            while (current != null && current != outerScroller)
-            {
-                if (current is ScrollViewer sv && sv != outerScroller)
-                    return sv;
-                if (current is ListBox)
-                    return new ScrollViewer(); // ListBox has a built-in ScrollViewer
-                current = System.Windows.Media.VisualTreeHelper.GetParent(current);
-            }
-            return null;
         }
     }
 }

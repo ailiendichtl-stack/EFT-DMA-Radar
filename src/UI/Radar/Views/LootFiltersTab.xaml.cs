@@ -30,9 +30,6 @@ using LoneEftDmaRadar.UI.Loot;
 using LoneEftDmaRadar.UI.Radar.ViewModels;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows;
-using System.Windows.Controls.Primitives;
-using System.Windows.Media;
 
 namespace LoneEftDmaRadar.UI.Radar.Views
 {
@@ -66,67 +63,6 @@ namespace LoneEftDmaRadar.UI.Radar.Views
             if (EntriesGrid.SelectedItem is LootFilterEntry entry)
             {
                 ViewModel.DeleteEntry(entry);
-            }
-        }
-
-        private void ColorSwatch_Click(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is System.Windows.Controls.Border border && border.DataContext is LootFilterEntry entry)
-            {
-                // Parse current color for the dialog
-                Color initial = Colors.White;
-                var currentColor = entry.ExplicitColor ?? entry.Color;
-                if (!string.IsNullOrEmpty(currentColor))
-                {
-                    try { initial = (Color)ColorConverter.ConvertFromString(currentColor); }
-                    catch { }
-                }
-
-                // Open a modal window with the Xceed ColorCanvas
-                var picker = new Xceed.Wpf.Toolkit.ColorPicker
-                {
-                    SelectedColor = initial,
-                    ColorMode = Xceed.Wpf.Toolkit.ColorMode.ColorCanvas,
-                    DisplayColorAndName = true,
-                    ShowDropDownButton = false,
-                    Width = 280
-                };
-
-                var win = new Window
-                {
-                    Title = "Pick Color",
-                    SizeToContent = SizeToContent.WidthAndHeight,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    Owner = Window.GetWindow(this),
-                    ResizeMode = ResizeMode.NoResize,
-                    Content = new System.Windows.Controls.StackPanel
-                    {
-                        Margin = new Thickness(10),
-                        Children =
-                        {
-                            picker,
-                            new System.Windows.Controls.Button
-                            {
-                                Content = "OK",
-                                Margin = new Thickness(0, 10, 0, 0),
-                                Padding = new Thickness(20, 4, 20, 4),
-                                HorizontalAlignment = HorizontalAlignment.Center,
-                                IsDefault = true
-                            }
-                        }
-                    }
-                };
-
-                // Wire up OK button
-                if (((System.Windows.Controls.StackPanel)win.Content).Children[1] is System.Windows.Controls.Button okBtn)
-                    okBtn.Click += (_, _) => { win.DialogResult = true; win.Close(); };
-
-                if (win.ShowDialog() == true && picker.SelectedColor is Color picked)
-                {
-                    entry.ExplicitColor = picked.ToString();
-                }
-
-                e.Handled = true;
             }
         }
     }

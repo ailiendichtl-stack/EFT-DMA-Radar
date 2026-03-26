@@ -451,7 +451,6 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
                 _itemSearchText = value;
                 OnPropertyChanged();
                 _filteredItems.Refresh(); // refresh the filter
-                EnsureFirstItemSelected();
                 IsItemDropdownOpen = !string.IsNullOrWhiteSpace(value); // auto-open dropdown when searching
             }
         }
@@ -469,11 +468,10 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             };
 
             Entries.Add(entry);
-
-            // Immediately link the filter to the item so color changes take effect without restart
-            SelectedItemToAdd.SetFilter(entry);
-
             SelectedItemToAdd = null;
+
+            // Refresh all filters so the new entry is immediately active on the radar
+            RefreshLootFilter();
         }
 
         public ICommand DeleteEntryCommand { get; }

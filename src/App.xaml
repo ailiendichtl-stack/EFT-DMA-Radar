@@ -1227,6 +1227,12 @@
                 <Setter Property="TabForeground" Value="{DynamicResource App.TextPrimaryBrush}"/>
             </Style>
 
+            <!-- ColorCanvas: match app theme so text is readable on dark backgrounds -->
+            <Style TargetType="xctk:ColorCanvas">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{DynamicResource App.TextPrimaryBrush}"/>
+            </Style>
+
             <!-- NeonColorSwatch: Cyberpunk neon gem color swatches (22px) -->
             <Style TargetType="controls:NeonColorSwatch">
                 <Setter Property="Cursor" Value="Hand"/>
@@ -1290,7 +1296,11 @@
                                             BorderThickness="0.8"
                                             CornerRadius="8"
                                             Padding="10"
-                                            Margin="4">
+                                            Margin="4"
+                                            UseLayoutRounding="True"
+                                            SnapsToDevicePixels="True"
+                                            TextOptions.TextFormattingMode="Display"
+                                            TextOptions.TextRenderingMode="ClearType">
                                         <Border.Effect>
                                             <DropShadowEffect ShadowDepth="0"
                                                               BlurRadius="12"
@@ -1303,8 +1313,9 @@
                                                 Mode=TwoWay}"
                                             UsingAlphaChannel="{Binding UsingAlphaChannel,
                                                 RelativeSource={RelativeSource TemplatedParent}}"
-                                            Background="Transparent"
-                                            Width="220" Height="200"/>
+                                            UseLayoutRounding="True"
+                                            SnapsToDevicePixels="True"
+                                            Width="280" Height="240"/>
                                     </Border>
                                 </Popup>
                             </Grid>

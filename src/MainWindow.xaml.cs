@@ -354,13 +354,6 @@ namespace LoneEftDmaRadar
         /// </summary>
         protected override void OnClosing(CancelEventArgs e)
         {
-            // Failsafe: if shutdown hangs for any reason, force-kill after 5 seconds
-            var failsafe = new System.Threading.Timer(
-                _ => System.Diagnostics.Process.GetCurrentProcess().Kill(),
-                null,
-                TimeSpan.FromSeconds(5),
-                Timeout.InfiniteTimeSpan);
-
             try
             {
                 App.Config.UI.WindowSize = new Size(this.Width, this.Height);
@@ -379,22 +372,34 @@ namespace LoneEftDmaRadar
                 // Save panel layout states
                 ViewModel?.PanelManager?.SaveToConfig();
 
-                App.Config.Save(); // Save config before Environment.Exit(0) in OnClosed kills the process
+                try
+                {
+                    App.Config.Save(); // Save config before Environment.Exit(0) in OnClosed kills the process
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error saving config on close: {ex}");
+                }
+
+                // Cleanup — each in its own try/catch so one failure doesn't block the rest
+                DraggableBehavior.PanelDropped -= OnPanelDropped;
+
+                try { Memory.Dispose(); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Memory.Dispose failed: {ex.Message}"); }
+
+                try { VisibilityManager.Stop(); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"VisibilityManager.Stop failed: {ex.Message}"); }
+
+                try { ESPManager.CloseESP(); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ESPManager.CloseESP failed: {ex.Message}"); }
+
+                try { DebugLogger.Close(); }
+                catch { } // Safe to ignore — logger is already shutting down
             }
-            catch (Exception ex)
+            finally
             {
-                System.Diagnostics.Debug.WriteLine($"Error saving config on close: {ex}");
+                base.OnClosing(e);
             }
-
-            // Cleanup — each in its own try/catch so one failure doesn't block the rest
-            try { DraggableBehavior.PanelDropped -= OnPanelDropped; } catch { }
-            try { Memory.Dispose(); } catch { }
-            try { VisibilityManager.Stop(); } catch { }
-            try { ESPManager.CloseESP(); } catch { }
-            try { DebugLogger.Close(); } catch { }
-
-            GC.KeepAlive(failsafe); // prevent GC from collecting the timer before it fires
-            base.OnClosing(e);
         }
 
         protected override void OnPreviewKeyDown(KeyEventArgs e)

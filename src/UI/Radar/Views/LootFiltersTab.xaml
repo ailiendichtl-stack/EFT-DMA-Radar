@@ -8,6 +8,7 @@
              xmlns:misc="clr-namespace:LoneEftDmaRadar.UI.Misc"
              xmlns:loot="clr-namespace:LoneEftDmaRadar.UI.Loot"
              xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+             xmlns:controls="clr-namespace:LoneEftDmaRadar.UI.Controls"
              mc:Ignorable="d"
              d:DesignHeight="450"
              d:DesignWidth="800">
@@ -76,7 +77,7 @@
         <StackPanel Orientation="Horizontal"
                     Margin="5"
                     Grid.Row="1">
-            <TextBox Text="{Binding ItemSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=600}"
+            <TextBox Text="{Binding ItemSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=300}"
                      Width="200"
                      Margin="0,0,5,0"
                      VerticalAlignment="Center"
@@ -156,19 +157,12 @@
                 <DataGridTextColumn Header="Comment"
                                     Binding="{Binding Comment, Mode=TwoWay}" />
 
-                <!-- Color column: clickable swatch that opens color dialog -->
+                <!-- Color column: NeonColorSwatch consistent with other tabs -->
                 <DataGridTemplateColumn Header="Color">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Border Width="24"
-                                    Height="18"
-                                    CornerRadius="2"
-                                    BorderBrush="Gray"
-                                    BorderThickness="1"
-                                    Background="{Binding Color, Converter={StaticResource StringToBrushConverter}}"
-                                    Cursor="Hand"
-                                    MouseLeftButtonDown="ColorSwatch_Click"
-                                    ToolTip="Click to change color" />
+                            <controls:NeonColorSwatch
+                                SelectedColor="{Binding ExplicitColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
