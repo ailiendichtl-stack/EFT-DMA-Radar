@@ -308,9 +308,16 @@ namespace LoneEftDmaRadar
 
         protected override void OnClosed(EventArgs e)
         {
-            base.OnClosed(e);
-            // Force exit to ensure no background threads keep the process alive
-            Environment.Exit(0);
+            try
+            {
+                base.OnClosed(e);
+            }
+            finally
+            {
+                // Force exit to ensure no background threads keep the process alive.
+                // Use finally to guarantee this runs even if cleanup code throws.
+                Environment.Exit(0);
+            }
         }
 
         /// <summary>
@@ -366,18 +373,20 @@ namespace LoneEftDmaRadar
                 ViewModel?.PanelManager?.SaveToConfig();
 
                 App.Config.Save(); // Save config before Environment.Exit(0) in OnClosed kills the process
-
-                // Cleanup
-                DraggableBehavior.PanelDropped -= OnPanelDropped;
-                Memory.Dispose(); // Close FPGA
-                VisibilityManager.Stop();
-                ESPManager.CloseESP();
-                DebugLogger.Close();
             }
-            finally
+            catch (Exception ex)
             {
-                base.OnClosing(e);
+                System.Diagnostics.Debug.WriteLine($"Error saving config on close: {ex}");
             }
+
+            // Cleanup — each in its own try/catch so one failure doesn't block the rest
+            try { DraggableBehavior.PanelDropped -= OnPanelDropped; } catch { }
+            try { Memory.Dispose(); } catch { }
+            try { VisibilityManager.Stop(); } catch { }
+            try { ESPManager.CloseESP(); } catch { }
+            try { DebugLogger.Close(); } catch { }
+
+            base.OnClosing(e);
         }
 
         protected override void OnPreviewKeyDown(KeyEventArgs e)
