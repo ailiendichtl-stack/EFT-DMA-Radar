@@ -76,7 +76,7 @@
         <StackPanel Orientation="Horizontal"
                     Margin="5"
                     Grid.Row="1">
-            <TextBox Text="{Binding ItemSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=300}"
+            <TextBox Text="{Binding ItemSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=600}"
                      Width="200"
                      Margin="0,0,5,0"
                      VerticalAlignment="Center"
@@ -156,24 +156,21 @@
                 <DataGridTextColumn Header="Comment"
                                     Binding="{Binding Comment, Mode=TwoWay}" />
 
-                <!-- Color column: swatch and in‑cell Xceed ColorPicker -->
+                <!-- Color column: clickable swatch that opens color dialog -->
                 <DataGridTemplateColumn Header="Color">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Border Width="16"
-                                    Height="16"
-                                    Background="{Binding ExplicitColor, Converter={StaticResource StringToBrushConverter}}"
-                                    BorderBrush="Black"
-                                    BorderThickness="1" />
+                            <Border Width="24"
+                                    Height="18"
+                                    CornerRadius="2"
+                                    BorderBrush="Gray"
+                                    BorderThickness="1"
+                                    Background="{Binding Color, Converter={StaticResource StringToBrushConverter}}"
+                                    Cursor="Hand"
+                                    MouseLeftButtonDown="ColorSwatch_Click"
+                                    ToolTip="Click to change color" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
-                        <DataTemplate>
-                            <xctk:ColorPicker SelectedColor="{Binding ExplicitColor, Mode=TwoWay, Converter={StaticResource StringToColorConverter}}"
-                                              DisplayColorAndName="True"
-                                              Width="150" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
                 </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>

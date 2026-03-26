@@ -469,6 +469,10 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
             };
 
             Entries.Add(entry);
+
+            // Immediately link the filter to the item so color changes take effect without restart
+            SelectedItemToAdd.SetFilter(entry);
+
             SelectedItemToAdd = null;
         }
 
