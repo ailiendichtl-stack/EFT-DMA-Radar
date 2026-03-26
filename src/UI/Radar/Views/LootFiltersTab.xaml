@@ -76,26 +76,30 @@
         <StackPanel Orientation="Horizontal"
                     Margin="5"
                     Grid.Row="1">
+            <TextBox Text="{Binding ItemSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=300}"
+                     Width="200"
+                     Margin="0,0,5,0"
+                     VerticalAlignment="Center"
+                     Tag="Search items..." />
             <ComboBox x:Name="ItemSelector"
                       ItemsSource="{Binding FilteredItems, Mode=OneWay}"
                       ScrollViewer.VerticalScrollBarVisibility="Auto"
                       SelectedItem="{Binding SelectedItemToAdd, Mode=TwoWay}"
                       DisplayMemberPath="Name"
-                      Width="400"
-                      Margin="0,0,10,0">
+                      MinWidth="150"
+                      MaxDropDownHeight="300"
+                      Margin="0,0,3,0"
+                      IsDropDownOpen="{Binding IsItemDropdownOpen, Mode=TwoWay}">
                 <ComboBox.ItemsPanel>
                     <ItemsPanelTemplate>
                         <VirtualizingStackPanel />
                     </ItemsPanelTemplate>
                 </ComboBox.ItemsPanel>
             </ComboBox>
-            <TextBox Text="{Binding ItemSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=300}"
-                     Width="200"
-                     Margin="0,0,10,0"
-                     VerticalAlignment="Center" />
             <Button Content="Add"
                     Command="{Binding AddEntryCommand}"
-                    VerticalAlignment="Center" />
+                    VerticalAlignment="Center"
+                    Padding="8,2" />
         </StackPanel>
 
         <!-- Row 2: Entries grid with inline color‐picker -->
