@@ -485,6 +485,13 @@ namespace LoneEftDmaRadar.UI.Radar.ViewModels
         {
             if (entry == null) return;
             Entries.Remove(entry);
+
+            // Immediately unlink the filter from the item so it stops rendering
+            if (!string.IsNullOrEmpty(entry.ItemID) &&
+                TarkovDataManager.AllItems.TryGetValue(entry.ItemID, out var item))
+            {
+                item.SetFilter(null);
+            }
         }
 
         public IEnumerable<LootFilterEntryType> FilterEntryTypes { get; } = Enum // ComboBox of Entry Types within DataGrid
