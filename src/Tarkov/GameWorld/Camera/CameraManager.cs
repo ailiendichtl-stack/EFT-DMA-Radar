@@ -406,7 +406,12 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                     OpticCameraPtr = 0;
                     ScopeZoom = 1f;
                     IsScoped = false;
-                }
+                    // Reset zoom calibration so it's re-derived fresh on next ADS cycle
+                    _maxOpticFov = 0f;
+                    _calibratedOpticPtr = 0;
+                    _opticRightMag1x = 0f;
+                    _opticUpMag1x = 0f;
+                        }
 
                 // Read optics list first — determines if weapon has a sight or iron sights
                 if (IsADS)
@@ -507,18 +512,17 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                             _calibratedOpticPtr = OpticCameraPtr;
                         }
 
-                        // Track widest FOV = 1x reference. Capture 1x VP magnitudes.
+                        // Track widest FOV = 1x zoom reference + capture 1x VP magnitudes
                         if (opticFov > _maxOpticFov)
                         {
                             _maxOpticFov = opticFov;
-                            // Store the optic VP magnitudes at 1x (widest FOV = lowest zoom)
-                            // These define the scope circle size on screen.
                             if (_opticRightMag > 0.1f)
                                 _opticRightMag1x = _opticRightMag;
                             if (_opticUpMag > 0.1f)
                                 _opticUpMag1x = _opticUpMag;
                         }
 
+                        // Compute zoom from FOV ratio
                         if (_maxOpticFov > 1f)
                         {
                             float baseHalfRad = _maxOpticFov * MathF.PI / 360f;
@@ -565,8 +569,6 @@ namespace LoneEftDmaRadar.Tarkov.GameWorld.Camera
                 _useFpsCameraForCurrentAds = false;
                 _maxOpticFov = 0f;
                 _calibratedOpticPtr = 0;
-                _opticRightMag1x = 0f;
-                _opticUpMag1x = 0f;
                 CacheOpticCameras(listItemsPtr, count);
             }
             catch (Exception ex)
